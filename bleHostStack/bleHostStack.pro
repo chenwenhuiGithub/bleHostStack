@@ -11,10 +11,12 @@ CONFIG += c++11
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    qbtsnoop.cpp
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    qbtsnoop.h
 
 FORMS += \
     mainwindow.ui

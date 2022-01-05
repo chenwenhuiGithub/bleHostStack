@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "qbtsnoop.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -45,13 +46,16 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonSend_clicked()
 {
-    QByteArray buf;
+/*    QByteArray buf;
     buf.resize(4);
     buf[0] = 0x00;
     buf[1] = 0x01;
     buf[2] = 0x02;
     buf[3] = 0x03;
     serial.write(buf);
+*/
+    QBtsnoop bt;
+    bt.btsnoop_open();
 }
 
 
