@@ -7,10 +7,12 @@
                              (((x) & 0xff000000UL) >> 24))
 #define BTSNOOP_HTONLL(x)   ((((uint64_t)BTSNOOP_HTONL(x)) << 32) + BTSNOOP_HTONL((x) >> 32))
 
-#define BTSNOOP_HCI_TYPE_CMD  0x01
-#define BTSNOOP_HCI_TYPE_ACL  0x02
-#define BTSNOOP_HCI_TYPE_SCO  0x03
-#define BTSNOOP_HCI_TYPE_EVT  0x04
+typedef enum {
+    HCI_PACKET_TYPE_CMD = 1,
+    HCI_PACKET_TYPE_ACL,
+    HCI_PACKET_TYPE_SCO,
+    HCI_PACKET_TYPE_EVT
+} HCI_PACKET_TYPE;
 
 struct btsnoop_header {
     uint32_t length_original;
@@ -43,22 +45,23 @@ void QBtsnoop::btsnoop_open(void)
 
 void QBtsnoop::btsnoop_wirte(uint8_t* data, uint32_t len, BTSNOOP_DIRECT direct)
 {
-    uint32_t flags = 0; // bit0: 0 - Host to Controller, 1 - Controller to Host
-                        // bit1: 0 - ACL/SCO, 1 - CMD/EVT
     uint8_t type = data[0];
+    uint32_t flags = 0x00; // bit0: 0 - Host to Controller, 1 - Controller to Host
+                           // bit1: 0 - ACL/SCO, 1 - CMD/EVT
+    uint64_t timestamp = QDateTime::currentMSecsSinceEpoch() * 1000ULL + 0x00dcddb30f2f8000ULL; // 1970-01-01 00:00:00
 
-    switch (type) {
-    case BTSNOOP_HCI_TYPE_CMD: flags = 0x02; break;
-    case BTSNOOP_HCI_TYPE_EVT: flags = 0x03; break;
-    case BTSNOOP_HCI_TYPE_ACL:
-    case BTSNOOP_HCI_TYPE_SCO:
-        if (direct == BTSNOOP_DIRECT_HOST_TO_CONTROLLER) {
+    if (HCI_PACKET_TYPE_CMD == type) {
+        flags = 0x02;
+    } else if (HCI_PACKET_TYPE_EVT == type) {
+        flags = 0x03;
+    } else if ((HCI_PACKET_TYPE_ACL == type) || (HCI_PACKET_TYPE_SCO == type)) {
+        if (BTSNOOP_DIRECT_HOST_TO_CONTROLLER == direct) {
             flags = 0x00;
         } else {
             flags = 0x01;
         }
-        break;
-    default: break;
+    } else {
+
     }
 
     struct btsnoop_header header;
@@ -66,7 +69,7 @@ void QBtsnoop::btsnoop_wirte(uint8_t* data, uint32_t len, BTSNOOP_DIRECT direct)
     header.length_captured = BTSNOOP_HTONL(len);
     header.flags = flags;
     header.dropped_packets = 0;
-    header.timestamp = 0;
+    header.timestamp = BTSNOOP_HTONLL(timestamp);
 
     if (btsnoopFile.isOpen()) {
         btsnoopFile.write((char*)&header, sizeof(header));

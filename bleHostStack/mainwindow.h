@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QSerialPortInfo>
+#include "qbtsnoop.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -25,5 +26,6 @@ private slots:
 private:
     Ui::MainWindow *ui;
     QSerialPort serial;
+    QBtsnoop snoop;
 };
 #endif // MAINWINDOW_H

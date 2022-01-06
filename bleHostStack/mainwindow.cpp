@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "qbtsnoop.h"
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -46,16 +46,11 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonSend_clicked()
 {
-/*    QByteArray buf;
-    buf.resize(4);
-    buf[0] = 0x00;
-    buf[1] = 0x01;
-    buf[2] = 0x02;
-    buf[3] = 0x03;
-    serial.write(buf);
-*/
-    QBtsnoop bt;
-    bt.btsnoop_open();
+    uint8_t bufSend[4] = {0x01, 0x03, 0x0c, 0x00};
+    serial.write((char*)bufSend, sizeof(bufSend));
+
+    snoop.btsnoop_open();
+    snoop.btsnoop_wirte(bufSend, sizeof(bufSend), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
 
@@ -63,4 +58,8 @@ void MainWindow::serialPort_readyRead()
 {
     QByteArray buf = serial.readAll();
     qDebug() << "receive: " << buf;
+
+    uint8_t bufRecv[7] = {0x04, 0x0e, 0x04, 0x01, 0x03, 0x0c, 0x00};
+    snoop.btsnoop_wirte(bufRecv, sizeof(bufRecv), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
+    snoop.btsnoop_close();
 }
