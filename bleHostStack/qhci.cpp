@@ -224,68 +224,68 @@ QHci::QHci(QSerialPort& serialPort, QBtsnoop& btsnoop) : serialPort(serialPort),
 
 }
 
-void QHci::_assign_command(uint8_t* buf, uint8_t ogf, uint16_t ocf) {
+void QHci::_assign_cmd(uint8_t* buf, uint8_t ogf, uint16_t ocf) {
     buf[0] = HCI_PACKET_TYPE_CMD;
     buf[1] = ocf & 0xFF;
     buf[2] = (ocf >> 8) | (ogf << 2);
 }
 
-void QHci::reset() {
+void QHci::send_cmd_reset() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_buffer_size() {
+void QHci::send_cmd_read_buffer_size() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BUFFER_SIZE);
+    _assign_cmd(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BUFFER_SIZE);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_local_version_info() {
+void QHci::send_cmd_read_local_version_info() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO);
+    _assign_cmd(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_bd_addr() {
+void QHci::send_cmd_read_bd_addr() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR);
+    _assign_cmd(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_local_supported_commands() {
+void QHci::send_cmd_read_local_supported_commands() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS);
+    _assign_cmd(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_simple_pairing_mode(uint8_t simple_pairing_mode) {
+void QHci::send_cmd_write_simple_pairing_mode(uint8_t simple_pairing_mode) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_SIMPLE_PAIRING_MODE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_SIMPLE_PAIRING_MODE);
     sendData[3] = 1;
     sendData[4] = simple_pairing_mode;
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::set_event_mask(uint8_t* event_mask) {
+void QHci::send_cmd_set_event_mask(uint8_t* event_mask) {
     uint8_t sendData[12] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK);
     sendData[3] = 8;
     memcpy_s(&sendData[4], 8, event_mask, 8);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_class_of_device(uint32_t class_of_device) {
+void QHci::send_cmd_write_class_of_device(uint32_t class_of_device) {
     uint8_t sendData[7] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE);
     sendData[3] = 3;
     sendData[4] = class_of_device & 0xFF;
     sendData[5] = (class_of_device >> 8) & 0xFF;
@@ -294,9 +294,9 @@ void QHci::write_class_of_device(uint32_t class_of_device) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_page_timeout(uint16_t page_timeout) {
+void QHci::send_cmd_write_page_timeout(uint16_t page_timeout) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_PAGE_TIMEOUT);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_PAGE_TIMEOUT);
     sendData[3] = 2;
     sendData[4] = page_timeout & 0xFF;
     sendData[5] = (page_timeout >> 8) & 0xFF;
@@ -304,36 +304,36 @@ void QHci::write_page_timeout(uint16_t page_timeout) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_local_name(const char* local_name) {
+void QHci::send_cmd_write_local_name(const char* local_name) {
     uint8_t sendData[252] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LOCAL_NAME);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LOCAL_NAME);
     sendData[3] = 248;
     memcpy_s(&sendData[4], strlen(local_name), local_name, strlen(local_name));
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_inquiry_mode(uint8_t inquiry_mode) {
+void QHci::send_cmd_write_inquiry_mode(uint8_t inquiry_mode) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_INQUIRY_MODE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_INQUIRY_MODE);
     sendData[3] = 1;
     sendData[4] = inquiry_mode;
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_scan_enable(uint8_t scan_enable) {
+void QHci::send_cmd_write_scan_enable(uint8_t scan_enable) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_SCAN_ENABLE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_SCAN_ENABLE);
     sendData[3] = 1;
     sendData[4] = scan_enable;
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::inquiry(uint32_t inquiry_lap, uint8_t inquiry_len, uint8_t num_response) {
+void QHci::send_cmd_inquiry(uint32_t inquiry_lap, uint8_t inquiry_len, uint8_t num_response) {
     uint8_t sendData[9] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_INQUIRY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_INQUIRY);
     sendData[3] = 5;
     sendData[4] = inquiry_lap & 0xFF;
     sendData[5] = (inquiry_lap >> 8) & 0xFF;
@@ -344,16 +344,16 @@ void QHci::inquiry(uint32_t inquiry_lap, uint8_t inquiry_len, uint8_t num_respon
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::inquiry_cancel() {
+void QHci::send_cmd_inquiry_cancel() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_INQUIRY_CANCEL);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_INQUIRY_CANCEL);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::create_connection(uint8_t* bd_addr, uint16_t packet_type, uint8_t page_scan_repetition_mode, uint16_t clock_offset, uint8_t allow_role_switch) {
+void QHci::send_cmd_create_connection(uint8_t* bd_addr, uint16_t packet_type, uint8_t page_scan_repetition_mode, uint16_t clock_offset, uint8_t allow_role_switch) {
     uint8_t sendData[17] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CREATE_CONNECT);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CREATE_CONNECT);
     sendData[3] = 13;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = packet_type & 0xFF;
@@ -367,9 +367,9 @@ void QHci::create_connection(uint8_t* bd_addr, uint16_t packet_type, uint8_t pag
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::accept_connection_request(uint8_t* bd_addr, uint8_t role) {
+void QHci::send_cmd_accept_connection_request(uint8_t* bd_addr, uint8_t role) {
     uint8_t sendData[11] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_ACCEPT_CONNECT_REQUEST);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_ACCEPT_CONNECT_REQUEST);
     sendData[3] = 7;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = role;
@@ -377,9 +377,9 @@ void QHci::accept_connection_request(uint8_t* bd_addr, uint8_t role) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::reject_connection_request(uint8_t* bd_addr, uint8_t reason) {
+void QHci::send_cmd_reject_connection_request(uint8_t* bd_addr, uint8_t reason) {
     uint8_t sendData[11] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_REJECT_CONNECT_REQUEST);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_REJECT_CONNECT_REQUEST);
     sendData[3] = 7;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = reason;
@@ -387,9 +387,9 @@ void QHci::reject_connection_request(uint8_t* bd_addr, uint8_t reason) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::link_key_request_reply(uint8_t* bd_addr, uint8_t* link_key) {
+void QHci::send_cmd_link_key_request_reply(uint8_t* bd_addr, uint8_t* link_key) {
     uint8_t sendData[26] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_LINK_KEY_REQUEST_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_LINK_KEY_REQUEST_REPLY);
     sendData[3] = 22;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     memcpy_s(&sendData[10], 16, link_key, 16);
@@ -397,20 +397,20 @@ void QHci::link_key_request_reply(uint8_t* bd_addr, uint8_t* link_key) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::link_key_request_negative_reply(uint8_t* bd_addr) {
+void QHci::send_cmd_link_key_request_negative_reply(uint8_t* bd_addr) {
     uint8_t sendData[10] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_LINK_KEY_REQUEST_NEG_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_LINK_KEY_REQUEST_NEG_REPLY);
     sendData[3] = 6;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::pin_code_request_reply(uint8_t* bd_addr, uint8_t pin_code_len, uint8_t* pin_code) {
+void QHci::send_cmd_pin_code_request_reply(uint8_t* bd_addr, uint8_t pin_code_len, uint8_t* pin_code) {
     uint8_t sendDataLen = 4 + 6 + 1 + pin_code_len;
     QByteArray sendData;
     sendData.resize(sendDataLen);
-    _assign_command((uint8_t*)(sendData.data()), HCI_OGF_LINK_CONTROL, HCI_OCF_PIN_CODE_REQUEST_REPLY);
+    _assign_cmd((uint8_t*)(sendData.data()), HCI_OGF_LINK_CONTROL, HCI_OCF_PIN_CODE_REQUEST_REPLY);
     sendData[3] = sendDataLen - 4;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = pin_code_len;
@@ -419,18 +419,18 @@ void QHci::pin_code_request_reply(uint8_t* bd_addr, uint8_t pin_code_len, uint8_
     btsnoop.wirte((uint8_t*)(sendData.data()), sendDataLen, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::pin_code_request_negative_reply(uint8_t* bd_addr) {
+void QHci::send_cmd_pin_code_request_negative_reply(uint8_t* bd_addr) {
     uint8_t sendData[10] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_PIN_CODE_REQUEST_NEG_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_PIN_CODE_REQUEST_NEG_REPLY);
     sendData[3] = 6;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_remote_supported_features(uint16_t connection_handle) {
+void QHci::send_cmd_read_remote_supported_features(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_READ_REMOTE_SUPPORT_FEATURES);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_READ_REMOTE_SUPPORT_FEATURES);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F; // 12 bits meaningful
@@ -438,9 +438,9 @@ void QHci::read_remote_supported_features(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_remote_extended_features(uint16_t connection_handle, uint8_t page_number) {
+void QHci::send_cmd_read_remote_extended_features(uint16_t connection_handle, uint8_t page_number) {
     uint8_t sendData[7] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_READ_REMOTE_EXTEND_FEATURES);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_READ_REMOTE_EXTEND_FEATURES);
     sendData[3] = 3;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F; // 12 bits meaningful
@@ -449,10 +449,10 @@ void QHci::read_remote_extended_features(uint16_t connection_handle, uint8_t pag
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::setup_sco_connection(uint16_t connection_handle, uint32_t transmit_bandwidth, uint32_t receive_bandwidth, uint16_t max_latency,
+void QHci::send_cmd_setup_sco_connection(uint16_t connection_handle, uint32_t transmit_bandwidth, uint32_t receive_bandwidth, uint16_t max_latency,
                                         uint16_t voice_setting, uint8_t retransmission_effort, uint16_t packet_type) {
     uint8_t sendData[21] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_SETUP_SCO_CONNECT_REQUEST);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_SETUP_SCO_CONNECT_REQUEST);
     sendData[3] = 17;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -475,10 +475,10 @@ void QHci::setup_sco_connection(uint16_t connection_handle, uint32_t transmit_ba
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::accept_sco_connection_request(uint16_t connection_handle, uint32_t transmit_bandwidth, uint32_t receive_bandwidth, uint16_t max_latency,
+void QHci::send_cmd_accept_sco_connection_request(uint16_t connection_handle, uint32_t transmit_bandwidth, uint32_t receive_bandwidth, uint16_t max_latency,
     uint16_t voice_setting, uint8_t retransmission_effort, uint16_t packet_type) {
     uint8_t sendData[21] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_ACCEP_SCO_CONNECT_REQUEST);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_ACCEP_SCO_CONNECT_REQUEST);
     sendData[3] = 17;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -501,9 +501,9 @@ void QHci::accept_sco_connection_request(uint16_t connection_handle, uint32_t tr
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::reject_sco_connection_request(uint8_t* bd_addr, uint8_t reason) {
+void QHci::send_cmd_reject_sco_connection_request(uint8_t* bd_addr, uint8_t reason) {
     uint8_t sendData[11] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_REJECT_SCO_CONNECT_REQUEST);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_REJECT_SCO_CONNECT_REQUEST);
     sendData[3] = 7;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = reason;
@@ -511,9 +511,9 @@ void QHci::reject_sco_connection_request(uint8_t* bd_addr, uint8_t reason) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::io_capability_request_reply(uint8_t* bd_addr, uint8_t io_capability, uint8_t oob_data_present, uint8_t auth_requirements) {
+void QHci::send_cmd_io_capability_request_reply(uint8_t* bd_addr, uint8_t io_capability, uint8_t oob_data_present, uint8_t auth_requirements) {
     uint8_t sendData[13] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_IO_CAP_REQUEST_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_IO_CAP_REQUEST_REPLY);
     sendData[3] = 9;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = io_capability;
@@ -523,9 +523,9 @@ void QHci::io_capability_request_reply(uint8_t* bd_addr, uint8_t io_capability, 
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::io_capability_request_negative_reply(uint8_t* bd_addr, uint8_t reason) {
+void QHci::send_cmd_io_capability_request_negative_reply(uint8_t* bd_addr, uint8_t reason) {
     uint8_t sendData[11] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_IO_CAP_REQUEST_NEG_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_IO_CAP_REQUEST_NEG_REPLY);
     sendData[3] = 7;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = reason;
@@ -533,27 +533,27 @@ void QHci::io_capability_request_negative_reply(uint8_t* bd_addr, uint8_t reason
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::user_confirm_request_reply(uint8_t* bd_addr) {
+void QHci::send_cmd_user_confirm_request_reply(uint8_t* bd_addr) {
     uint8_t sendData[10] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_CONFIRM_REQUEST_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_CONFIRM_REQUEST_REPLY);
     sendData[3] = 6;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::user_confirm_request_negative_reply(uint8_t* bd_addr) {
+void QHci::send_cmd_user_confirm_request_negative_reply(uint8_t* bd_addr) {
     uint8_t sendData[10] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_CONFIRM_REQUEST_NEG_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_CONFIRM_REQUEST_NEG_REPLY);
     sendData[3] = 6;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::user_passkey_request_reply(uint8_t* bd_addr, uint32_t num_value) {
+void QHci::send_cmd_user_passkey_request_reply(uint8_t* bd_addr, uint32_t num_value) {
     uint8_t sendData[14] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_PASSKEY_REQUEST_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_PASSKEY_REQUEST_REPLY);
     sendData[3] = 10;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = num_value & 0xFF;
@@ -564,18 +564,18 @@ void QHci::user_passkey_request_reply(uint8_t* bd_addr, uint32_t num_value) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::user_passkey_request_negative_reply(uint8_t* bd_addr) {
+void QHci::send_cmd_user_passkey_request_negative_reply(uint8_t* bd_addr) {
     uint8_t sendData[10] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_PASSKEY_REQUEST_NEG_REPLY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_USER_PASSKEY_REQUEST_NEG_REPLY);
     sendData[3] = 6;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::hold_mode(uint16_t connection_handle, uint16_t max_interval, uint16_t min_interval) {
+void QHci::send_cmd_hold_mode(uint16_t connection_handle, uint16_t max_interval, uint16_t min_interval) {
     uint8_t sendData[10] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_HOLD_MODE);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_HOLD_MODE);
     sendData[3] = 6;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -587,9 +587,9 @@ void QHci::hold_mode(uint16_t connection_handle, uint16_t max_interval, uint16_t
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::sniff_mode(uint16_t connection_handle, uint16_t max_interval, uint16_t min_interval, uint16_t attempt, uint16_t timeout) {
+void QHci::send_cmd_sniff_mode(uint16_t connection_handle, uint16_t max_interval, uint16_t min_interval, uint16_t attempt, uint16_t timeout) {
     uint8_t sendData[14] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_SNIFF_MODE);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_SNIFF_MODE);
     sendData[3] = 10;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -605,9 +605,9 @@ void QHci::sniff_mode(uint16_t connection_handle, uint16_t max_interval, uint16_
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::exit_sniff_mode(uint16_t connection_handle) {
+void QHci::send_cmd_exit_sniff_mode(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_EXIT_SNIFF_MODE);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_EXIT_SNIFF_MODE);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -615,9 +615,9 @@ void QHci::exit_sniff_mode(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::role_discovery(uint16_t connection_handle) {
+void QHci::send_cmd_role_discovery(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_ROLE_DISCOVERY);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_ROLE_DISCOVERY);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -625,9 +625,9 @@ void QHci::role_discovery(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::switch_role(uint16_t connection_handle, uint8_t role) {
+void QHci::send_cmd_switch_role(uint16_t connection_handle, uint8_t role) {
     uint8_t sendData[7] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_SWITCH_ROLE);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_SWITCH_ROLE);
     sendData[3] = 3;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -636,9 +636,9 @@ void QHci::switch_role(uint16_t connection_handle, uint8_t role) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_link_policy_settings(uint16_t connection_handle) {
+void QHci::send_cmd_read_link_policy_settings(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_READ_LINK_POLICY);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_READ_LINK_POLICY);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -646,9 +646,9 @@ void QHci::read_link_policy_settings(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_link_policy_settings(uint16_t connection_handle, uint16_t link_policy_settings) {
+void QHci::send_cmd_write_link_policy_settings(uint16_t connection_handle, uint16_t link_policy_settings) {
     uint8_t sendData[8] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_WRITE_LINK_POLICY);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_WRITE_LINK_POLICY);
     sendData[3] = 4;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -658,16 +658,16 @@ void QHci::write_link_policy_settings(uint16_t connection_handle, uint16_t link_
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_default_link_policy_settings() {
+void QHci::send_cmd_read_default_link_policy_settings() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_READ_DEFAULT_LINK_POLICY);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_READ_DEFAULT_LINK_POLICY);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_default_link_policy_settings(uint16_t link_policy_settings) {
+void QHci::send_cmd_write_default_link_policy_settings(uint16_t link_policy_settings) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_WRITE_DEFAULT_LINK_POLICY);
+    _assign_cmd(sendData, HCI_OGF_LINK_POLICY, HCI_OCF_WRITE_DEFAULT_LINK_POLICY);
     sendData[3] = 2;
     sendData[4] = link_policy_settings & 0xFF;
     sendData[5] = (link_policy_settings >> 8) & 0xFF;
@@ -675,7 +675,7 @@ void QHci::write_default_link_policy_settings(uint16_t link_policy_settings) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::set_event_filter(uint8_t filter_type, uint8_t filter_condition_type, uint8_t* condition) {
+void QHci::send_cmd_set_event_filter(uint8_t filter_type, uint8_t filter_condition_type, uint8_t* condition) {
     uint8_t conditionLen = 0;
 
     if (filter_type == 1) {
@@ -695,7 +695,7 @@ void QHci::set_event_filter(uint8_t filter_type, uint8_t filter_condition_type, 
     uint8_t sendDataLen = 4 + 2 + conditionLen;
     QByteArray sendData;
     sendData.resize(sendDataLen);
-    _assign_command((uint8_t*)(sendData.data()), HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_FILTER);
+    _assign_cmd((uint8_t*)(sendData.data()), HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_FILTER);
     sendData[3] = sendDataLen - 4;
     sendData[4] = filter_type;
     sendData[5] = filter_condition_type;
@@ -706,25 +706,25 @@ void QHci::set_event_filter(uint8_t filter_type, uint8_t filter_condition_type, 
     btsnoop.wirte((uint8_t*)(sendData.data()), sendDataLen, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_pin_type() {
+void QHci::send_cmd_read_pin_type() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_PIN_TYPE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_PIN_TYPE);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_pin_type(uint8_t pin_type) {
+void QHci::send_cmd_write_pin_type(uint8_t pin_type) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_PIN_TYPE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_PIN_TYPE);
     sendData[3] = 1;
     sendData[4] = pin_type;
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_stored_link_type(uint8_t* bd_addr, uint8_t read_all) {
+void QHci::send_cmd_read_stored_link_type(uint8_t* bd_addr, uint8_t read_all) {
     uint8_t sendData[11] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_STORED_LINK_KEY);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_STORED_LINK_KEY);
     sendData[3] = 7;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = read_all;
@@ -732,11 +732,11 @@ void QHci::read_stored_link_type(uint8_t* bd_addr, uint8_t read_all) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_stored_link_key(uint8_t num_keys_to_write, uint8_t* bd_addr, uint8_t* link_key) {
+void QHci::send_cmd_write_stored_link_key(uint8_t num_keys_to_write, uint8_t* bd_addr, uint8_t* link_key) {
     uint8_t sendDataLen = 4 + 1 + (22 * num_keys_to_write);
     QByteArray sendData;
     sendData.resize(sendDataLen);
-    _assign_command((uint8_t*)(sendData.data()), HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_STORED_LINK_KEY);
+    _assign_cmd((uint8_t*)(sendData.data()), HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_STORED_LINK_KEY);
     sendData[3] = sendDataLen - 4;
     sendData[4] = num_keys_to_write;
     memcpy_s(&sendData[5], 6 * num_keys_to_write, bd_addr, 6 * num_keys_to_write);
@@ -745,9 +745,9 @@ void QHci::write_stored_link_key(uint8_t num_keys_to_write, uint8_t* bd_addr, ui
     btsnoop.wirte((uint8_t*)(sendData.data()), sendDataLen, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::delete_stored_link_key(uint8_t* bd_addr, uint8_t delete_all) {
+void QHci::send_cmd_delete_stored_link_key(uint8_t* bd_addr, uint8_t delete_all) {
     uint8_t sendData[11] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_DELETE_STORED_LINK_KEY);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_DELETE_STORED_LINK_KEY);
     sendData[3] = 7;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     sendData[10] = delete_all;
@@ -755,16 +755,16 @@ void QHci::delete_stored_link_key(uint8_t* bd_addr, uint8_t delete_all) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_voice_setting() {
+void QHci::send_cmd_read_voice_setting() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_VOICE_SETTING);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_VOICE_SETTING);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_voice_setting(uint16_t voice_setting) {
+void QHci::send_cmd_write_voice_setting(uint16_t voice_setting) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_VOICE_SETTING);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_VOICE_SETTING);
     sendData[3] = 2;
     sendData[4] = voice_setting & 0xFF;
     sendData[5] = (voice_setting >> 8) & 0x03;
@@ -772,9 +772,9 @@ void QHci::write_voice_setting(uint16_t voice_setting) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_auto_flush_timeout(uint16_t connection_handle) {
+void QHci::send_cmd_read_auto_flush_timeout(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_AUTO_FLUSH_TIMEOUT);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_AUTO_FLUSH_TIMEOUT);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -782,9 +782,9 @@ void QHci::read_auto_flush_timeout(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_auto_flush_timeout(uint16_t connection_handle, uint16_t flush_timeout) {
+void QHci::send_cmd_write_auto_flush_timeout(uint16_t connection_handle, uint16_t flush_timeout) {
     uint8_t sendData[8] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_AUTO_FLUSH_TIMEOUT);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_AUTO_FLUSH_TIMEOUT);
     sendData[3] = 4;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -794,18 +794,18 @@ void QHci::write_auto_flush_timeout(uint16_t connection_handle, uint16_t flush_t
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::set_c2h_flow_control(uint8_t flow_control_enable) {
+void QHci::send_cmd_set_c2h_flow_control(uint8_t flow_control_enable) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_C2H_FLOW_CONTROL);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_C2H_FLOW_CONTROL);
     sendData[3] = 1;
     sendData[4] = flow_control_enable;
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::host_buffer_size(uint16_t acl_packet_len, uint8_t sco_packet_len, uint16_t acl_packet_total_num, uint16_t sco_packet_total_num) {
+void QHci::send_cmd_host_buffer_size(uint16_t acl_packet_len, uint8_t sco_packet_len, uint16_t acl_packet_total_num, uint16_t sco_packet_total_num) {
     uint8_t sendData[11] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_HOST_BUFF_SIZE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_HOST_BUFF_SIZE);
     sendData[3] = 7;
     sendData[4] = acl_packet_len & 0xFF;
     sendData[5] = (acl_packet_len >> 8) & 0xFF;
@@ -818,11 +818,11 @@ void QHci::host_buffer_size(uint16_t acl_packet_len, uint8_t sco_packet_len, uin
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::host_num_of_completed_packets(uint8_t num_handles, uint8_t* connection_handle, uint8_t* num_of_completed_packets) {
+void QHci::send_cmd_host_num_of_completed_packets(uint8_t num_handles, uint8_t* connection_handle, uint8_t* num_of_completed_packets) {
     uint8_t sendDataLen = 4 + 1 + (4 * num_handles);
     QByteArray sendData;
     sendData.resize(sendDataLen);
-    _assign_command((uint8_t*)(sendData.data()), HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_HOST_NUM_OF_COMPLETED_PACKET);
+    _assign_cmd((uint8_t*)(sendData.data()), HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_HOST_NUM_OF_COMPLETED_PACKET);
     sendData[3] = sendDataLen - 4;
     sendData[4] = num_handles;
     memcpy_s(&sendData[5], 2 * num_handles, connection_handle, 2 * num_handles);
@@ -831,9 +831,9 @@ void QHci::host_num_of_completed_packets(uint8_t num_handles, uint8_t* connectio
     btsnoop.wirte((uint8_t*)(sendData.data()), sendDataLen, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_extended_inquiry_response(uint8_t fec_required, uint8_t* extended_inquiry_response) {
+void QHci::send_cmd_write_extended_inquiry_response(uint8_t fec_required, uint8_t* extended_inquiry_response) {
     uint8_t sendData[245] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_EXTENDED_INQUIRY_RESPONSE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_EXTENDED_INQUIRY_RESPONSE);
     sendData[3] = 241;
     sendData[4] = fec_required;
     memcpy_s(&sendData[5], 240, extended_inquiry_response, 240);
@@ -841,32 +841,32 @@ void QHci::write_extended_inquiry_response(uint8_t fec_required, uint8_t* extend
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_local_supported_features() {
+void QHci::send_cmd_read_local_supported_features() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_RAED_LOCAL_SUPPORTED_FEATURE);
+    _assign_cmd(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_RAED_LOCAL_SUPPORTED_FEATURE);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_local_extended_features(uint8_t page_number) {
+void QHci::send_cmd_read_local_extended_features(uint8_t page_number) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_EXTENDED_FEATURE);
+    _assign_cmd(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_EXTENDED_FEATURE);
     sendData[3] = 1;
     sendData[4] = page_number;
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::read_data_block_size() {
+void QHci::send_cmd_read_data_block_size() {
     uint8_t sendData[4] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_DATA_BLOCK_SIZE);
+    _assign_cmd(sendData, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_DATA_BLOCK_SIZE);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::flush(uint16_t connection_handle) {
+void QHci::send_cmd_flush(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_FLUSH);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_FLUSH);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -874,9 +874,9 @@ void QHci::flush(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_connection_accept_timeout(uint16_t timeout) {
+void QHci::send_cmd_write_connection_accept_timeout(uint16_t timeout) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CONNECT_ACCEPT_TIMEOUT);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CONNECT_ACCEPT_TIMEOUT);
     sendData[3] = 2;
     sendData[4] = timeout & 0xFF;
     sendData[5] = (timeout >> 8) & 0xFF;
@@ -884,18 +884,18 @@ void QHci::write_connection_accept_timeout(uint16_t timeout) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::write_auth_enable(uint8_t auth_enable) {
+void QHci::send_cmd_write_auth_enable(uint8_t auth_enable) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_AUTH_ENABLE);
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_AUTH_ENABLE);
     sendData[3] = 1;
     sendData[4] = auth_enable;
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::disconnect(uint16_t connection_handle, uint8_t reason) {
+void QHci::send_cmd_disconnect(uint16_t connection_handle, uint8_t reason) {
     uint8_t sendData[7] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_DISCONNECT);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_DISCONNECT);
     sendData[3] = 3;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -904,18 +904,18 @@ void QHci::disconnect(uint16_t connection_handle, uint8_t reason) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::create_connection_cancel(uint8_t* bd_addr) {
+void QHci::send_cmd_create_connection_cancel(uint8_t* bd_addr) {
     uint8_t sendData[10] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CREATE_CONNECT_CANCEL);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CREATE_CONNECT_CANCEL);
     sendData[3] = 6;
     memcpy_s(&sendData[4], 6, bd_addr, 6);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::change_connection_packet_type(uint16_t connection_handle, uint16_t packet_type) {
+void QHci::send_cmd_change_connection_packet_type(uint16_t connection_handle, uint16_t packet_type) {
     uint8_t sendData[8] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CHANGE_CONNECT_PACKET_TYPE);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CHANGE_CONNECT_PACKET_TYPE);
     sendData[3] = 4;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -925,9 +925,9 @@ void QHci::change_connection_packet_type(uint16_t connection_handle, uint16_t pa
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::auth_requested(uint16_t connection_handle) {
+void QHci::send_cmd_auth_requested(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_AUTH_REQUEST);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_AUTH_REQUEST);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -935,9 +935,9 @@ void QHci::auth_requested(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::set_connection_encryption(uint16_t connection_handle, uint8_t encryption_enable) {
+void QHci::send_cmd_set_connection_encryption(uint16_t connection_handle, uint8_t encryption_enable) {
     uint8_t sendData[7] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_SET_CONNECT_ENCRYPTION);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_SET_CONNECT_ENCRYPTION);
     sendData[3] = 3;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -946,9 +946,9 @@ void QHci::set_connection_encryption(uint16_t connection_handle, uint8_t encrypt
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::change_connection_link_key(uint16_t connection_handle) {
+void QHci::send_cmd_change_connection_link_key(uint16_t connection_handle) {
     uint8_t sendData[6] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CHANGE_CONNECT_LINK_KEY);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_CHANGE_CONNECT_LINK_KEY);
     sendData[3] = 2;
     sendData[4] = connection_handle & 0xFF;
     sendData[5] = (connection_handle >> 8) & 0x0F;
@@ -956,9 +956,9 @@ void QHci::change_connection_link_key(uint16_t connection_handle) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::link_key_selection(uint8_t key_flag) {
+void QHci::send_cmd_link_key_selection(uint8_t key_flag) {
     uint8_t sendData[5] = { 0x00 };
-    _assign_command(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_LINK_KEY_SELECTION);
+    _assign_cmd(sendData, HCI_OGF_LINK_CONTROL, HCI_OCF_LINK_KEY_SELECTION);
     sendData[3] = 1;
     sendData[4] = key_flag;
     serialPort.write((char*)sendData, sizeof(sendData));

@@ -50,7 +50,7 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonTest_clicked()
 {
-    hci.reset();
+    hci.send_cmd_reset();
 }
 
 
@@ -61,6 +61,8 @@ void MainWindow::serialPort_readyRead()
             QByteArray bufRecv = serialPort.readAll();
             qDebug() << "bufRecv len: " << bufRecv.length() << " " << bufRecv;
             btsnoop.wirte((uint8_t*)(bufRecv.data()), bufRecv.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
+
+
         }
     });
 }
