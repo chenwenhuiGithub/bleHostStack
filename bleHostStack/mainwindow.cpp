@@ -56,10 +56,9 @@ void MainWindow::on_pushButtonSend_clicked()
 
 void MainWindow::serialPort_readyRead()
 {
-    QByteArray buf = serial.readAll();
-    qDebug() << "receive: " << buf;
+    QByteArray bufRecv = serial.readAll();
+    qDebug() << "receive: " << bufRecv << "len: " << bufRecv.length();
 
-    uint8_t bufRecv[7] = {0x04, 0x0e, 0x04, 0x01, 0x03, 0x0c, 0x00};
-    snoop.btsnoop_wirte(bufRecv, sizeof(bufRecv), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
+    snoop.btsnoop_wirte((uint8_t*)(bufRecv.data()), bufRecv.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
     snoop.btsnoop_close();
 }
