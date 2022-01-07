@@ -1,5 +1,6 @@
 #ifndef QBTSNOOP_H
 #define QBTSNOOP_H
+
 #include <stdint.h>
 #include <QFile>
 
@@ -12,12 +13,12 @@ class QBtsnoop
 {
 public:
     QBtsnoop();
-    void btsnoop_open(void);
-    void btsnoop_wirte(uint8_t* data, uint32_t len, BTSNOOP_DIRECT direct);
-    void btsnoop_close(void);
+    void open(void);
+    void wirte(uint8_t* data, uint32_t len, BTSNOOP_DIRECT direct);
+    void close(void);
 
 private:
-    QFile btsnoopFile;
+    QFile file;
 };
 
 #endif // QBTSNOOP_H

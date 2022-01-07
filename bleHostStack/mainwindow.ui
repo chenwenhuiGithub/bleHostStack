@@ -37,7 +37,7 @@
      <string>Open</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButtonSend">
+   <widget class="QPushButton" name="pushButtonTest">
     <property name="geometry">
      <rect>
       <x>290</x>
@@ -47,7 +47,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Send</string>
+     <string>Test</string>
     </property>
    </widget>
   </widget>

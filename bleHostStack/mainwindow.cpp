@@ -1,14 +1,16 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QTimer>
 
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , hci(serialPort, btsnoop)
 {
     ui->setupUi(this);
 
-    connect(&serial, &QSerialPort::readyRead, this, &MainWindow::serialPort_readyRead);
+    connect(&serialPort, &QSerialPort::readyRead, this, &MainWindow::serialPort_readyRead);
 
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
         ui->comboBoxNum->addItem(info.portName());
@@ -24,41 +26,41 @@ MainWindow::~MainWindow()
 void MainWindow::on_pushButtonOpen_clicked()
 {
     if (ui->pushButtonOpen->text() == "Open") {
-        serial.setPortName(ui->comboBoxNum->currentText());
-        serial.setBaudRate(QSerialPort::Baud115200);
-        serial.setDataBits(QSerialPort::Data8);
-        serial.setParity(QSerialPort::NoParity);
-        serial.setStopBits(QSerialPort::OneStop);
-        serial.setFlowControl(QSerialPort::NoFlowControl);
-        if (! serial.open(QIODevice::ReadWrite)) {
+        serialPort.setPortName(ui->comboBoxNum->currentText());
+        serialPort.setBaudRate(QSerialPort::Baud115200);
+        serialPort.setDataBits(QSerialPort::Data8);
+        serialPort.setParity(QSerialPort::NoParity);
+        serialPort.setStopBits(QSerialPort::OneStop);
+        serialPort.setFlowControl(QSerialPort::NoFlowControl);
+        if (! serialPort.open(QIODevice::ReadWrite)) {
             qDebug() << "open serial fail";
             return;
         }
         ui->pushButtonOpen->setText("Close");
+        btsnoop.open();
         qDebug() << "open serial success";
     } else {
-        serial.close();
+        serialPort.close();
+        btsnoop.close();
         ui->pushButtonOpen->setText("Open");
         qDebug() << "close serial";
     }
 }
 
 
-void MainWindow::on_pushButtonSend_clicked()
+void MainWindow::on_pushButtonTest_clicked()
 {
-    uint8_t bufSend[4] = {0x01, 0x03, 0x0c, 0x00};
-    serial.write((char*)bufSend, sizeof(bufSend));
-
-    snoop.btsnoop_open();
-    snoop.btsnoop_wirte(bufSend, sizeof(bufSend), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    hci.reset();
 }
 
 
 void MainWindow::serialPort_readyRead()
 {
-    QByteArray bufRecv = serial.readAll();
-    qDebug() << "receive: " << bufRecv << "len: " << bufRecv.length();
-
-    snoop.btsnoop_wirte((uint8_t*)(bufRecv.data()), bufRecv.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
-    snoop.btsnoop_close();
+    QTimer::singleShot(20, this, [=] { // QSerialPort send readyRead once received data, so need delay
+        if (serialPort.bytesAvailable()) {
+            QByteArray bufRecv = serialPort.readAll();
+            qDebug() << "bufRecv len: " << bufRecv.length() << " " << bufRecv;
+            btsnoop.wirte((uint8_t*)(bufRecv.data()), bufRecv.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
+        }
+    });
 }

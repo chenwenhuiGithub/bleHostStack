@@ -28,22 +28,22 @@ QBtsnoop::QBtsnoop()
 
 }
 
-void QBtsnoop::btsnoop_open(void)
+void QBtsnoop::open(void)
 {
-    if (btsnoopFile.isOpen()) {
-        btsnoopFile.close();
+    if (file.isOpen()) {
+        file.close();
     }
 
     QDateTime curDateTime = QDateTime::currentDateTime();
     QString fileName = curDateTime.toString("yyyy_MM_dd_hh_mm_ss") + ".dat";
-    btsnoopFile.setFileName(fileName);
-    btsnoopFile.open(QIODevice::WriteOnly);
+    file.setFileName(fileName);
+    file.open(QIODevice::WriteOnly);
 
     uint8_t header[16] = {'b', 't', 's', 'n', 'o', 'o', 'p', 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xea}; // HCI type: H4
-    btsnoopFile.write((char*)header, sizeof(header));
+    file.write((char*)header, sizeof(header));
 }
 
-void QBtsnoop::btsnoop_wirte(uint8_t* data, uint32_t len, BTSNOOP_DIRECT direct)
+void QBtsnoop::wirte(uint8_t* data, uint32_t len, BTSNOOP_DIRECT direct)
 {
     uint8_t type = data[0];
     uint32_t flags = 0x00; // bit0: 0 - Host to Controller, 1 - Controller to Host
@@ -71,15 +71,15 @@ void QBtsnoop::btsnoop_wirte(uint8_t* data, uint32_t len, BTSNOOP_DIRECT direct)
     header.dropped_packets = 0;
     header.timestamp = BTSNOOP_HTONLL(timestamp);
 
-    if (btsnoopFile.isOpen()) {
-        btsnoopFile.write((char*)&header, sizeof(header));
-        btsnoopFile.write((char*)data, len);
+    if (file.isOpen()) {
+        file.write((char*)&header, sizeof(header));
+        file.write((char*)data, len);
     }
 }
 
-void QBtsnoop::btsnoop_close(void)
+void QBtsnoop::close(void)
 {
-    if (btsnoopFile.isOpen()) {
-        btsnoopFile.close();
+    if (file.isOpen()) {
+        file.close();
     }
 }
