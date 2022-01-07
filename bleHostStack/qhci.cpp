@@ -964,3 +964,103 @@ void QHci::send_cmd_link_key_selection(uint8_t key_flag) {
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
+
+void QHci::process(uint8_t* data, uint16_t len)
+{
+    uint8_t type = data[0];
+    if (type == HCI_PACKET_TYPE_ACL) {
+        process_acl(data + 1, len - 1);
+    } else if (type == HCI_PACKET_TYPE_SCO) {
+        process_sco(data + 1, len - 1);
+    } else if (type == HCI_PACKET_TYPE_EVT) {
+        process_evt(data + 1, len - 1);
+    } else {
+
+    }
+}
+
+void QHci::process_evt(uint8_t* data, uint16_t len)
+{
+    uint8_t event = data[0];
+
+    switch (event) {
+    case HCI_EVENT_INQUIRY_COMPLETE:
+        break;
+    case HCI_EVENT_CONNECTION_COMPLETE:
+        break;
+    case HCI_EVENT_CONNECTION_REQUEST:
+        break;
+    case HCI_EVENT_DISCONNECTION_COMPLETE:
+        break;
+    case HCI_EVENT_AUTH_COMPLETE:
+        break;
+    case HCI_EVENT_ENCRYPTION_CHANGE:
+        break;
+    case HCI_EVENT_CHANGE_CONNECTTION_LINK_KEY_COMPLETE:
+        break;
+    case HCI_EVENT_LINK_KEY_TYPE_CHANGED:
+        break;
+    case HCI_EVENT_READ_REMOTE_SUPPORTED_FEATURES_COMPLETE:
+        break;
+    case HCI_EVENT_COMMAND_COMPLETE:
+        process_evt_command_complete(data + 1, len - 1);
+        break;
+    case HCI_EVENT_COMMAND_STATUS:
+        break;
+    case HCI_EVENT_ROLE_CHANGE:
+        break;
+    case HCI_EVENT_MODE_CHANGE:
+        break;
+    case HCI_EVENT_RETURN_LINK_KEYS:
+        break;
+    case HCI_EVENT_PIN_CODE_REQUEST:
+        break;
+    case HCI_EVENT_LINK_KEY_REQUEST:
+        break;
+    case HCI_EVENT_LINK_KEY_NOTIFICATION:
+        break;
+    case HCI_EVENT_CONNECTION_PACKET_TYPE_CHANGED:
+        break;
+    case HCI_EVENT_READ_REMOTE_EXTENDED_FEATURES_COMPLETE:
+        break;
+    case HCI_EVENT_SCO_CONNECTION_COMPLETE:
+        break;
+    case HCI_EVENT_SCO_CONNECTION_CHANGED:
+        break;
+    case HCI_EVENT_EXTENDED_INQUIRY_RESULT:
+        break;
+    case HCI_EVENT_IO_CAPABILITY_REQUEST:
+        break;
+    case HCI_EVENT_IO_CAPABILITY_RESPONSE:
+        break;
+    case HCI_EVENT_USER_CONFIRMATION_REQUEST:
+        break;
+    case HCI_EVENT_USER_PASSKEY_REQUEST:
+        break;
+    case HCI_EVENT_SIMPLE_PAIRING_COMPLETE:
+        break;
+    case HCI_EVENT_USER_PASSKEY_NOTIFICATION:
+        break;
+    case HCI_EVENT_REMOTE_HOST_SUPPORTED_FEATURES_NOTIFICATION:
+        break;
+    case HCI_EVENT_NUMBER_OF_COMPLETED_DATA_BLOCKS:
+        break;
+    default:
+        break;
+    }
+}
+
+void QHci::process_acl(uint8_t* data, uint16_t len)
+{
+
+}
+
+void QHci::process_sco(uint8_t* data, uint16_t len)
+{
+
+}
+
+void QHci::process_evt_command_complete(uint8_t* data, uint16_t len)
+{
+
+}

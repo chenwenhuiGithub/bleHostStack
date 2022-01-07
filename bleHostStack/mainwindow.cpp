@@ -61,8 +61,7 @@ void MainWindow::serialPort_readyRead()
             QByteArray bufRecv = serialPort.readAll();
             qDebug() << "bufRecv len: " << bufRecv.length() << " " << bufRecv;
             btsnoop.wirte((uint8_t*)(bufRecv.data()), bufRecv.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
-
-
+            hci.process((uint8_t*)(bufRecv.data()), bufRecv.length());
         }
     });
 }
