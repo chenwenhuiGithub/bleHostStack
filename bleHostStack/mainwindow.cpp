@@ -59,7 +59,7 @@ void MainWindow::serialPort_readyRead()
     QTimer::singleShot(20, this, [=] { // QSerialPort send readyRead once received data, so need delay
         if (serialPort.bytesAvailable()) {
             QByteArray bufRecv = serialPort.readAll();
-            qDebug() << "bufRecv len: " << bufRecv.length() << " " << bufRecv;
+            qDebug() << "recv len: " << bufRecv.length() << " " << bufRecv;
             btsnoop.wirte((uint8_t*)(bufRecv.data()), bufRecv.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
             hci.process((uint8_t*)(bufRecv.data()), bufRecv.length());
         }

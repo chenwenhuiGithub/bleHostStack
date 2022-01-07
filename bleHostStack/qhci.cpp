@@ -1,4 +1,5 @@
 #include "qhci.h"
+#include <QDebug>
 
 /* Opcode Group Field (OGF) values */
 #define HCI_OGF_LINK_CONTROL					                0x01   /* Link Control Commands */
@@ -1062,5 +1063,18 @@ void QHci::process_sco(uint8_t* data, uint16_t len)
 
 void QHci::process_evt_command_complete(uint8_t* data, uint16_t len)
 {
+    uint8_t ogf = data[3] >> 2;
+    uint16_t ocf = ((data[3] & 0x03) << 8) | data[2];
 
+    switch (ogf) {
+    case HCI_OGF_CONTROLLER_BASEBAND:
+        switch (ocf) {
+        case HCI_OCF_RESET:
+            qDebug() << "evt_command_complete cmd_reset status: " << data[4];
+            break;
+        default: break;
+        }
+        break;
+    default: break;
+    }
 }
