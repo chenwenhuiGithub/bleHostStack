@@ -88,11 +88,11 @@ public:
     void send_cmd_read_bd_addr();
     void send_cmd_read_data_block_size();
 
-    void process(uint8_t* data, uint16_t len);
-    void process_evt(uint8_t* data, uint16_t len);
-    void process_acl(uint8_t* data, uint16_t len);
-    void process_sco(uint8_t* data, uint16_t len);
-    void process_evt_command_complete(uint8_t* data, uint16_t len);
+    void recv(uint8_t* data, uint16_t len);
+    void recv_evt(uint8_t* data, uint16_t len);
+    void recv_acl(uint8_t* data, uint16_t len);
+    void recv_sco(uint8_t* data, uint16_t len);
+    void recv_evt_command_complete(uint8_t* data, uint16_t len);
 
 private:
     void _assign_cmd(uint8_t* buf, uint8_t ogf, uint16_t ocf);

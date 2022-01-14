@@ -966,21 +966,21 @@ void QHci::send_cmd_link_key_selection(uint8_t key_flag) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::process(uint8_t* data, uint16_t len)
+void QHci::recv(uint8_t* data, uint16_t len)
 {
     uint8_t type = data[0];
     if (type == HCI_PACKET_TYPE_ACL) {
-        process_acl(data + 1, len - 1);
+        recv_acl(data + 1, len - 1);
     } else if (type == HCI_PACKET_TYPE_SCO) {
-        process_sco(data + 1, len - 1);
+        recv_sco(data + 1, len - 1);
     } else if (type == HCI_PACKET_TYPE_EVT) {
-        process_evt(data + 1, len - 1);
+        recv_evt(data + 1, len - 1);
     } else {
 
     }
 }
 
-void QHci::process_evt(uint8_t* data, uint16_t len)
+void QHci::recv_evt(uint8_t* data, uint16_t len)
 {
     uint8_t event = data[0];
 
@@ -1004,7 +1004,7 @@ void QHci::process_evt(uint8_t* data, uint16_t len)
     case HCI_EVENT_READ_REMOTE_SUPPORTED_FEATURES_COMPLETE:
         break;
     case HCI_EVENT_COMMAND_COMPLETE:
-        process_evt_command_complete(data + 1, len - 1);
+        recv_evt_command_complete(data + 1, len - 1);
         break;
     case HCI_EVENT_COMMAND_STATUS:
         break;
@@ -1051,18 +1051,22 @@ void QHci::process_evt(uint8_t* data, uint16_t len)
     }
 }
 
-void QHci::process_acl(uint8_t* data, uint16_t len)
+void QHci::recv_acl(uint8_t* data, uint16_t len)
 {
-
+    (void)data;
+    (void)len;
 }
 
-void QHci::process_sco(uint8_t* data, uint16_t len)
+void QHci::recv_sco(uint8_t* data, uint16_t len)
 {
-
+    (void)data;
+    (void)len;
 }
 
-void QHci::process_evt_command_complete(uint8_t* data, uint16_t len)
+void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
 {
+    (void)len;
+
     uint8_t ogf = data[3] >> 2;
     uint16_t ocf = ((data[3] & 0x03) << 8) | data[2];
 
