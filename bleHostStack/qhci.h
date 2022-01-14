@@ -67,6 +67,7 @@ public:
     void send_cmd_write_page_timeout(uint16_t page_timeout);
     void send_cmd_write_scan_enable(uint8_t scan_enable);
     void send_cmd_write_auth_enable(uint8_t auth_enable);
+    void send_cmd_read_class_of_device();
     void send_cmd_write_class_of_device(uint32_t class_of_device);
     void send_cmd_read_voice_setting();
     void send_cmd_write_voice_setting(uint16_t voice_setting);
@@ -87,6 +88,9 @@ public:
     void send_cmd_read_buffer_size();
     void send_cmd_read_bd_addr();
     void send_cmd_read_data_block_size();
+
+    /* LE Commands APIs */
+    void send_cmd_le_read_buffer_size();
 
     void recv(uint8_t* data, uint16_t len);
     void recv_evt(uint8_t* data, uint16_t len);

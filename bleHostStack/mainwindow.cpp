@@ -56,10 +56,10 @@ void MainWindow::on_pushButtonTest_clicked()
 
 void MainWindow::serialPort_readyRead()
 {
-    QTimer::singleShot(20, this, [=] { // QSerialPort send readyRead once received data, so need delay
+    QTimer::singleShot(50, this, [=] { // QSerialPort send readyRead once received data, so need delay
         if (serialPort.bytesAvailable()) {
             QByteArray bufRecv = serialPort.readAll();
-            qDebug() << "recv len: " << bufRecv.length() << " " << bufRecv;
+            // qDebug() << "recv len: " << bufRecv.length() << " " << bufRecv;
             btsnoop.wirte((uint8_t*)(bufRecv.data()), bufRecv.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
             hci.recv((uint8_t*)(bufRecv.data()), bufRecv.length());
         }

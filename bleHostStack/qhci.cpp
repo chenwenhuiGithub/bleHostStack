@@ -284,6 +284,13 @@ void QHci::send_cmd_set_event_mask(uint8_t* event_mask) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
+void QHci::send_cmd_read_class_of_device() {
+    uint8_t sendData[4] = { 0x00 };
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_READ_CLASS_OF_DEVICE);
+    serialPort.write((char*)sendData, sizeof(sendData));
+    btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
 void QHci::send_cmd_write_class_of_device(uint32_t class_of_device) {
     uint8_t sendData[7] = { 0x00 };
     _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE);
@@ -966,6 +973,13 @@ void QHci::send_cmd_link_key_selection(uint8_t key_flag) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
+void QHci::send_cmd_le_read_buffer_size() {
+    uint8_t sendData[4] = { 0x00 };
+    _assign_cmd(sendData, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_BUFFER_SIZE);
+    serialPort.write((char*)sendData, sizeof(sendData));
+    btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
 void QHci::recv(uint8_t* data, uint16_t len)
 {
     uint8_t type = data[0];
@@ -1074,7 +1088,35 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
     case HCI_OGF_CONTROLLER_BASEBAND:
         switch (ocf) {
         case HCI_OCF_RESET:
-            qDebug() << "evt_command_complete cmd_reset status: " << data[4];
+            qDebug("reset status:%d", data[4]);
+            send_cmd_read_local_version_info();
+            break;
+        case HCI_OCF_READ_CLASS_OF_DEVICE:
+            qDebug("read_class_of_device status:%d, Class_Of_Device:0x%02X%02X%02X", data[4], data[5], data[6], data[7]);
+            send_cmd_le_read_buffer_size();
+            break;
+        default: break;
+        }
+        break;
+    case HCI_OGF_INFORMATIONAL_PARAM:
+        switch (ocf) {
+        case HCI_OCF_READ_LOCAL_VERSION_INFO:
+            qDebug("read_local_version_info status:%d, HCI_Version:%d", data[4], data[5]);
+            send_cmd_read_bd_addr();
+            break;
+        case HCI_OCF_READ_BD_ADDR:
+            qDebug("read_bd_addr status:%d, BD_ADDR:%02X:%02X:%02X:%02X:%02X:%02X",
+                   data[4], data[5], data[6], data[7], data[8], data[9], data[10]);
+            send_cmd_read_class_of_device();
+            break;
+        default: break;
+        }
+        break;
+    case HCI_OGF_LE_CONTROLLER:
+        switch (ocf) {
+        case HCI_OCF_LE_READ_BUFFER_SIZE:
+            qDebug("le_read_buffer_size status:%d, LE_ACL_Data_Packet_Length:%d, Total_Num_LE_ACL_Data_Packets:%d",
+                   data[4], (data[5] | (data[6] << 8)), data[7]);
             break;
         default: break;
         }
