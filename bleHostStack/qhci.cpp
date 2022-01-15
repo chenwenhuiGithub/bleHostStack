@@ -291,13 +291,11 @@ void QHci::send_cmd_read_class_of_device() {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void QHci::send_cmd_write_class_of_device(uint32_t class_of_device) {
+void QHci::send_cmd_write_class_of_device(uint8_t* class_of_device) {
     uint8_t sendData[7] = { 0x00 };
     _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE);
     sendData[3] = 3;
-    sendData[4] = class_of_device & 0xFF;
-    sendData[5] = (class_of_device >> 8) & 0xFF;
-    sendData[6] = (class_of_device >> 16) & 0xFF;
+    memcpy_s(&sendData[4], 3, class_of_device, 3);
     serialPort.write((char*)sendData, sizeof(sendData));
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -980,6 +978,33 @@ void QHci::send_cmd_le_read_buffer_size() {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
+void QHci::send_cmd_le_set_advertising_parameters(uint8_t* parameters) {
+    uint8_t sendData[19] = { 0x00 };
+    _assign_cmd(sendData, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM);
+    sendData[3] = 15;
+    memcpy_s(&sendData[4], 15, parameters, 15);
+    serialPort.write((char*)sendData, sizeof(sendData));
+    btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void QHci::send_cmd_le_set_advertising_data(uint8_t* data) {
+    uint8_t sendData[36] = { 0x00 };
+    _assign_cmd(sendData, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_DATA);
+    sendData[3] = 32;
+    memcpy_s(&sendData[4], 32, data, 32);
+    serialPort.write((char*)sendData, sizeof(sendData));
+    btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void QHci::send_cmd_le_set_advertising_enable(uint8_t enable) {
+    uint8_t sendData[5] = { 0x00 };
+    _assign_cmd(sendData, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_ENABLE);
+    sendData[3] = 1;
+    sendData[4] = enable;
+    serialPort.write((char*)sendData, sizeof(sendData));
+    btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
 void QHci::recv(uint8_t* data, uint16_t len)
 {
     uint8_t type = data[0];
@@ -1084,6 +1109,12 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
     uint8_t ogf = data[3] >> 2;
     uint16_t ocf = ((data[3] & 0x03) << 8) | data[2];
 
+    uint8_t class_of_device[3] = {0x92, 0x07, 0x14};
+    uint8_t mask[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f};
+    uint8_t advertising_parameters[15] = {0x00, 0x08, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00};
+    uint8_t advertising_data[32] = {0x0f, 0x02, 0x01, 0x06, 0x0b, 0x09, 0x77, 0x65, 0x6e, 0x68, 0x75, 0x69, 0x5f, 0x42, 0x4c, 0x45,
+                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
     switch (ogf) {
     case HCI_OGF_CONTROLLER_BASEBAND:
         switch (ocf) {
@@ -1091,8 +1122,12 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
             qDebug("reset status:%d", data[4]);
             send_cmd_read_local_version_info();
             break;
-        case HCI_OCF_READ_CLASS_OF_DEVICE:
-            qDebug("read_class_of_device status:%d, Class_Of_Device:0x%02X%02X%02X", data[4], data[5], data[6], data[7]);
+        case HCI_OCF_WRITE_CLASS_OF_DEVICE:
+            qDebug("write_class_of_device status:%d", data[4]);
+            send_cmd_set_event_mask(mask);
+            break;
+        case HCI_OCF_SET_EVENT_MASK:
+            qDebug("set_event_mask status:%d", data[4]);
             send_cmd_le_read_buffer_size();
             break;
         default: break;
@@ -1105,9 +1140,9 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
             send_cmd_read_bd_addr();
             break;
         case HCI_OCF_READ_BD_ADDR:
-            qDebug("read_bd_addr status:%d, BD_ADDR:%02X:%02X:%02X:%02X:%02X:%02X",
+            qDebug("read_bd_addr status:%d, BD_ADDR:%02x:%02x:%02x:%02x:%02x:%02x",
                    data[4], data[5], data[6], data[7], data[8], data[9], data[10]);
-            send_cmd_read_class_of_device();
+            send_cmd_write_class_of_device(class_of_device);
             break;
         default: break;
         }
@@ -1117,7 +1152,18 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
         case HCI_OCF_LE_READ_BUFFER_SIZE:
             qDebug("le_read_buffer_size status:%d, LE_ACL_Data_Packet_Length:%d, Total_Num_LE_ACL_Data_Packets:%d",
                    data[4], (data[5] | (data[6] << 8)), data[7]);
+            send_cmd_le_set_advertising_parameters(advertising_parameters);
             break;
+        case HCI_OCF_LE_SET_ADV_PARAM:
+            qDebug("le_set_advertising_parameters status:%d", data[4]);
+            send_cmd_le_set_advertising_data(advertising_data);
+            break;
+        case HCI_OCF_LE_SET_ADV_DATA:
+            qDebug("le_set_advertising_data status:%d", data[4]);
+            send_cmd_le_set_advertising_enable(0x01);
+            break;
+        case HCI_OCF_LE_SET_ADV_ENABLE:
+            qDebug("le_set_advertising_enable status:%d", data[4]);
         default: break;
         }
         break;

@@ -68,7 +68,7 @@ public:
     void send_cmd_write_scan_enable(uint8_t scan_enable);
     void send_cmd_write_auth_enable(uint8_t auth_enable);
     void send_cmd_read_class_of_device();
-    void send_cmd_write_class_of_device(uint32_t class_of_device);
+    void send_cmd_write_class_of_device(uint8_t* class_of_device);
     void send_cmd_read_voice_setting();
     void send_cmd_write_voice_setting(uint16_t voice_setting);
     void send_cmd_read_auto_flush_timeout(uint16_t connection_handle);
@@ -91,6 +91,9 @@ public:
 
     /* LE Commands APIs */
     void send_cmd_le_read_buffer_size();
+    void send_cmd_le_set_advertising_parameters(uint8_t* parameters);
+    void send_cmd_le_set_advertising_data(uint8_t* data);
+    void send_cmd_le_set_advertising_enable(uint8_t enable);
 
     void recv(uint8_t* data, uint16_t len);
     void recv_evt(uint8_t* data, uint16_t len);
