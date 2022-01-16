@@ -978,6 +978,15 @@ void QHci::send_cmd_le_read_buffer_size() {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
+void QHci::send_cmd_le_set_event_mask(uint8_t* mask) {
+    uint8_t sendData[12] = { 0x00 };
+    _assign_cmd(sendData, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_EVENT_MASK);
+    sendData[3] = 8;
+    memcpy_s(&sendData[4], 8, mask, 8);
+    serialPort.write((char*)sendData, sizeof(sendData));
+    btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
 void QHci::send_cmd_le_set_advertising_parameters(uint8_t* parameters) {
     uint8_t sendData[19] = { 0x00 };
     _assign_cmd(sendData, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM);
@@ -1110,7 +1119,8 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
     uint16_t ocf = ((data[3] & 0x03) << 8) | data[2];
 
     uint8_t class_of_device[3] = {0x92, 0x07, 0x14};
-    uint8_t mask[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f};
+    uint8_t event_mask[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f};
+    uint8_t event_le_mask[8] = {0xff, 0xff, 0xff, 0xff, 0x07, 0x00, 0x00, 0x00};
     uint8_t advertising_parameters[15] = {0x00, 0x08, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00};
     uint8_t advertising_data[32] = {0x0f, 0x02, 0x01, 0x06, 0x0b, 0x09, 0x77, 0x65, 0x6e, 0x68, 0x75, 0x69, 0x5f, 0x42, 0x4c, 0x45,
                                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -1124,7 +1134,7 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
             break;
         case HCI_OCF_WRITE_CLASS_OF_DEVICE:
             qDebug("write_class_of_device status:%d", data[4]);
-            send_cmd_set_event_mask(mask);
+            send_cmd_set_event_mask(event_mask);
             break;
         case HCI_OCF_SET_EVENT_MASK:
             qDebug("set_event_mask status:%d", data[4]);
@@ -1152,6 +1162,10 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
         case HCI_OCF_LE_READ_BUFFER_SIZE:
             qDebug("le_read_buffer_size status:%d, LE_ACL_Data_Packet_Length:%d, Total_Num_LE_ACL_Data_Packets:%d",
                    data[4], (data[5] | (data[6] << 8)), data[7]);
+            send_cmd_le_set_event_mask(event_le_mask);
+            break;
+        case HCI_OCF_LE_SET_EVENT_MASK:
+            qDebug("le_set_event_mask status:%d", data[4]);
             send_cmd_le_set_advertising_parameters(advertising_parameters);
             break;
         case HCI_OCF_LE_SET_ADV_PARAM:
@@ -1164,6 +1178,7 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
             break;
         case HCI_OCF_LE_SET_ADV_ENABLE:
             qDebug("le_set_advertising_enable status:%d", data[4]);
+            qDebug("ble device init success, waiting phone to connect ...");
         default: break;
         }
         break;

@@ -91,6 +91,7 @@ public:
 
     /* LE Commands APIs */
     void send_cmd_le_read_buffer_size();
+    void send_cmd_le_set_event_mask(uint8_t* mask);
     void send_cmd_le_set_advertising_parameters(uint8_t* parameters);
     void send_cmd_le_set_advertising_data(uint8_t* data);
     void send_cmd_le_set_advertising_enable(uint8_t enable);
