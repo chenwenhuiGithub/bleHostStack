@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QSerialPortInfo>
+#include <QTimer>
 #include "qbtsnoop.h"
 #include "qhci.h"
 
@@ -23,11 +24,14 @@ private slots:
     void on_pushButtonOpen_clicked();
     void on_pushButtonTest_clicked();
     void serialPort_readyRead();
+    void serialPort_timeout();
 
 private:
     Ui::MainWindow *ui;
     QSerialPort serialPort;
     QBtsnoop btsnoop;
     QHci hci;
+    QByteArray serialPort_buf; // serialPort recv buffer
+    QTimer serialPort_timer;   // wait 100ms to avoid can't read all data
 };
 #endif // MAINWINDOW_H
