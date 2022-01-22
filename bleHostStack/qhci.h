@@ -96,12 +96,16 @@ public:
     void send_cmd_le_set_advertising_parameters(uint8_t* parameters);
     void send_cmd_le_set_advertising_data(uint8_t* data);
     void send_cmd_le_set_advertising_enable(uint8_t enable);
+    void send_cmd_le_remote_connection_parameter_request_reply(uint8_t* data);
 
     void recv(uint8_t* data, uint16_t len);
     void recv_evt(uint8_t* data, uint16_t len);
     void recv_acl(uint8_t* data, uint16_t len);
     void recv_sco(uint8_t* data, uint16_t len);
     void recv_evt_command_complete(uint8_t* data, uint16_t len);
+    void recv_evt_le_meta(uint8_t* data, uint16_t len);
+    void recv_evt_le_connection_complete(uint8_t* data, uint16_t len);
+    void recv_evt_le_enhanced_connection_complete(uint8_t* data, uint16_t len);
 
 private:
     void _assign_cmd(uint8_t* buf, uint8_t ogf, uint16_t ocf);
