@@ -275,6 +275,16 @@ void QHci::send_cmd_write_simple_pairing_mode(uint8_t simple_pairing_mode) {
     btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
+void QHci::send_cmd_write_le_host_support(uint8_t host_supported) {
+    uint8_t sendData[6] = { 0x00 };
+    _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LE_HOST_SUPPORT);
+    sendData[3] = 2;
+    sendData[4] = host_supported;
+    sendData[5] = 0x00;
+    serialPort.write((char*)sendData, sizeof(sendData));
+    btsnoop.wirte(sendData, sizeof(sendData), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
 void QHci::send_cmd_set_event_mask(uint8_t* event_mask) {
     uint8_t sendData[12] = { 0x00 };
     _assign_cmd(sendData, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK);
@@ -1138,8 +1148,11 @@ void QHci::recv_evt_command_complete(uint8_t* data, uint16_t len)
             break;
         case HCI_OCF_SET_EVENT_MASK:
             qDebug("set_event_mask status:%d", data[4]);
-            send_cmd_le_read_buffer_size();
+            send_cmd_write_le_host_support(0x01);
             break;
+        case HCI_OCF_WRITE_LE_HOST_SUPPORT:
+            qDebug("write_le_host_support status:%d", data[4]);
+            send_cmd_le_read_buffer_size();
         default: break;
         }
         break;

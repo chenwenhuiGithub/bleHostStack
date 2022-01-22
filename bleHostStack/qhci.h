@@ -79,6 +79,7 @@ public:
     void send_cmd_write_inquiry_mode(uint8_t inquiry_mode);
     void send_cmd_write_extended_inquiry_response(uint8_t fec_required, uint8_t* extended_inquiry_response);
     void send_cmd_write_simple_pairing_mode(uint8_t simple_pairing_mode);
+    void send_cmd_write_le_host_support(uint8_t host_supported);
 
     /* Informational Parameters APIs */
     void send_cmd_read_local_version_info();
