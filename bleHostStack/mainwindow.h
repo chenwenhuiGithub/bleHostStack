@@ -2,11 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QSerialPort>
-#include <QSerialPortInfo>
 #include <QTimer>
-#include "qbtsnoop.h"
-#include "qhci.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -28,9 +24,6 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QSerialPort serialPort;
-    QBtsnoop btsnoop;
-    QHci hci;
     QByteArray serialPort_buf; // serialPort recv buffer
     QTimer serialPort_timer;   // wait 100ms to avoid can't read all data
 };

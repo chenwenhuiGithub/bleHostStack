@@ -10,15 +10,18 @@ CONFIG += c++11
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    btsnoop.cpp \
+    hci.cpp \
+    serial.cpp \
     main.cpp \
-    mainwindow.cpp \
-    qbtsnoop.cpp \
-    qhci.cpp
+    mainwindow.cpp
 
 HEADERS += \
-    mainwindow.h \
-    qbtsnoop.h \
-    qhci.h
+    btsnoop.h \
+    config.h \
+    hci.h \
+    serial.h \
+    mainwindow.h
 
 FORMS += \
     mainwindow.ui
