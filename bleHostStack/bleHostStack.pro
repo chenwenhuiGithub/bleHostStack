@@ -12,6 +12,7 @@ CONFIG += c++11
 SOURCES += \
     btsnoop.cpp \
     hci.cpp \
+    ringbuffer.cpp \
     serial.cpp \
     main.cpp \
     mainwindow.cpp
@@ -20,6 +21,7 @@ HEADERS += \
     btsnoop.h \
     config.h \
     hci.h \
+    ringbuffer.h \
     serial.h \
     mainwindow.h
 
