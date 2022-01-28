@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTimer>
+#include "ringbufferreader.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -20,11 +20,9 @@ private slots:
     void on_pushButtonOpen_clicked();
     void on_pushButtonTest_clicked();
     void serialPort_readyRead();
-    void serialPort_timeout();
 
 private:
     Ui::MainWindow *ui;
-    QByteArray serialPort_buf; // serialPort recv buffer
-    QTimer serialPort_timer;   // wait 100ms to avoid can't read all data
+    QRingbufferReader *readerThread;
 };
 #endif // MAINWINDOW_H

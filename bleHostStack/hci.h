@@ -265,7 +265,7 @@ typedef enum {
     HCI_LE_ADVERTISING_ENABLE
 } HCI_LE_ADVERTISING;
 
-void hci_recv(uint8_t *data, uint32_t length);
+
 void hci_recv_evt(uint8_t *data, uint8_t length);
 void hci_recv_evt_command_complete(uint8_t *data, uint8_t length);
 void hci_recv_evt_le_meta(uint8_t *data, uint8_t length);

@@ -6,25 +6,8 @@
 
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
-void hci_recv(uint8_t *data, uint32_t length) {
-    uint8_t packet_type = data[0];
-
-    switch (packet_type) {
-    case HCI_PACKET_TYPE_ACL: hci_recv_acl(data + HCI_LENGTH_PACKET_TYPE, length - HCI_LENGTH_PACKET_TYPE); break;
-    case HCI_PACKET_TYPE_SCO: hci_recv_sco(data + HCI_LENGTH_PACKET_TYPE, length - HCI_LENGTH_PACKET_TYPE); break;
-    case HCI_PACKET_TYPE_EVT: hci_recv_evt(data + HCI_LENGTH_PACKET_TYPE, length - HCI_LENGTH_PACKET_TYPE); break;
-    default: qDebug("hci_recv invalid, packet_type:%u", packet_type); break;
-    }
-}
-
 void hci_recv_evt(uint8_t *data, uint8_t length) {
     uint8_t event_code = data[0];
-    uint8_t data_length = data[1];
-
-    if (data_length != (length - HCI_LENGTH_EVT_HEADER)) {
-        qDebug("hci_recv_evt invalid, data_length:%u, length:%u", data_length, length);
-        return;
-    }
 
     switch (event_code) {
     case HCI_EVENT_DISCONNECTION_COMPLETE: hci_recv_evt_disconnection_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
@@ -154,12 +137,6 @@ void hci_recv_evt_disconnection_complete(uint8_t* data, uint8_t length) {
 void hci_recv_acl(uint8_t *data, uint16_t length) {
     connect_handle = data[0] | ((data[1] & 0x0f) << 8);
     // uint8_t pb_flag = data[1] & 0x30; // TODO: support segmentation based on le_acl_data_packet_length
-    uint16_t data_length = data[2] | (data[3] << 8);
-
-    if (data_length != length - HCI_LENGTH_ACL_HEADER) {
-        qDebug("hci_recv_acl invalid, data_length:%u, length:%u", data_length, length);
-        return;
-    }
 
     // l2cap_recv(data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER); // TODO: add process
 }

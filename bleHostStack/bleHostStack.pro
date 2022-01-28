@@ -13,6 +13,7 @@ SOURCES += \
     btsnoop.cpp \
     hci.cpp \
     ringbuffer.cpp \
+    ringbufferreader.cpp \
     serial.cpp \
     main.cpp \
     mainwindow.cpp
@@ -22,6 +23,7 @@ HEADERS += \
     config.h \
     hci.h \
     ringbuffer.h \
+    ringbufferreader.h \
     serial.h \
     mainwindow.h
 

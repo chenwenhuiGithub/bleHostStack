@@ -1,84 +1,79 @@
 #include "ringbuffer.h"
-#include <QByteArray>
+#include <memory>
 
-uint8_t buffer[RINGBUFFER_SIZE] = { 0x00 };
-uint32_t read_pos = 0;
-uint32_t write_pos = 0;
+uint8_t ringbuffer_buf[RINGBUFFER_SIZE] = { 0x00 };
+uint32_t ringbuffer_read_pos = 0;
+uint32_t ringbuffer_write_pos = 0;
 
 void ringbuffer_reset() {
-    read_pos = 0;
-    write_pos = 0;
+    ringbuffer_read_pos = 0;
+    ringbuffer_write_pos = 0;
 }
 
 bool ringbuffer_write(uint8_t *data, uint32_t length) {
-    uint32_t left_to_end = RINGBUFFER_SIZE - write_pos; // left buffer from write_pos to the end
+    uint32_t left_to_end = RINGBUFFER_SIZE - ringbuffer_write_pos; // left buffer from write_pos to the end
 
-    if (ringbuff_left() < length) { // left buffer not enough to write
+    if (ringbuffer_left() < length) { // left buffer not enough to write
         return false;
     }
 
     if (left_to_end >= length) { // left_to_end buffer enough to write
-        memcpy_s(buffer + write_pos, length, data, length);
-        write_pos += length;
-        if (write_pos == RINGBUFFER_SIZE) {
-            write_pos = 0;
+        memcpy_s(ringbuffer_buf + ringbuffer_write_pos, length, data, length);
+        ringbuffer_write_pos += length;
+        if (ringbuffer_write_pos == RINGBUFFER_SIZE) {
+            ringbuffer_write_pos = 0;
         }
     } else {
-        memcpy_s(buffer + write_pos, left_to_end, data, left_to_end); // left_to_end buffer not enough to write
-        memcpy_s(buffer, length - left_to_end, data, length - left_to_end); // continue write from begin
-        write_pos = length - left_to_end;
+        memcpy_s(ringbuffer_buf + ringbuffer_write_pos, left_to_end, data, left_to_end); // left_to_end buffer not enough to write
+        memcpy_s(ringbuffer_buf, length - left_to_end, data, length - left_to_end); // continue write from begin
+        ringbuffer_write_pos = length - left_to_end;
     }
 
     return true;
 }
 
-uint8_t* ringbuffer_read(uint32_t length) {
-    uint32_t left_to_end = RINGBUFFER_SIZE - read_pos; // used buffer from read_pos to the end
-    uint32_t backup_read_pos = 0;
-    QByteArray byteArray;
+bool ringbuffer_read(uint8_t *data, uint32_t length) {
+    uint32_t left_to_end = RINGBUFFER_SIZE - ringbuffer_read_pos; // used buffer from read_pos to the end
 
-    if (length > ringbuff_used()) { // used buffer not enough to read
-        return nullptr;
+    if (length > ringbuffer_used()) { // used buffer not enough to read
+        return false;
     }
 
     if (left_to_end >= length) { // left_to_end buffer enough to read
-        backup_read_pos = read_pos;
-        read_pos += length;
-        if (read_pos == RINGBUFFER_SIZE) {
-            read_pos = 0;
+        memcpy_s(data, length, ringbuffer_buf + ringbuffer_read_pos, length);
+        ringbuffer_read_pos += length;
+        if (ringbuffer_read_pos == RINGBUFFER_SIZE) {
+            ringbuffer_read_pos = 0;
         }
-
-        return buffer + backup_read_pos;
     } else {
-        byteArray.resize(length);
-        memcpy_s(&byteArray[0], left_to_end, buffer + read_pos, left_to_end); // left_to_end buffer not enough to read
-        memcpy_s(&byteArray[left_to_end], length - left_to_end, buffer, length - left_to_end); // continue read from begin
-        read_pos = length - left_to_end;
-
-        return (uint8_t*)byteArray.data();
+        memcpy_s(data, left_to_end, ringbuffer_buf + ringbuffer_read_pos, left_to_end); // left_to_end buffer not enough to read
+        memcpy_s(data + left_to_end, length - left_to_end, ringbuffer_buf, length - left_to_end); // continue read from begin
+        ringbuffer_read_pos = length - left_to_end;
     }
+
+    return true;
 }
 
-uint32_t ringbuff_used() {
+uint32_t ringbuffer_used() {
     uint32_t used = 0;
 
-    if (write_pos >= read_pos) {
-        used = write_pos - read_pos;
+    if (ringbuffer_write_pos >= ringbuffer_read_pos) {
+        used = ringbuffer_write_pos - ringbuffer_read_pos;
     } else {
-        used = RINGBUFFER_SIZE + write_pos - read_pos;
+        used = RINGBUFFER_SIZE + ringbuffer_write_pos - ringbuffer_read_pos;
     }
 
     return used;
 }
 
-uint32_t ringbuff_left() {
-    return RINGBUFFER_SIZE - ringbuff_used() - 1;
+uint32_t ringbuffer_left() {
+    return RINGBUFFER_SIZE - ringbuffer_used() - 1;
 }
 
 bool ringbuffer_is_empty() {
-    return (0 == ringbuff_used());
+    return (0 == ringbuffer_used());
 }
 
 bool ringbuffer_is_full() {
-    return (0 == ringbuff_left());
+    return (0 == ringbuffer_left());
 }
