@@ -3,6 +3,7 @@
 #include "serial.h"
 #include "config.h"
 #include "btsnoop.h"
+#include "l2cap.h"
 
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
@@ -138,7 +139,7 @@ void hci_recv_acl(uint8_t *data, uint16_t length) {
     connect_handle = data[0] | ((data[1] & 0x0f) << 8);
     // uint8_t pb_flag = data[1] & 0x30; // TODO: support segmentation based on le_acl_data_packet_length
 
-    // l2cap_recv(data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER); // TODO: add process
+    l2cap_recv(data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER);
 }
 
 void hci_recv_sco(uint8_t *data, uint8_t length) {
