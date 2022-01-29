@@ -1,5 +1,6 @@
 #include "att.h"
 #include "l2cap.h"
+#include "gatt.h"
 #include <QDebug>
 
 void att_recv(uint8_t *data, uint16_t length) {
@@ -18,8 +19,10 @@ void att_recv(uint8_t *data, uint16_t length) {
 void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length) {
     uint16_t start_handle = data[0] | (data[1] << 8);
     uint16_t end_handle = data[2] | (data[3] << 8);
-    att_uuid group_type;
+    uint16_t group_type = data[4] | (data[5] << 8);
 
+// TODO: support 16 Bytes uuid
+#if 0
     if ((length - 4) == ATT_LENGTH_UUID16) {
         memcpy_s(group_type.uuid, 2, data + 4, 2);
         group_type.length = 2;
@@ -30,7 +33,9 @@ void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length) {
         qDebug("att_recv_read_by_group_type_req invalid, length:%u", length);
         return;
     }
-    // gatt_recv_read_by_group_type_req(start_handle, end_handle, group_type);
+#endif
+
+    gatt_recv_read_by_group_type_req(start_handle, end_handle, group_type);
 }
 
 void att_send(uint8_t *data, uint16_t length) {

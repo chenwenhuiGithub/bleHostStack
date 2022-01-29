@@ -5,6 +5,7 @@
 #include "hci.h"
 #include "btsnoop.h"
 #include "ringbuffer.h"
+#include "gatt.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -49,6 +50,7 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonTest_clicked()
 {
+    gatt_init();
     hci_send_cmd_reset();
 }
 

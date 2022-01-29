@@ -63,7 +63,8 @@
 #define ATT_LENGTH_UUID128								16
 #define ATT_LENGTH_ERROR_RESP							5
 
-
+// TODO: support 16 Bytes uuid
+#if 0
 struct att_uuid {
     uint8_t uuid[16]; // 2 or 16 Bytes uuid
     uint8_t length;
@@ -72,16 +73,14 @@ struct att_uuid {
         return ((length == id.length) && (0 == memcmp(uuid, id.uuid, length)));
     }
 };
+#endif
 
-typedef struct {
-    uint8_t *data;
-    uint16_t length;
-} att_value;
 
 typedef struct {
     uint16_t handle;
-    att_uuid type;
-    att_value value;
+    uint16_t type;
+    uint8_t *value;
+    uint16_t value_length;
     uint8_t permission;
 } att_item;
 
