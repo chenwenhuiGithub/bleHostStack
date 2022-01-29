@@ -2,7 +2,16 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "ringbufferreader.h"
+
+typedef enum {
+    STATUS_PACKET_TYPE,
+    STATUS_HEADRER_EVT,
+    STATUS_HEADRER_ACL,
+    STATUS_HEADRER_SCO,
+    STATUS_DATA_EVT,
+    STATUS_DATA_ACL,
+    STATUS_DATA_SCO
+} RINGBUFFER_READ_STATUS;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -23,6 +32,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QRingbufferReader *readerThread;
+    RINGBUFFER_READ_STATUS ringbuffer_read_status;
+    QByteArray ringbuffer_read_data;
 };
 #endif // MAINWINDOW_H

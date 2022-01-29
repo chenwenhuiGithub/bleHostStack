@@ -238,6 +238,7 @@
 
 #define HCI_LENGTH_PACKET_TYPE										1
 #define HCI_LENGTH_EVT_HEADER										2
+#define HCI_LENGTH_SCO_HEADER										3
 #define HCI_LENGTH_ACL_HEADER										4
 
 #define HCI_LENGTH_CMD_RESET                                        4
