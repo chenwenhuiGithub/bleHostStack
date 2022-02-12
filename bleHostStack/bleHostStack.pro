@@ -15,6 +15,7 @@ SOURCES += \
     gatt.cpp \
     hci.cpp \
     l2cap.cpp \
+    log.cpp \
     ringbuffer.cpp \
     serial.cpp \
     main.cpp \
@@ -27,6 +28,7 @@ HEADERS += \
     gatt.h \
     hci.h \
     l2cap.h \
+    log.h \
     ringbuffer.h \
     serial.h \
     mainwindow.h
