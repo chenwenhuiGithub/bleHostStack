@@ -161,6 +161,7 @@
 #define HCI_OCF_LE_SET_SCAN_ENABLE                                  0x0c
 #define HCI_OCF_LE_CREATE_CONNECT                                   0x0d
 #define HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_REPLY        0x20
+#define HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_NEG_REPLY    0x21
 
 // event codes
 #define HCI_EVENT_INQUIRY_COMPLETE                                  0x01
@@ -181,7 +182,7 @@
 #define HCI_EVENT_HARDWARE_ERROR                                    0x10
 #define HCI_EVENT_FLUSH_OCCURRED                                    0x11
 #define HCI_EVENT_ROLE_CHANGE                                       0x12
-#define HCI_EVENT_NNMBER_OF_COMPLETED_PACKETS                       0x13
+#define HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS                       0x13
 #define HCI_EVENT_MODE_CHANGE                                       0x14
 #define HCI_EVENT_RETURN_LINK_KEYS                                  0x15
 #define HCI_EVENT_PIN_CODE_REQUEST                                  0x16
@@ -231,23 +232,25 @@
 
 
 #define HCI_PACKET_TYPE_CMD                                         1
-#define HCI_PACKET_TYPE_ACL 										2
-#define HCI_PACKET_TYPE_SCO 										3
-#define HCI_PACKET_TYPE_EVT 										4
+#define HCI_PACKET_TYPE_ACL                                         2
+#define HCI_PACKET_TYPE_SCO                                         3
+#define HCI_PACKET_TYPE_EVT                                         4
 
 
-#define HCI_LENGTH_PACKET_TYPE										1
-#define HCI_LENGTH_EVT_HEADER										2
-#define HCI_LENGTH_SCO_HEADER										3
-#define HCI_LENGTH_ACL_HEADER										4
+#define HCI_LENGTH_PACKET_TYPE                                      1
+#define HCI_LENGTH_EVT_HEADER                                       2
+#define HCI_LENGTH_SCO_HEADER                                       3
+#define HCI_LENGTH_ACL_HEADER                                       4
 
 #define HCI_LENGTH_CMD_RESET                                        4
 #define HCI_LENGTH_CMD_READ_BD_ADDR                                 4
-#define HCI_LENGTH_CMD_READ_LOCAL_VERSION_INFO						4
-#define HCI_LENGTH_CMD_SET_EVENT_MASK								12
+#define HCI_LENGTH_CMD_READ_LOCAL_VERSION_INFO                      4
+#define HCI_LENGTH_CMD_READ_LOCAL_SUPPORTED_COMMANDS                4
+#define HCI_LENGTH_CMD_SET_EVENT_MASK                               12
 #define HCI_LENGTH_CMD_WRITE_CLASS_OF_DEVICE                        7
 #define HCI_LENGTH_CMD_WRITE_LE_HOST_SUPPORT                        6
 #define HCI_LENGTH_CMD_LE_READ_BUFFER_SIZE                          4
+#define HCI_LENGTH_CMD_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY           7
 #define HCI_LENGTH_CMD_LE_SET_EVENT_MASK                            12
 #define HCI_LENGTH_CMD_LE_SET_ADVERTISING_PARAMETERS                19
 #define HCI_LENGTH_CMD_LE_SET_ADVERTISING_DATA                      36
@@ -271,17 +274,20 @@ void hci_recv_evt(uint8_t *data, uint8_t length);
 void hci_recv_evt_command_complete(uint8_t *data, uint8_t length);
 void hci_recv_evt_le_meta(uint8_t *data, uint8_t length);
 void hci_recv_evt_disconnection_complete(uint8_t* data, uint8_t length);
+void hci_recv_evt_number_of_completed_packets(uint8_t* data, uint8_t length);
 void hci_recv_acl(uint8_t *data, uint16_t length);
 void hci_recv_sco(uint8_t *data, uint8_t length);
 void hci_send_acl(uint8_t *data, uint16_t length);
 void hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf);
 void hci_send_cmd_reset();
 void hci_send_cmd_read_local_version_info();
+void hci_send_cmd_read_local_supported_commands();
 void hci_send_cmd_set_event_mask();
 void hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT enable);
 void hci_send_cmd_le_read_buffer_size();
 void hci_send_cmd_read_bd_addr();
 void hci_send_cmd_write_class_of_device();
+void hci_send_cmd_le_remote_connection_parameter_request_negative_reply();
 void hci_send_cmd_le_set_event_mask();
 void hci_send_cmd_le_set_advertising_parameters();
 void hci_send_cmd_le_set_advertising_data();

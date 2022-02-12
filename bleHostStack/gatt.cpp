@@ -29,7 +29,7 @@ att_handle(2B)	att_type(UUID, 2B/16B)							att_value(0-512B)                   
 uint8_t gencric_access_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
 uint8_t gencric_access_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ, 0x03, 0x00,
                                            (uint8_t)GATT_OBJECT_TYPE_DEVICE_NAME, GATT_OBJECT_TYPE_DEVICE_NAME >> 8};
-uint8_t gencric_access_device_name[] = {'g', 'a', 't', 't', '_', 'd', 'e', 'm', 'o'};
+uint8_t gencric_access_device_name[] = {'w', 'e', 'n', 'h', 'u', 'i', '_', 'B', 'L', 'E'};
 att_item service_gencric_access[] = {
     {0x0001, GATT_DECLARATION_PRIMARY_SERVICE, gencric_access_uuid, sizeof(gencric_access_uuid), GATT_PERMISSION_READ},
     {0x0002, GATT_DECLARATION_CHARACTERISTIC, gencric_access_characteristic, sizeof(gencric_access_characteristic), GATT_PERMISSION_READ},
