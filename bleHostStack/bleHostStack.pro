@@ -24,7 +24,6 @@ SOURCES += \
 HEADERS += \
     att.h \
     btsnoop.h \
-    config.h \
     gatt.h \
     hci.h \
     l2cap.h \
