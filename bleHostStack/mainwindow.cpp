@@ -6,6 +6,7 @@
 #include "btsnoop.h"
 #include "ringbuffer.h"
 #include "gatt.h"
+#include "log.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -32,18 +33,18 @@ void MainWindow::on_pushButtonOpen_clicked()
 {
     if (ui->pushButtonOpen->text() == "Open") {
         if (! serial_open(ui->comboBoxNum->currentText())) {
-            qDebug() << "serial open failed";
+            LOG_ERROR("serial open failed");
             return;
         }
         btsnoop_open();
         ringbuffer_reset();
         ui->pushButtonOpen->setText("Close");
-        qDebug() << "serial open success";
+        LOG_INFO("serial open success");
     } else {
         serial_close();
         btsnoop_close();
         ui->pushButtonOpen->setText("Open");
-        qDebug() << "serial closed";
+        LOG_INFO("serial closed");
     }
 }
 
@@ -64,7 +65,6 @@ void MainWindow::serialPort_readyRead()
     bool result = false;
 
     QByteArray byteArray = serial_read();
-    // qDebug() << "length:" << byteArray.length() << " data:" << byteArray;
     ringbuffer_write((uint8_t*)byteArray.data(), byteArray.length());
 
     while (!ringbuffer_is_empty()) {
@@ -82,11 +82,11 @@ void MainWindow::serialPort_readyRead()
                 } else if (packet_type == HCI_PACKET_TYPE_EVT) {
                     ringbuffer_read_status = STATUS_HEADRER_EVT;
                 } else {
-                    qDebug("ringbuffer_read invalid, packet_type:%u", packet_type);
+                    LOG_WARNING("ringbuffer_read invalid, packet_type:%u", packet_type);
                     return;
                 }
             } else {
-                qDebug("ringbuffer_read invalid, status:STATUS_PACKET_TYPE");
+                LOG_DEBUG("ringbuffer_read invalid, status:STATUS_PACKET_TYPE");
                 return;
             }
             break;
@@ -96,7 +96,7 @@ void MainWindow::serialPort_readyRead()
             if (result) {
                 ringbuffer_read_status = STATUS_DATA_EVT;
             } else {
-                qDebug("ringbuffer_read invalid, status:STATUS_HEADRER_EVT");
+                LOG_DEBUG("ringbuffer_read invalid, status:STATUS_HEADRER_EVT");
                 return;
             }
             break;
@@ -106,7 +106,7 @@ void MainWindow::serialPort_readyRead()
             if (result) {
                 ringbuffer_read_status = STATUS_DATA_ACL;
             } else {
-                qDebug("ringbuffer_read invalid, status:STATUS_HEADRER_ACL");
+                LOG_DEBUG("ringbuffer_read invalid, status:STATUS_HEADRER_ACL");
                 return;
             }
             break;
@@ -116,7 +116,7 @@ void MainWindow::serialPort_readyRead()
             if (result) {
                 ringbuffer_read_status = STATUS_DATA_SCO;
             } else {
-                qDebug("ringbuffer_read invalid, status:STATUS_HEADRER_SCO");
+                LOG_DEBUG("ringbuffer_read invalid, status:STATUS_HEADRER_SCO");
                 return;
             }
             break;
@@ -129,7 +129,7 @@ void MainWindow::serialPort_readyRead()
                 hci_recv_evt((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE, ringbuffer_read_data.length() - HCI_LENGTH_PACKET_TYPE);
                 ringbuffer_read_status = STATUS_PACKET_TYPE;
             } else {
-                qDebug("ringbuffer_read invalid, status:STATUS_DATA_EVT");
+                LOG_DEBUG("ringbuffer_read invalid, status:STATUS_DATA_EVT");
                 return;
             }
             break;
@@ -142,7 +142,7 @@ void MainWindow::serialPort_readyRead()
                 hci_recv_acl((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE, ringbuffer_read_data.length() - HCI_LENGTH_PACKET_TYPE);
                 ringbuffer_read_status = STATUS_PACKET_TYPE;
             } else {
-                qDebug("ringbuffer_read invalid, status:STATUS_DATA_ACL");
+                LOG_DEBUG("ringbuffer_read invalid, status:STATUS_DATA_ACL");
                 return;
             }
             break;
@@ -155,12 +155,12 @@ void MainWindow::serialPort_readyRead()
                 hci_recv_sco((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE, ringbuffer_read_data.length() - HCI_LENGTH_PACKET_TYPE);
                 ringbuffer_read_status = STATUS_PACKET_TYPE;
             } else {
-                qDebug("ringbuffer_read invalid, status:STATUS_DATA_SCO");
+                LOG_DEBUG("ringbuffer_read invalid, status:STATUS_DATA_SCO");
                 return;
             }
             break;
         default:
-            qDebug("ringbuffer_read invalid, status:%u", ringbuffer_read_status);
+            LOG_WARNING("ringbuffer_read invalid, status:%u", ringbuffer_read_status);
             return;
         }
     }

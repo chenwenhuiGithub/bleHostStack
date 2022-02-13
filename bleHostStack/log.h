@@ -12,7 +12,7 @@ typedef enum {
     LOG_LEVEL_ERROR
 } LOG_LEVEL;
 
-#define CONFIG_LOG_LEVEL            LOG_LEVEL_DEBUG
+#define CONFIG_LOG_LEVEL            LOG_LEVEL_INFO
 
 #define LOG_TRACE(format, ...)      log(LOG_LEVEL_TRACE, __FILE__, __LINE__, format, ##__VA_ARGS__);
 #define LOG_DEBUG(format, ...)      log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__);

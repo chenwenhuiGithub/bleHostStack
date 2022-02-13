@@ -32,6 +32,6 @@ void log(LOG_LEVEL log_level, const char* file_name, uint32_t file_line, const c
         total_length += length;
         va_end(ap);
 
-        qDebug() << log_data;
+        qDebug() << log_data; // TODO: write to file
     }
 }

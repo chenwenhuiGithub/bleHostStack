@@ -1,14 +1,14 @@
 #include "l2cap.h"
-#include <QDebug>
 #include "hci.h"
 #include "att.h"
+#include "log.h"
 
 void l2cap_recv(uint8_t *data, uint16_t length) {
     uint16_t data_length = data[0] | (data[1] << 8);
     uint16_t cid = data[2] | (data[3] << 8);
 
     if (data_length != length - L2CAP_LENGTH_HEADER) {
-        qDebug("l2cap_recv invalid, data_length:%u, length:%u", data_length, length);
+        LOG_ERROR("l2cap_recv invalid, data_length:%u, length:%u", data_length, length);
         return;
     }
 
@@ -18,7 +18,7 @@ void l2cap_recv(uint8_t *data, uint16_t length) {
     case L2CAP_CID_ATT: att_recv(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
     case L2CAP_CID_BLE_SIGNAL: l2cap_recv_ble_signal(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
     // case L2CAP_CID_SM: sm_recv(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
-    default: qDebug("l2cap_recv invalid, cid:%u", cid); break;
+    default: LOG_WARNING("l2cap_recv invalid, cid:%u", cid); break;
     }
 }
 

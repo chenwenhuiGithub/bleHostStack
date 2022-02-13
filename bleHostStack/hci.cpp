@@ -1,9 +1,9 @@
-#include <QDebug>
 #include "hci.h"
 #include "serial.h"
 #include "config.h"
 #include "btsnoop.h"
 #include "l2cap.h"
+#include "log.h"
 
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
@@ -11,12 +11,16 @@ void hci_recv_evt(uint8_t *data, uint8_t length) {
     uint8_t event_code = data[0];
 
     switch (event_code) {
-    case HCI_EVENT_DISCONNECTION_COMPLETE: hci_recv_evt_disconnection_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    case HCI_EVENT_COMMAND_COMPLETE: hci_recv_evt_command_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    case HCI_EVENT_LE_META: hci_recv_evt_le_meta(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_DISCONNECTION_COMPLETE:
+        hci_recv_evt_disconnection_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_COMMAND_COMPLETE:
+        hci_recv_evt_command_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_LE_META:
+        hci_recv_evt_le_meta(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
     case HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS:
         hci_recv_evt_number_of_completed_packets(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    default: qDebug("hci_recv_evt invalid, event_code:%u", event_code); break;
+    default:
+        LOG_WARNING("hci_recv_evt invalid, event_code:%u", event_code); break;
     }
 }
 
@@ -30,84 +34,84 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
     case HCI_OGF_CONTROLLER_BASEBAND:
         switch (ocf) {
         case HCI_OCF_RESET:
-            qDebug("reset status:%u", data[3]);
+            LOG_INFO("reset status:%u", data[3]);
             hci_send_cmd_read_local_version_info();
             break;
         case HCI_OCF_WRITE_CLASS_OF_DEVICE:
-            qDebug("write_class_of_device status:%u", data[3]);
+            LOG_INFO("write_class_of_device status:%u", data[3]);
             hci_send_cmd_set_event_mask();
             break;
         case HCI_OCF_SET_EVENT_MASK:
-            qDebug("set_event_mask status:%u", data[3]);
+            LOG_INFO("set_event_mask status:%u", data[3]);
             hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT_ENABLE);
             break;
         case HCI_OCF_WRITE_LE_HOST_SUPPORT:
-            qDebug("write_le_host_support status:%u", data[3]);
+            LOG_INFO("write_le_host_support status:%u", data[3]);
             hci_send_cmd_le_read_buffer_size();
             break;
         default:
-            qDebug("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+            LOG_WARNING("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
             break;
         }
         break;
     case HCI_OGF_INFORMATIONAL_PARAM:
         switch (ocf) {
         case HCI_OCF_READ_LOCAL_VERSION_INFO:
-            qDebug("read_local_version_info status:%u, hci_version:%u", data[3], data[4]);
+            LOG_INFO("read_local_version_info status:%u, hci_version:%u", data[3], data[4]);
             hci_send_cmd_read_local_supported_commands();
             break;
         case HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS:
-            qDebug("read_local_supported_commands status:%u", data[3]);
+            LOG_INFO("read_local_supported_commands status:%u", data[3]);
             hci_send_cmd_read_bd_addr();
             break;
         case HCI_OCF_READ_BD_ADDR:
-            qDebug("read_bd_addr status:%u, bd_addr:%02x:%02x:%02x:%02x:%02x:%02x",
-                   data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
+            LOG_INFO("read_bd_addr status:%u, bd_addr:%02x:%02x:%02x:%02x:%02x:%02x",
+                     data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
             hci_send_cmd_write_class_of_device();
             break;
         default:
-            qDebug("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+            LOG_WARNING("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
             break;
         }
         break;
     case HCI_OGF_LE_CONTROLLER:
         switch (ocf) {
         case HCI_OCF_LE_READ_BUFFER_SIZE:
-            qDebug("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
-                   data[3], (data[4] | (data[5] << 8)), data[6]);
+            LOG_INFO("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
+                     data[3], (data[4] | (data[5] << 8)), data[6]);
             hci_send_cmd_le_set_event_mask();
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
-            qDebug("le_set_event_mask status:%u", data[3]);
+            LOG_INFO("le_set_event_mask status:%u", data[3]);
             hci_send_cmd_le_set_advertising_parameters();
             break;
         case HCI_OCF_LE_SET_ADV_PARAM:
-            qDebug("le_set_advertising_parameters status:%u", data[3]);
+            LOG_INFO("le_set_advertising_parameters status:%u", data[3]);
             hci_send_cmd_le_set_advertising_data();
             break;
         case HCI_OCF_LE_SET_ADV_DATA:
-            qDebug("le_set_advertising_data status:%u", data[3]);
+            LOG_INFO("le_set_advertising_data status:%u", data[3]);
             hci_send_cmd_le_set_advertising_enable(HCI_LE_ADVERTISING_ENABLE);
             break;
         case HCI_OCF_LE_SET_ADV_ENABLE:
-            qDebug("le_set_advertising_enable status:%u", data[3]);
-            qDebug("/***** wait peer device to connect *****/");
+            LOG_INFO("le_set_advertising_enable status:%u", data[3]);
+            LOG_INFO("/***** wait peer device to connect *****/");
             break;
         case HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_REPLY:
-            qDebug("le_remote_connection_parameter_request_reply status:%u, connect_handle:0x%02x%02x",
-                   data[3], data[4], (data[5] & 0x0f));
+            LOG_INFO("le_remote_connection_parameter_request_reply status:%u, connect_handle:0x%02x%02x",
+                     data[3], data[4], (data[5] & 0x0f));
             break;
         case HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_NEG_REPLY:
-            qDebug("le_remote_connection_parameter_request_neg_reply status:%u, connect_handle:0x%02x%02x",
-                   data[3], data[4], (data[5] & 0x0f));
+            LOG_INFO("le_remote_connection_parameter_request_neg_reply status:%u, connect_handle:0x%02x%02x",
+                     data[3], data[4], (data[5] & 0x0f));
             break;
         default:
-            qDebug("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+            LOG_WARNING("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
             break;
         }
         break;
     default:
-        qDebug("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+        LOG_WARNING("hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
         break;
     }
 }
@@ -118,37 +122,37 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONNECTION_COMPLETE:
-        qDebug("le_connection_complete status:%u, connect_handle:0x%02x%02x, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
-               data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
-        qDebug("/***** peer device connects success *****/");
+        LOG_INFO("le_connection_complete status:%u, connect_handle:0x%02x%02x, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
+                 data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
+        LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_REMOTE_CONNECTION_PARAMETER_REQUEST:
-        qDebug("le_remote_connection_parameter_request connect_handle:0x%02x%02x, interval_min:%0.2fms, interval_max:%0.2fms, max_latency:%u, timeout:%ums",
-               data[1], (data[2] & 0x0f), (data[3] | (data[4] << 8)) * 1.25, (data[5] | (data[6] << 8)) * 1.25,
-               data[7] | (data[8] << 8), (data[9] | (data[10] << 8)) * 10);
+        LOG_INFO("le_remote_connection_parameter_request connect_handle:0x%02x%02x, interval_min:%0.2fms, interval_max:%0.2fms, max_latency:%u, timeout:%ums",
+                 data[1], (data[2] & 0x0f), (data[3] | (data[4] << 8)) * 1.25, (data[5] | (data[6] << 8)) * 1.25,
+                 data[7] | (data[8] << 8), (data[9] | (data[10] << 8)) * 10);
         hci_send_cmd_le_remote_connection_parameter_request_negative_reply();
         break;
     case HCI_EVENT_LE_ENHANCED_CONNECTION_COMPLETE:
-        qDebug("le_enhanced_connection_complete status:%u, connect_handle:0x%02x%02x, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
-               data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
-        qDebug("/***** peer device connects success *****/");
+        LOG_INFO("le_enhanced_connection_complete status:%u, connect_handle:0x%02x%02x, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
+                 data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
+        LOG_INFO("/***** peer device connects success *****/");
         break;
     default:
-        qDebug("hci_recv_evt_le_meta invalid, sub_event:%u", sub_event);
+        LOG_WARNING("hci_recv_evt_le_meta invalid, sub_event:%u", sub_event);
         break;
     }
 }
 
 void hci_recv_evt_disconnection_complete(uint8_t* data, uint8_t length) {
     (void)length;
-    qDebug("disconnection_complete status:%u, connect_handle:0x%02x%02x, reason:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
-    qDebug("/***** peer device disconnect *****/");
+    LOG_INFO("disconnection_complete status:%u, connect_handle:0x%02x%02x, reason:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
+    LOG_INFO("/***** peer device disconnect *****/");
 }
 
 void hci_recv_evt_number_of_completed_packets(uint8_t* data, uint8_t length) {
     (void)length;
-    qDebug("number_of_completed_packets number_handles:%u, connect_handle[0]:0x%02x%02x, num_completed_packets[0]:%u",
-           data[0], data[1], (data[2] & 0x0f), data[3] | (data[4] << 8));
+    LOG_INFO("number_of_completed_packets number_handles:%u, connect_handle[0]:0x%02x%02x, num_completed_packets[0]:%u",
+             data[0], data[1], (data[2] & 0x0f), data[3] | (data[4] << 8));
 }
 
 void hci_recv_acl(uint8_t *data, uint16_t length) {
