@@ -250,6 +250,7 @@
 #define HCI_LENGTH_CMD_WRITE_CLASS_OF_DEVICE                        7
 #define HCI_LENGTH_CMD_WRITE_LE_HOST_SUPPORT                        6
 #define HCI_LENGTH_CMD_LE_READ_BUFFER_SIZE                          4
+#define HCI_LENGTH_CMD_LE_REMOTE_CONN_PARAM_REQ_REPLY               18
 #define HCI_LENGTH_CMD_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY           7
 #define HCI_LENGTH_CMD_LE_SET_EVENT_MASK                            12
 #define HCI_LENGTH_CMD_LE_SET_ADVERTISING_PARAMETERS                19
@@ -287,6 +288,7 @@ void hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT enable);
 void hci_send_cmd_le_read_buffer_size();
 void hci_send_cmd_read_bd_addr();
 void hci_send_cmd_write_class_of_device();
+void hci_send_cmd_le_remote_connection_parameter_request_reply(uint8_t *data);
 void hci_send_cmd_le_remote_connection_parameter_request_negative_reply();
 void hci_send_cmd_le_set_event_mask();
 void hci_send_cmd_le_set_advertising_parameters();
