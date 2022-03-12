@@ -40,7 +40,7 @@ att_handle(2B)	att_type(UUID, 2B/16B)							att_value(0-512B)                   
 uint8_t uuid_gencric_access[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
 uint8_t characteristic_gencric_access[] = {GATT_CHARACTERISTIC_PROPERITY_READ, 0x03, 0x00,
                                            (uint8_t)GATT_OBJECT_TYPE_DEVICE_NAME, GATT_OBJECT_TYPE_DEVICE_NAME >> 8};
-uint8_t device_name[] = {'w', 'e', 'n', 'h', 'u', 'i', '_', 'B', 'L', 'E'};
+uint8_t device_name[] = {'b', 'l', 'e', '_', 'd', 'e', 'm', 'o'};
 
 
 uint8_t uuid_gencric_attribute[] = {(uint8_t)GATT_SERVICE_GENERIC_ATTRIBUTE, GATT_SERVICE_GENERIC_ATTRIBUTE >> 8};
@@ -58,7 +58,7 @@ uint8_t battery_level[] = {0x62}; // 98%
 uint8_t uuid_test[] = {(uint8_t)GATT_SERVICE_TEST, GATT_SERVICE_TEST >> 8};
 uint8_t characteristic_test[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP| GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
                                  0x02, 0x10, (uint8_t)GATT_OBJECT_TYPE_TEST, GATT_OBJECT_TYPE_TEST >> 8};
-uint8_t buff_test[512] = {0x00};
+uint8_t buff_test[8] = {0x01, 0x03, 0x05, 0x07, 0x02, 0x04, 0x06, 0x08};
 
 
 att_item items_gencric_access[] = {
@@ -107,6 +107,27 @@ void gatt_add_service(att_item *items, uint16_t items_cnt, uint16_t start_handle
         services[service_count].end_handle = end_handle;
         services[service_count].service = service;
         service_count++;
+    }
+}
+
+void gatt_recv_read_req(uint16_t handle) {
+    QByteArray byteArray;
+    att_item *item = nullptr;
+
+    for (uint8_t index_service = 0; index_service < service_count; index_service++) {
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < handle) {
+                continue;
+            }
+
+            byteArray.resize(1 + item->value_length);
+            byteArray[0] = ATT_OPERATE_READ_RESP;
+            memcpy_s((uint8_t*)byteArray.data() + 1, item->value_length, item->value, item->value_length);
+            att_send((uint8_t*)byteArray.data(), byteArray.length());
+            return; // TODO: support multiple services based on ATT_MTU check
+        }
     }
 }
 

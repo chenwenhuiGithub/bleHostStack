@@ -88,6 +88,7 @@ typedef struct {
 void att_recv(uint8_t *data, uint16_t length);
 void att_recv_find_information_req(uint8_t *data, uint16_t length);
 void att_recv_read_by_type_req(uint8_t *data, uint16_t length);
+void att_recv_read_req(uint8_t *data, uint16_t length);
 void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length);
 void att_send(uint8_t *data, uint16_t length);
 
