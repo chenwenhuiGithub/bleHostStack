@@ -96,7 +96,7 @@ void gatt_init() {
     gatt_add_service(items_gencric_access, 3, 0x0001, 0x0003, GATT_SERVICE_GENERIC_ACCESS);
     gatt_add_service(items_gencric_attribute, 4, 0x0010, 0x0013, GATT_SERVICE_GENERIC_ATTRIBUTE);
     gatt_add_service(items_battery, 4, 0x0100, 0x0103, GATT_SERVICE_BATTERY);
-    gatt_add_service(items_test, 4, 0x1000, 0xffff, GATT_SERVICE_TEST);// latest service end_handle must be 0xffff?
+    gatt_add_service(items_test, 4, 0x1000, 0x1003, GATT_SERVICE_TEST);
 }
 
 void gatt_add_service(att_item *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service) {
@@ -110,24 +110,66 @@ void gatt_add_service(att_item *items, uint16_t items_cnt, uint16_t start_handle
     }
 }
 
+// discover descriptors in one characteristic
+void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) {
+    QByteArray byteArray;
+    att_item *item = nullptr;
+
+    for (uint8_t index_service = 0; index_service < service_count; index_service++) {
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < start_handle) {
+                continue;
+            }
+
+            byteArray.resize(6);
+            byteArray[0] = ATT_OPERATE_FIND_INFORMATION_RESP;
+            byteArray[1] = 0x01; // 16 bits UUID, TODO: macro define
+            byteArray[2] = item->handle;
+            byteArray[3] = item->handle >> 8;
+            byteArray[4] = item->type;
+            byteArray[5] = item->type >> 8;
+            att_send((uint8_t*)byteArray.data(), byteArray.length());
+            return; // TODO: support multiple services based on ATT_MTU check
+
+            if (item->handle > end_handle) {
+                gatt_send_error_resp(ATT_OPERATE_FIND_INFORMATION_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+                return;
+            }
+        }
+    }
+
+    gatt_send_error_resp(ATT_OPERATE_FIND_INFORMATION_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+}
+
+// discover include and characteristics in one service
 void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type) {
     QByteArray byteArray;
     att_item *item = nullptr;
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
-        if ((start_handle <= services[index_service].start_handle) && (services[index_service].end_handle <= end_handle)) { // needed ???
-            for (uint8_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
-                item = &(services[index_service].items[index_item]);
-                if (item->type == att_type) {
-                    byteArray.resize(4 + item->value_length);
-                    byteArray[0] = ATT_OPERATE_READ_BY_TYPE_RESP;
-                    byteArray[1] = 2 + item->value_length;
-                    byteArray[2] = item->handle;
-                    byteArray[3] = item->handle >> 8;
-                    memcpy_s((uint8_t*)byteArray.data() + 4, item->value_length, item->value, item->value_length);
-                    att_send((uint8_t*)byteArray.data(), byteArray.length());
-                    return; // TODO: support multiple services based on ATT_MTU check
-                }
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < start_handle) {
+                continue;
+            }
+
+            if (item->type == att_type) {
+                byteArray.resize(4 + item->value_length);
+                byteArray[0] = ATT_OPERATE_READ_BY_TYPE_RESP;
+                byteArray[1] = 2 + item->value_length;
+                byteArray[2] = item->handle;
+                byteArray[3] = item->handle >> 8;
+                memcpy_s((uint8_t*)byteArray.data() + 4, item->value_length, item->value, item->value_length);
+                att_send((uint8_t*)byteArray.data(), byteArray.length());
+                return; // TODO: support multiple services based on ATT_MTU check
+            }
+
+            if (item->handle > end_handle) {
+                gatt_send_error_resp(ATT_OPERATE_READ_BY_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+                return;
             }
         }
     }
@@ -135,6 +177,7 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
     gatt_send_error_resp(ATT_OPERATE_READ_BY_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
 }
 
+// discover all services and it's start and end handle, just used for primary and second service
 void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type) {
     QByteArray byteArray;
 
@@ -156,7 +199,7 @@ void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle
         }
     }
 
-    gatt_send_error_resp(ATT_OPERATE_READ_BY_GROUP_TYPE_RESP, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+    gatt_send_error_resp(ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
 }
 
 void gatt_send_error_resp(uint8_t op_code, uint16_t handle, uint8_t error_code) {

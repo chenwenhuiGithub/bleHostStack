@@ -78,6 +78,7 @@ typedef struct {
 
 void gatt_init();
 void gatt_add_service(att_item *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service);
+void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle);
 void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type);
 void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type);
 void gatt_send_error_resp(uint8_t op_code, uint16_t handle, uint8_t error_code);

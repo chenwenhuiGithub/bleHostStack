@@ -10,6 +10,8 @@ void att_recv(uint8_t *data, uint16_t length) {
     // case ATT_OPERATE_ERROR_RESP: att_recv_error_resp(); break;
     // case ATT_OPERATE_EXCHANGE_MTU_REQ: att_recv_exchange_mtu_req(); break;
     // case ATT_OPERATE_EXCHANGE_MTU_RESP: att_recv_exchange_mtu_resp(); break;
+    case ATT_OPERATE_FIND_INFORMATION_REQ:
+        att_recv_find_information_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     case ATT_OPERATE_READ_BY_TYPE_REQ:
         att_recv_read_by_type_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     case ATT_OPERATE_READ_BY_GROUP_TYPE_REQ:
@@ -18,6 +20,13 @@ void att_recv(uint8_t *data, uint16_t length) {
     default:
         LOG_WARNING("att_recv invalid, op_code:%u", op_code); break;
     }
+}
+
+void att_recv_find_information_req(uint8_t *data, uint16_t length) {
+    uint16_t start_handle = data[0] | (data[1] << 8);
+    uint16_t end_handle = data[2] | (data[3] << 8);
+
+    gatt_recv_find_information_req(start_handle, end_handle);
 }
 
 void att_recv_read_by_type_req(uint8_t *data, uint16_t length) {
