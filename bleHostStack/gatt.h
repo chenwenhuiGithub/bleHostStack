@@ -20,6 +20,7 @@
 #define GATT_SERVICE_BLOOD_PRESSURE                         0x1810
 #define GATT_SERVICE_ALERT_NOTIFICATION                     0x1811
 #define GATT_SERVICE_HUMAN_INTERFACE_DEVICE                 0x1812
+#define GATT_SERVICE_TEST                                   0x18ff
 
 
 #define GATT_DECLARATION_PRIMARY_SERVICE                    0x2800
@@ -40,6 +41,7 @@
 #define GATT_OBJECT_TYPE_APPEARANCE                         0x2a01
 #define GATT_OBJECT_TYPE_SERVICE_CHANGED                    0x2a05
 #define GATT_OBJECT_TYPE_BATTERY_LEVEL                      0x2a19
+#define GATT_OBJECT_TYPE_TEST                               0x2aff
 
 
 #define GATT_PERMISSION_READ                                0x01
@@ -54,7 +56,7 @@
 
 #define GATT_CHARACTERISTIC_PROPERITY_BROADCAST             0x01
 #define GATT_CHARACTERISTIC_PROPERITY_READ                  0x02
-#define GATT_CHARACTERISTIC_PROPERITY_WRITE_WITHOUT_RESP    0x04
+#define GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP          0x04
 #define GATT_CHARACTERISTIC_PROPERITY_WRITE                 0x08
 #define GATT_CHARACTERISTIC_PROPERITY_NOTIFY                0x10
 #define GATT_CHARACTERISTIC_PROPERITY_INDICATE              0x20
