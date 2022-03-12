@@ -65,7 +65,7 @@ uint8_t gatt_service_count = 0;
 void gatt_init() {
     gatt_add_service(service_gencric_access, 0x0001, 0x0003, GATT_SERVICE_GENERIC_ACCESS);
     gatt_add_service(service_gencric_attribute, 0x0010, 0x0012, GATT_SERVICE_GENERIC_ATTRIBUTE);
-    gatt_add_service(service_battery, 0x0100, 0x0102, GATT_SERVICE_BATTERY);
+    gatt_add_service(service_battery, 0x0100, 0x0ffff, GATT_SERVICE_BATTERY); // latest service end_handle must be 0xffff?
 }
 
 void gatt_add_service(att_item *items, uint16_t start_handle, uint16_t end_handle, uint16_t service) {
