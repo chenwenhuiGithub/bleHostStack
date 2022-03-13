@@ -134,11 +134,14 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
                  data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
         LOG_INFO("/***** peer device connects success *****/");
         break;
+    case HCI_EVENT_LE_CONNECTION_UPDATE_COMPLETE:
+        LOG_INFO("le_connection_update_complete status:%u, connect_handle:0x%02x%02x, interval:%0.2fms, latency:%u, timeout:%ums",
+                 data[1], data[2], (data[3] & 0x0f), (data[4] | (data[5] << 8)) * 1.25, data[6] | (data[7] << 8), (data[8] | (data[9] << 8)) * 10);
+        break;
     case HCI_EVENT_LE_REMOTE_CONNECTION_PARAMETER_REQUEST:
         LOG_INFO("le_remote_connection_parameter_request connect_handle:0x%02x%02x, interval_min:%0.2fms, interval_max:%0.2fms, max_latency:%u, timeout:%ums",
                  data[1], (data[2] & 0x0f), (data[3] | (data[4] << 8)) * 1.25, (data[5] | (data[6] << 8)) * 1.25,
                  data[7] | (data[8] << 8), (data[9] | (data[10] << 8)) * 10);
-        // hci_send_cmd_le_remote_connection_parameter_request_negative_reply();
         memcpy_s(remote_connection_parameter_request_reply, 10, data + 1, 10);
         remote_connection_parameter_request_reply[12] = 0xff;
         remote_connection_parameter_request_reply[13] = 0xff;
