@@ -58,10 +58,13 @@
 #define ATT_OPERATE_SIGNED_WRITE_CMD                    0xd2
 
 
-#define ATT_LENGTH_HEADER								1
-#define ATT_LENGTH_UUID16								2
-#define ATT_LENGTH_UUID128								16
-#define ATT_LENGTH_ERROR_RESP							5
+#define ATT_LENGTH_HEADER                               1
+#define ATT_LENGTH_UUID16                               2
+#define ATT_LENGTH_UUID128                              16
+#define ATT_LENGTH_ERROR_RESP                           5
+#define ATT_LENGTH_EXCHANGE_MTU_RESP                    3
+
+#define ATT_MTU_DEFAULT                                 23
 
 // TODO: support 16 Bytes uuid
 #if 0
@@ -91,5 +94,8 @@ void att_recv_read_by_type_req(uint8_t *data, uint16_t length);
 void att_recv_read_req(uint8_t *data, uint16_t length);
 void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length);
 void att_send(uint8_t *data, uint16_t length);
+void att_set_max_mtu(uint16_t mtu);
+void att_recv_exchange_mtu_req(uint8_t *data, uint16_t length);
+void att_send_exchange_mtu_resp(uint16_t mtu);
 
 #endif // ATT_H

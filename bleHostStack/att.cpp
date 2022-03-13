@@ -3,12 +3,16 @@
 #include "gatt.h"
 #include "log.h"
 
+uint16_t att_mtu = ATT_MTU_DEFAULT;
+uint16_t att_max_mtu = ATT_MTU_DEFAULT;
+
 void att_recv(uint8_t *data, uint16_t length) {
     uint8_t op_code = data[0];
 
     switch (op_code) {
     // case ATT_OPERATE_ERROR_RESP: att_recv_error_resp(); break;
-    // case ATT_OPERATE_EXCHANGE_MTU_REQ: att_recv_exchange_mtu_req(); break;
+    case ATT_OPERATE_EXCHANGE_MTU_REQ:
+        att_recv_exchange_mtu_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     // case ATT_OPERATE_EXCHANGE_MTU_RESP: att_recv_exchange_mtu_resp(); break;
     case ATT_OPERATE_FIND_INFORMATION_REQ:
         att_recv_find_information_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
@@ -83,4 +87,27 @@ void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length) {
 
 void att_send(uint8_t *data, uint16_t length) {
     l2cap_send(L2CAP_CID_ATT, data, length);
+}
+
+void att_set_max_mtu(uint16_t mtu) {
+    att_max_mtu = mtu;
+    LOG_INFO("set att_max_mtu:%u", att_max_mtu);
+}
+
+void att_recv_exchange_mtu_req(uint8_t *data, uint16_t length) {
+    uint16_t client_mtu = data[0] | (data[1] << 8);
+    uint16_t min = (att_max_mtu > client_mtu) ? client_mtu : att_max_mtu;
+    att_mtu = (ATT_MTU_DEFAULT > min) ? ATT_MTU_DEFAULT : min;
+    LOG_INFO("set att_mtu:%u", att_mtu);
+
+    att_send_exchange_mtu_resp(att_mtu);
+}
+
+void att_send_exchange_mtu_resp(uint16_t mtu) {
+    uint8_t data[ATT_LENGTH_EXCHANGE_MTU_RESP] = { 0x00 };
+
+    data[0] = ATT_OPERATE_EXCHANGE_MTU_RESP;
+    data[1] = mtu;
+    data[2] = mtu >> 8;
+    att_send(data, ATT_LENGTH_EXCHANGE_MTU_RESP);
 }

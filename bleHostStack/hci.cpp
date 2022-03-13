@@ -11,7 +11,7 @@ uint8_t le_advertising_parameters[15] = {0x00, 0x08, 0x00, 0x08, 0x00, 0x00, 0x0
 // flag:0x06, device_name:wenhui_BLE
 uint8_t le_advertising_data[32] = {0x0f, 0x02, 0x01, 0x06, 0x0b, 0x09, 0x77, 0x65, 0x6e, 0x68, 0x75, 0x69, 0x5f, 0x42, 0x4c, 0x45,
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
+uint16_t le_acl_data_packet_length = 0;
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
 void hci_recv_evt(uint8_t *data, uint8_t length) {
@@ -86,6 +86,8 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
         case HCI_OCF_LE_READ_BUFFER_SIZE:
             LOG_INFO("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
                      data[3], (data[4] | (data[5] << 8)), data[6]);
+            le_acl_data_packet_length = data[4] | (data[5] << 8);
+            l2cap_set_max_mtu(le_acl_data_packet_length - HCI_LENGTH_PACKET_TYPE - HCI_LENGTH_ACL_HEADER);
             hci_send_cmd_le_set_event_mask();
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
@@ -151,6 +153,11 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
         LOG_INFO("le_enhanced_connection_complete status:%u, connect_handle:0x%02x%02x, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
         LOG_INFO("/***** peer device connects success *****/");
+        break;
+    case HCI_EVENT_LE_DATA_LENGTH_CHANGE:
+        LOG_INFO("le_data_length_change connect_handle:0x%02x%02x, max_tx_bytes:%u, max_tx_time:%uµs, max_rx_bytes:%u, max_rx_time:%uµs",
+                 data[1], (data[2] & 0x0f), data[3] | (data[4] << 8), data[5] | (data[6] << 8),
+                 data[7] | (data[8] << 8), data[9] | (data[10] << 8));
         break;
     default:
         LOG_WARNING("hci_recv_evt_le_meta invalid, sub_event:%u", sub_event);

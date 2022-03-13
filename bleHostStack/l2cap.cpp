@@ -3,6 +3,8 @@
 #include "att.h"
 #include "log.h"
 
+uint16_t l2cap_max_mtu = 0;
+
 void l2cap_recv(uint8_t *data, uint16_t length) {
     uint16_t data_length = data[0] | (data[1] << 8);
     uint16_t cid = data[2] | (data[3] << 8);
@@ -47,5 +49,11 @@ void l2cap_send(uint16_t cid, uint8_t *data, uint16_t length) {
     byteArray[3] = cid >> 8;
     memcpy_s((uint8_t*)byteArray.data() + L2CAP_LENGTH_HEADER, length, data, length);
     hci_send_acl((uint8_t*)byteArray.data(), byteArray.length());
+}
+
+void l2cap_set_max_mtu(uint16_t mtu) {
+    l2cap_max_mtu = mtu;
+    LOG_INFO("set l2cap_max_mtu:%u", l2cap_max_mtu);
+    att_set_max_mtu(l2cap_max_mtu - L2CAP_LENGTH_HEADER);
 }
 

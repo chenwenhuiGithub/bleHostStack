@@ -16,5 +16,6 @@ void l2cap_recv_bt_signal(uint8_t *data, uint16_t length);
 void l2cap_recv_connectless(uint8_t *data, uint16_t length);
 void l2cap_recv_ble_signal(uint8_t *data, uint16_t length);
 void l2cap_send(uint16_t cid, uint8_t *data, uint16_t length);
+void l2cap_set_max_mtu(uint16_t mtu);
 
 #endif // L2CAP_H
