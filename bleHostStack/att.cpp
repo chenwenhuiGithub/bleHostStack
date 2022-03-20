@@ -18,11 +18,20 @@ void att_recv(uint8_t *data, uint16_t length) {
         att_recv_read_by_type_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     case ATT_OPERATE_READ_REQ:
         att_recv_read_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
+    case ATT_OPERATE_READ_BLOB_REQ:
+        att_recv_read_blob_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     case ATT_OPERATE_READ_BY_GROUP_TYPE_REQ:
         att_recv_read_by_group_type_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     default:
         LOG_WARNING("att_recv invalid, op_code:%u", op_code); break;
     }
+}
+
+void att_recv_read_blob_req(uint8_t *data, uint16_t length) {
+    uint16_t handle = data[0] | (data[1] << 8);
+    uint16_t offset = data[2] | (data[3] << 8);
+
+    gatt_recv_read_blob_req(handle, offset);
 }
 
 void att_recv_read_req(uint8_t *data, uint16_t length) {

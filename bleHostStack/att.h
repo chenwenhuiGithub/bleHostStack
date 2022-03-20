@@ -64,6 +64,9 @@
 #define ATT_LENGTH_ERROR_RESP                           5
 #define ATT_LENGTH_EXCHANGE_MTU_RESP                    3
 
+#define ATT_UUID_TYPE_BITS_16                           1
+#define ATT_UUID_TYPE_BITS_128                          2
+
 #define ATT_MTU_DEFAULT                                 23
 
 // TODO: support 16 Bytes uuid
@@ -93,6 +96,7 @@ void att_recv_find_information_req(uint8_t *data, uint16_t length);
 void att_recv_read_by_type_req(uint8_t *data, uint16_t length);
 void att_recv_read_req(uint8_t *data, uint16_t length);
 void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length);
+void att_recv_read_blob_req(uint8_t *data, uint16_t length);
 void att_send(uint8_t *data, uint16_t length);
 uint16_t att_get_mtu();
 void att_set_max_mtu(uint16_t mtu);
