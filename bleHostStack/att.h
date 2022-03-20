@@ -94,6 +94,7 @@ void att_recv_read_by_type_req(uint8_t *data, uint16_t length);
 void att_recv_read_req(uint8_t *data, uint16_t length);
 void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length);
 void att_send(uint8_t *data, uint16_t length);
+uint16_t att_get_mtu();
 void att_set_max_mtu(uint16_t mtu);
 void att_recv_exchange_mtu_req(uint8_t *data, uint16_t length);
 void att_send_exchange_mtu_resp(uint16_t mtu);

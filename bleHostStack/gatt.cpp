@@ -18,7 +18,7 @@ att_handle(2B)	att_type(UUID, 2B/16B)							att_value(0-512B)                   
                                                                 0x0012(handle)
                                                                 0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)
 0x0012			0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)		0x0000, 0x0000                                  0x01(GATT_PERMISSION_READ)
-0x0013          0x2902(GATT_CLIENT_CHARACTER_CONFIG)                                                            0x0001(GATT_PERMISSION_READ)
+0x0013          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
 
 // BATTERY service
 0x0100			0x2800(GATT_DECLARATION_PRIMARY_SERVICE)		0x180f(GATT_SERVICE_BATTERY)                    0x01(GATT_PERMISSION_READ)
@@ -26,15 +26,15 @@ att_handle(2B)	att_type(UUID, 2B/16B)							att_value(0-512B)                   
                                                                 0x0102(handle)
                                                                 0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)
 0x0102			0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)			0x62(98%)                                       0x01(GATT_PERMISSION_READ)
-0x0103          0x2902(GATT_CLIENT_CHARACTER_CONFIG)                                                            0x0001(GATT_PERMISSION_READ)
+0x0103          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
 
 // TEST service
-0x1000          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x18ff(GATT_SERVICE_TEST)                       0x0001(GATT_PERMISSION_READ)
-0x1001          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x16(GATT_CHARACTERISTIC_PROPERITY_READ/WRITE_NORESP/NOTIFY)  0x0001(GATT_PERMISSION_READ)
+0x1000          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x18ff(GATT_SERVICE_TEST)                       0x01(GATT_PERMISSION_READ)
+0x1001          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x16(GATT_CHARACTERISTIC_PROPERITY_READ/WRITE_NORESP/NOTIFY)  0x01(GATT_PERMISSION_READ)
                                                                 0x1002(handle)
                                                                 0x2aff(GATT_OBJECT_TYPE_TEST)
-0x1002          0x2aff(GATT_OBJECT_TYPE_TEST)                   [512 Bytes]                                     0x0001(GATT_PERMISSION_READ)
-0x1003          0x2902(GATT_CLIENT_CHARACTER_CONFIG)                                                            0x0001(GATT_PERMISSION_READ)
+0x1002          0x2aff(GATT_OBJECT_TYPE_TEST)                   [8 Bytes]                                       0x01(GATT_PERMISSION_READ)
+0x1003          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
 */
 
 uint8_t uuid_gencric_access[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
@@ -110,6 +110,7 @@ void gatt_add_service(att_item *items, uint16_t items_cnt, uint16_t start_handle
     }
 }
 
+// read value of one characteristic
 void gatt_recv_read_req(uint16_t handle) {
     QByteArray byteArray;
     att_item *item = nullptr;
@@ -201,26 +202,42 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
 // discover all services and it's start and end handle, just used for primary and second service
 void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type) {
     QByteArray byteArray;
+    uint16_t att_mtu = att_get_mtu();
+    uint16_t offset= 2;
+    bool found = false;
+
+    byteArray.resize(att_mtu);
+    byteArray[0] = ATT_OPERATE_READ_BY_GROUP_TYPE_RESP;
+    byteArray[1] = 6; // start_handle, end_handle, uuid, TODO: 128 bits uuid
 
     for (uint8_t index = 0; index < service_count; index++) {
         if ((start_handle <= services[index].start_handle) && (services[index].end_handle <= end_handle)) {
             if (services[index].items[0].type == group_type) {
-                byteArray.resize(6 + services[index].items[0].value_length);
-                byteArray[0] = ATT_OPERATE_READ_BY_GROUP_TYPE_RESP;
-                byteArray[1] = 4 + services[index].items[0].value_length;
-                byteArray[2] = services[index].start_handle;
-                byteArray[3] = services[index].start_handle >> 8;
-                byteArray[4] = services[index].end_handle;
-                byteArray[5] = services[index].end_handle >> 8;
-                memcpy_s((uint8_t*)byteArray.data() + 6, services[index].items[0].value_length,
-                        services[index].items[0].value, services[index].items[0].value_length);
-                att_send((uint8_t*)byteArray.data(), byteArray.length());
-                return; // TODO: support multiple services based on ATT_MTU check
+                found = true;
+
+                byteArray[offset] = services[index].start_handle;
+                offset++;
+                byteArray[offset] = services[index].start_handle >> 8;
+                offset++;
+                byteArray[offset] = services[index].end_handle;
+                offset++;
+                byteArray[offset] = services[index].end_handle >> 8;
+                offset++;
+                memcpy_s((uint8_t*)byteArray.data() + offset, services[index].items[0].value_length,
+                         services[index].items[0].value, services[index].items[0].value_length);
+                offset += services[index].items[0].value_length;
+                if ((offset + 6) > att_mtu) {
+                    break;
+                }
             }
         }
     }
 
-    gatt_send_error_resp(ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+    if (found) {
+        att_send((uint8_t*)byteArray.data(), offset);
+    } else {
+        gatt_send_error_resp(ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+    }
 }
 
 void gatt_send_error_resp(uint8_t op_code, uint16_t handle, uint8_t error_code) {

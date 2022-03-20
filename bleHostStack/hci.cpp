@@ -11,7 +11,6 @@ uint8_t le_advertising_parameters[15] = {0x00, 0x08, 0x00, 0x08, 0x00, 0x00, 0x0
 // flag:0x06, device_name:wenhui_BLE
 uint8_t le_advertising_data[32] = {0x0f, 0x02, 0x01, 0x06, 0x0b, 0x09, 0x77, 0x65, 0x6e, 0x68, 0x75, 0x69, 0x5f, 0x42, 0x4c, 0x45,
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-uint16_t le_acl_data_packet_length = 0;
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
 void hci_recv_evt(uint8_t *data, uint8_t length) {
@@ -86,8 +85,7 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
         case HCI_OCF_LE_READ_BUFFER_SIZE:
             LOG_INFO("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
                      data[3], (data[4] | (data[5] << 8)), data[6]);
-            le_acl_data_packet_length = data[4] | (data[5] << 8);
-            l2cap_set_max_mtu(le_acl_data_packet_length - HCI_LENGTH_PACKET_TYPE - HCI_LENGTH_ACL_HEADER);
+            l2cap_set_max_mtu(data[4] | (data[5] << 8));
             hci_send_cmd_le_set_event_mask();
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
@@ -204,7 +202,7 @@ void hci_send_acl(uint8_t *data, uint16_t length) {
     btsnoop_wirte((uint8_t*)(byteArray.data()), byteArray.length(), BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
-void hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf) {
+static void hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf) {
     buffer[0] = HCI_PACKET_TYPE_CMD;
     buffer[1] = ocf;
     buffer[2] = (ocf >> 8) | (ogf << 2);
@@ -327,4 +325,37 @@ void hci_send_cmd_le_set_advertising_enable(HCI_LE_ADVERTISING enable) {
     buffer[4] = enable;
     serial_write(buffer, HCI_LENGTH_CMD_LE_SET_ADVERTISING_ENABLE);
     btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_SET_ADVERTISING_ENABLE, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void hci_send_cmd_le_set_data_length(uint16_t connect_handle, uint16_t tx_octets, uint16_t tx_time) {
+    uint8_t buffer[HCI_LENGTH_CMD_LE_SET_DATA_LENGTH] = { 0x00 };
+    hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_DATA_LENGTH);
+    buffer[3] = 6;
+    buffer[4] = connect_handle;
+    buffer[5] = (connect_handle >> 8) & 0x0f;
+    buffer[6] = tx_octets;
+    buffer[7] = (tx_octets >> 8) & 0x0f;
+    buffer[8] = tx_time;
+    buffer[9] = (tx_time >> 8) & 0x0f;
+    serial_write(buffer, HCI_LENGTH_CMD_LE_SET_DATA_LENGTH);
+    btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_SET_DATA_LENGTH, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void hci_send_cmd_le_read_suggested_default_data_length() {
+    uint8_t buffer[HCI_LENGTH_CMD_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH] = { 0x00 };
+    hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH);
+    serial_write(buffer, HCI_LENGTH_CMD_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH);
+    btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void hci_send_cmd_le_write_suggested_default_data_length(uint16_t tx_octets, uint16_t tx_time) {
+    uint8_t buffer[HCI_LENGTH_CMD_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH] = { 0x00 };
+    hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH);
+    buffer[3] = 4;
+    buffer[4] = tx_octets;
+    buffer[5] = (tx_octets >> 8) & 0x0f;
+    buffer[6] = tx_time;
+    buffer[7] = (tx_time >> 8) & 0x0f;
+    serial_write(buffer, HCI_LENGTH_CMD_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH);
+    btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }

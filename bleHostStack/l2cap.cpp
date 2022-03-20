@@ -53,7 +53,6 @@ void l2cap_send(uint16_t cid, uint8_t *data, uint16_t length) {
 
 void l2cap_set_max_mtu(uint16_t mtu) {
     l2cap_max_mtu = mtu;
-    LOG_INFO("set l2cap_max_mtu:%u", l2cap_max_mtu);
     att_set_max_mtu(l2cap_max_mtu - L2CAP_LENGTH_HEADER);
 }
 

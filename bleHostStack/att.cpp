@@ -10,10 +10,8 @@ void att_recv(uint8_t *data, uint16_t length) {
     uint8_t op_code = data[0];
 
     switch (op_code) {
-    // case ATT_OPERATE_ERROR_RESP: att_recv_error_resp(); break;
     case ATT_OPERATE_EXCHANGE_MTU_REQ:
         att_recv_exchange_mtu_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
-    // case ATT_OPERATE_EXCHANGE_MTU_RESP: att_recv_exchange_mtu_resp(); break;
     case ATT_OPERATE_FIND_INFORMATION_REQ:
         att_recv_find_information_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     case ATT_OPERATE_READ_BY_TYPE_REQ:
@@ -22,7 +20,6 @@ void att_recv(uint8_t *data, uint16_t length) {
         att_recv_read_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
     case ATT_OPERATE_READ_BY_GROUP_TYPE_REQ:
         att_recv_read_by_group_type_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER); break;
-    // case ATT_OPERATE_READ_BY_GROUP_TYPE_RESP: att_recv_read_by_group_type_resp(); break;
     default:
         LOG_WARNING("att_recv invalid, op_code:%u", op_code); break;
     }
@@ -91,7 +88,6 @@ void att_send(uint8_t *data, uint16_t length) {
 
 void att_set_max_mtu(uint16_t mtu) {
     att_max_mtu = mtu;
-    LOG_INFO("set att_max_mtu:%u", att_max_mtu);
 }
 
 void att_recv_exchange_mtu_req(uint8_t *data, uint16_t length) {
@@ -110,4 +106,8 @@ void att_send_exchange_mtu_resp(uint16_t mtu) {
     data[1] = mtu;
     data[2] = mtu >> 8;
     att_send(data, ATT_LENGTH_EXCHANGE_MTU_RESP);
+}
+
+uint16_t att_get_mtu() {
+    return att_mtu;
 }

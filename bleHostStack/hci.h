@@ -162,6 +162,9 @@
 #define HCI_OCF_LE_CREATE_CONNECT                                   0x0d
 #define HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_REPLY        0x20
 #define HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_NEG_REPLY    0x21
+#define HCI_OCF_LE_SET_DATA_LENGTH                                  0x22
+#define HCI_OCF_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH               0x23
+#define HCI_OCF_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH              0x24
 
 // event codes
 #define HCI_EVENT_INQUIRY_COMPLETE                                  0x01
@@ -256,6 +259,9 @@
 #define HCI_LENGTH_CMD_LE_SET_ADVERTISING_PARAMETERS                19
 #define HCI_LENGTH_CMD_LE_SET_ADVERTISING_DATA                      36
 #define HCI_LENGTH_CMD_LE_SET_ADVERTISING_ENABLE                    5
+#define HCI_LENGTH_CMD_LE_SET_DATA_LENGTH                           10
+#define HCI_LENGTH_CMD_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH        4
+#define HCI_LENGTH_CMD_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH       8
 
 #define HCI_ACL_SEGMENTATION_PACKET_FIRST                           0x20
 #define HCI_ACL_SEGMENTATION_PACKET_SUBSEQUENCE                     0x10
@@ -294,5 +300,8 @@ void hci_send_cmd_le_set_event_mask();
 void hci_send_cmd_le_set_advertising_parameters();
 void hci_send_cmd_le_set_advertising_data();
 void hci_send_cmd_le_set_advertising_enable(HCI_LE_ADVERTISING enable);
+void hci_send_cmd_le_set_data_length(uint16_t connect_handle, uint16_t tx_octets, uint16_t tx_time);
+void hci_send_cmd_le_read_suggested_default_data_length();
+void hci_send_cmd_le_write_suggested_default_data_length(uint16_t tx_octets, uint16_t tx_time);
 
 #endif // HCI_H
