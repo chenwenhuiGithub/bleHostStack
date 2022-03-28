@@ -1,5 +1,4 @@
 #include "gatt.h"
-#include <vector>
 #include <QByteArray>
 
 /*
@@ -58,8 +57,8 @@ uint8_t battery_level[] = {0x62}; // 98%
 uint8_t uuid_test[] = {(uint8_t)GATT_SERVICE_TEST, GATT_SERVICE_TEST >> 8};
 uint8_t characteristic_test[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP| GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
                                  0x02, 0x10, (uint8_t)GATT_OBJECT_TYPE_TEST, GATT_OBJECT_TYPE_TEST >> 8};
-uint8_t buff_test[26] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-                         'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
+uint8_t buff_test[36] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
+                         's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
 
 att_item items_gencric_access[] = {
