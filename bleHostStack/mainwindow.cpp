@@ -7,6 +7,7 @@
 #include "ringbuffer.h"
 #include "gatt.h"
 #include "log.h"
+#include "aes.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -51,8 +52,24 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonTest_clicked()
 {
-    gatt_init();
-    hci_send_cmd_reset();
+    // gatt_init();
+    // hci_send_cmd_reset();
+    uint8_t key[16] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'};
+    uint8_t input[16] = "hello world";
+    uint8_t output[16] = {0};
+
+    aes_set_key(key, 16);
+    LOG_INFO("input: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             input[0], input[1], input[2], input[3], input[4], input[5], input[6], input[7],
+             input[8], input[9], input[10], input[11], input[12], input[13], input[14], input[15]);
+    aes_encrypt(input, output);
+    LOG_INFO("output: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             output[0], output[1], output[2], output[3], output[4], output[5], output[6], output[7],
+             output[8], output[9], output[10], output[11], output[12], output[13], output[14], output[15]);
+    aes_decrypt(output, input);
+    LOG_INFO("input: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             input[0], input[1], input[2], input[3], input[4], input[5], input[6], input[7],
+             input[8], input[9], input[10], input[11], input[12], input[13], input[14], input[15]);
 }
 
 
