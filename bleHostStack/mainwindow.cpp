@@ -7,6 +7,7 @@
 #include "ringbuffer.h"
 #include "gatt.h"
 #include "log.h"
+#include "sm.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -51,8 +52,22 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonTest_clicked()
 {
-    gatt_init();
-    hci_send_cmd_reset();
+    // gatt_init();
+    // hci_send_cmd_reset();
+    uint8_t k[16] = {0};
+    uint8_t r[16] = {0xe0, 0x2e, 0x70, 0xc6, 0x4e, 0x27, 0x88, 0x63, 0x0e, 0x6f, 0xad, 0x56, 0x21, 0xd5, 0x83, 0x57};
+    uint8_t iat = 0x01;
+    uint8_t rat = 0x00;
+    uint8_t ia[6] = {0xa6, 0xa5, 0xa4, 0xa3, 0xa2, 0xa1};
+    uint8_t ra[6] = {0xb6, 0xb5, 0xb4, 0xb3, 0xb2, 0xb1};
+    uint8_t preq[7] = {0x01, 0x01, 0x00, 0x00, 0x10, 0x07, 0x07};
+    uint8_t pres[7] = {0x02, 0x03, 0x00, 0x00, 0x08, 0x00, 0x05};
+    uint8_t output[16] = {0};
+    // c1:0x1E1E3FEF878988EAD2A74DC5BEF13B86
+    sm_c1(k, r, preq, pres, iat, ia, rat, ra, output);
+    LOG_INFO("output: 0x%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+             output[15], output[14], output[13], output[12], output[11], output[10], output[9], output[8],
+             output[7], output[6], output[5], output[4], output[3], output[2], output[1], output[0]);
 }
 
 
