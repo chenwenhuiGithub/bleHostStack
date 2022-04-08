@@ -20,6 +20,7 @@ SOURCES += \
     serial.cpp \
     main.cpp \
     mainwindow.cpp \
+    sm.cpp \
     tinycrypt/source/aes_decrypt.c \
     tinycrypt/source/aes_encrypt.c \
     tinycrypt/source/cbc_mode.c \
@@ -46,6 +47,7 @@ HEADERS += \
     ringbuffer.h \
     serial.h \
     mainwindow.h \
+    sm.h \
     tinycrypt/include/aes.h \
     tinycrypt/include/cbc_mode.h \
     tinycrypt/include/ccm_mode.h \
