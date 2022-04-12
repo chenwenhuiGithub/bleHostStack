@@ -3,6 +3,7 @@
 #include "btsnoop.h"
 #include "l2cap.h"
 #include "log.h"
+#include "sm.h"
 
 uint8_t class_of_device[3] = {0x92, 0x07, 0x14};
 uint8_t event_mask[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f};
@@ -156,6 +157,14 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
         LOG_INFO("le_data_length_change connect_handle:0x%02x%02x, max_tx_bytes:%u, max_tx_time:%uµs, max_rx_bytes:%u, max_rx_time:%uµs",
                  data[1], (data[2] & 0x0f), data[3] | (data[4] << 8), data[5] | (data[6] << 8),
                  data[7] | (data[8] << 8), data[9] | (data[10] << 8));
+        break;
+    case HCI_EVENT_LE_READ_LOCAL_P256_PUBLIC_KEY_COMPLETE:
+        LOG_INFO("le_read_local_p256_public_key_complete status:%u", data[1]);
+        sm_set_local_pairing_public_key(&data[2]);
+        break;
+    case HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE:
+        LOG_INFO("le_generate_dhkey_complete status:%u", data[1]);
+        sm_set_local_dhkey(&data[2]);
         break;
     default:
         LOG_WARNING("hci_recv_evt_le_meta invalid, sub_event:%u", sub_event);
@@ -358,4 +367,20 @@ void hci_send_cmd_le_write_suggested_default_data_length(uint16_t tx_octets, uin
     buffer[7] = (tx_time >> 8) & 0x0f;
     serial_write(buffer, HCI_LENGTH_CMD_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH);
     btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void hci_send_cmd_le_read_local_P256_public_key() {
+    uint8_t buffer[HCI_LENGTH_CMD_LE_READ_LOCAL_P256_PUBLIC_KEY] = { 0x00 };
+    hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY);
+    serial_write(buffer, HCI_LENGTH_CMD_LE_READ_LOCAL_P256_PUBLIC_KEY);
+    btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_READ_LOCAL_P256_PUBLIC_KEY, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void hci_send_cmd_le_generate_dhkey(uint8_t* data, uint8_t length) {
+    uint8_t buffer[HCI_LENGTH_CMD_LE_GENERATE_DHKEY] = { 0x00 };
+    hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY);
+    buffer[3] = length;
+    memcpy_s(&buffer[4], length, data, length);
+    serial_write(buffer, HCI_LENGTH_CMD_LE_GENERATE_DHKEY);
+    btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_GENERATE_DHKEY, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }

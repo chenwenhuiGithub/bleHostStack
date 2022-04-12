@@ -1,6 +1,7 @@
 #include "l2cap.h"
 #include "hci.h"
 #include "att.h"
+#include "sm.h"
 #include "log.h"
 
 uint16_t l2cap_max_mtu = 0;
@@ -19,7 +20,7 @@ void l2cap_recv(uint8_t *data, uint16_t length) {
     case L2CAP_CID_CONNECTLESS: l2cap_recv_connectless(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
     case L2CAP_CID_ATT: att_recv(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
     case L2CAP_CID_BLE_SIGNAL: l2cap_recv_ble_signal(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
-    // case L2CAP_CID_SM: sm_recv(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
+    case L2CAP_CID_SM: sm_recv(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER); break;
     default: LOG_WARNING("l2cap_recv invalid, cid:%u", cid); break;
     }
 }

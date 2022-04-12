@@ -1,5 +1,8 @@
 #include <memory>
 #include "sm.h"
+#include "log.h"
+#include "hci.h"
+#include "l2cap.h"
 #include "tinycrypt/include/cmac_mode.h"
 
 uint32_t get_be32(uint8_t* data) {
@@ -172,3 +175,77 @@ void sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* out_passkey
     sm_aes_cmac(xs, m, sizeof(m), xs);
     *out_passkey = get_be32(xs + 12) % 1000000;
 }
+
+uint8_t pairing_req[SM_LENGTH_PAIRING_REQ] = {0};
+uint8_t pairing_resp[SM_LENGTH_PAIRING_RESP] = {0};
+uint8_t local_pairing_public_key[SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
+uint8_t remote_pairing_public_key[SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
+uint8_t local_dhkey[SM_LENGTH_DHKEY] = {0};
+
+void sm_recv(uint8_t *data, uint16_t length) {
+    uint8_t op_code = data[0];
+
+    switch (op_code) {
+    case SM_OPERATE_PAIRING_REQ:
+        sm_recv_pairing_req(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+    case SM_OPERATE_PAIRING_PUBLIC_KEY:
+        sm_recv_pairing_public_key(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+    case SM_OPERATE_PAIRING_RANDOM:
+        sm_recv_pairing_random(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+    case SM_OPERATE_PAIRING_DHKEY_CHECK:
+        sm_recv_pairing_dhkey_check(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+    default:
+        LOG_WARNING("sm_recv invalid, op_code:%u", op_code); break;
+    }
+}
+
+void sm_recv_pairing_req(uint8_t *data, uint16_t length) {
+    LOG_INFO("sm_recv_pairing_req iocap:%u, oob_flag:%u, auth_req:%u, max_encrypt_key_size:%u, initator_key_distribution:%u, responder_key_distribution:%u",
+             data[1], data[2], data[3], data[4], data[5], data[6]);
+    memcpy(pairing_req, data, SM_LENGTH_PAIRING_REQ);
+
+    pairing_resp[0] = SM_OPERATE_PAIRING_RESP;
+    pairing_resp[1] = SM_IOCAP;
+    pairing_resp[2] = SM_OOB_DATA_FLAG;
+    pairing_resp[3] = SM_AUTH;
+    pairing_resp[4] = SM_MAX_ENCRYPT_KEY_SIZE;
+    pairing_resp[5] = SM_KEY_DISTRIBUTION;
+    pairing_resp[6] = SM_KEY_DISTRIBUTION;
+    sm_send(pairing_resp, SM_LENGTH_PAIRING_RESP);
+}
+
+void sm_recv_pairing_public_key(uint8_t *data, uint16_t length) {
+    memcpy(remote_pairing_public_key, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
+    hci_send_cmd_le_read_local_P256_public_key(); // wait HCI_EVENT_LE_READ_LOCAL_P256_PUBLIC_KEY_COMPLETE
+    hci_send_cmd_le_generate_dhkey(remote_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY); // wait HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE
+    sm_send_local_pairing_public_key(local_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY);
+}
+
+void sm_recv_pairing_random(uint8_t *data, uint16_t length) {
+
+}
+
+void sm_recv_pairing_dhkey_check(uint8_t *data, uint16_t length) {
+
+}
+
+void sm_send_local_pairing_public_key(uint8_t *data, uint16_t length) {
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY] = { 0x00 };
+
+    buf[0] = SM_OPERATE_PAIRING_PUBLIC_KEY;
+    memcpy(&buf[1], data, length);
+    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY);
+}
+
+void sm_set_local_pairing_public_key(uint8_t *data) {
+    memcpy(local_pairing_public_key, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
+}
+
+void sm_set_local_dhkey(uint8_t *data) {
+    memcpy(local_dhkey, data, SM_LENGTH_DHKEY);
+}
+
+void sm_send(uint8_t *data, uint16_t length) {
+    l2cap_send(L2CAP_CID_SM, data, length);
+}
+
