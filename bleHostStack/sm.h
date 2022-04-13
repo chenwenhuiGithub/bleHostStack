@@ -49,7 +49,7 @@
 #define SM_AUTH_MITM                                        0x04
 #define SM_AUTH_SECURE_CONNECTION                           0x08
 #define SM_AUTH_KEYPRESS                                    0x10
-#define SM_AUTH                                                SM_AUTH_BONDING | SM_AUTH_MITM | SM_AUTH_SECURE_CONNECTION
+#define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM | SM_AUTH_SECURE_CONNECTION
 
 #define SM_MIN_ENCRYPT_KEY_SIZE                             7
 #define SM_MAX_ENCRYPT_KEY_SIZE                             16
@@ -63,8 +63,8 @@
 
 
 #define SM_LENGTH_HEADER                                    1
-#define SM_LENGTH_PAIRING_REQ                               7
-#define SM_LENGTH_PAIRING_RESP                              7
+#define SM_LENGTH_PAIRING_REQ                               6
+#define SM_LENGTH_PAIRING_RESP                              6
 #define SM_LENGTH_PAIRING_PUBLIC_KEY                        64
 #define SM_LENGTH_PAIRING_CONFIRM                           16
 #define SM_LENGTH_PAIRING_RANDOM                            16
@@ -89,6 +89,7 @@ void sm_recv_pairing_req(uint8_t *data, uint16_t length);
 void sm_recv_pairing_public_key(uint8_t *data, uint16_t length);
 void sm_recv_pairing_random(uint8_t *data, uint16_t length);
 void sm_recv_pairing_dhkey_check(uint8_t *data, uint16_t length);
+void sm_send_pairing_resp(uint8_t *data);
 void sm_send_pairing_public_key(uint8_t *data);
 void sm_send_pairing_confirm(uint8_t *data);
 void sm_send_pairing_random(uint8_t *data);
@@ -97,5 +98,6 @@ void sm_send_pairing_failed(uint8_t reason);
 void sm_set_local_pairing_public_key(uint8_t *data);
 void sm_set_local_dhkey(uint8_t *data);
 void sm_send(uint8_t *data, uint16_t length);
+void sm_get_pairing_method();
 
 #endif // SM_H

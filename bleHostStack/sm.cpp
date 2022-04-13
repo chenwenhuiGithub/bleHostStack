@@ -185,8 +185,8 @@ typedef enum {
     OOB
 } sm_pairing_method;
 
-uint8_t pairing_req[SM_LENGTH_PAIRING_REQ] = {0};
-uint8_t pairing_resp[SM_LENGTH_PAIRING_RESP] = {0};
+uint8_t pairing_req[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_REQ] = {0};
+uint8_t pairing_resp[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP] = {0};
 uint8_t local_pairing_public_key[SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
 uint8_t remote_pairing_public_key[SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
 uint8_t local_dhkey[SM_LENGTH_DHKEY] = {0};
@@ -205,9 +205,6 @@ bool secure_connection_used = false;
 sm_pairing_method pairing_method = JUST_WORKS;
 
 void sm_get_pairing_method() {
-
-    // horizontal: initiator capabilities
-    // vertial:    responder capabilities
     sm_pairing_method legacy_pairing_method_table[5][5] = {
         {JUST_WORKS, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY},
         {JUST_WORKS, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY},
@@ -284,9 +281,8 @@ void sm_recv(uint8_t *data, uint16_t length) {
 }
 
 void sm_recv_pairing_req(uint8_t *data, uint16_t length) {
-    LOG_INFO("pairing_req iocap:%u, oob_flag:%u, auth_req:%u, max_encrypt_key_size:%u, initator_key_distribution:%u, responder_key_distribution:%u",
-             data[1], data[2], data[3], data[4], data[5], data[6]);
-    memcpy(pairing_req, data, SM_LENGTH_PAIRING_REQ);
+    pairing_req[0] = SM_OPERATE_PAIRING_REQ;
+    memcpy(pairing_req + 1, data, SM_LENGTH_PAIRING_REQ);
 
     pairing_resp[0] = SM_OPERATE_PAIRING_RESP;
     pairing_resp[1] = SM_IOCAP;
@@ -295,14 +291,17 @@ void sm_recv_pairing_req(uint8_t *data, uint16_t length) {
     pairing_resp[4] = SM_MAX_ENCRYPT_KEY_SIZE;
     pairing_resp[5] = SM_KEY_DISTRIBUTION;
     pairing_resp[6] = SM_KEY_DISTRIBUTION;
-    LOG_INFO("pairing_resp iocap:%u, oob_flag:%u, auth_req:%u, max_encrypt_key_size:%u, initator_key_distribution:%u, responder_key_distribution:%u",
+
+    LOG_INFO("pairing_req iocap:%u, oob_flag:%u, auth_req:%u, max_encrypt_key_size:%u, i_key_distribution:%u, r_key_distribution:%u",
+             pairing_req[1], pairing_req[2], pairing_req[3], pairing_req[4], pairing_req[5], pairing_req[6]);
+    LOG_INFO("pairing_resp iocap:%u, oob_flag:%u, auth_req:%u, max_encrypt_key_size:%u, i_key_distribution:%u, r_key_distribution:%u",
              pairing_resp[1], pairing_resp[2], pairing_resp[3], pairing_resp[4], pairing_resp[5], pairing_resp[6]);
-    sm_send(pairing_resp, SM_LENGTH_PAIRING_RESP);
+
+    sm_send_pairing_resp(pairing_resp + 1);
 }
 
 void sm_recv_pairing_public_key(uint8_t *data, uint16_t length) {
     memcpy(remote_pairing_public_key, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
-    hci_send_cmd_le_read_local_P256_public_key(); // wait HCI_EVENT_LE_READ_LOCAL_P256_PUBLIC_KEY_COMPLETE
     hci_send_cmd_le_generate_dhkey(remote_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY); // wait HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE
     sm_send_pairing_public_key(local_pairing_public_key);
 
@@ -324,9 +323,10 @@ void sm_recv_pairing_random(uint8_t *data, uint16_t length) {
     uint32_t vb = 0;
 
     memcpy(remote_random, data, SM_LENGTH_PAIRING_RANDOM);
-    sm_send_pairing_random(local_random);
     sm_g2(remote_pairing_public_key, local_pairing_public_key, remote_random, local_random, &vb);
     LOG_INFO("sm_g2: %u", vb);
+
+    sm_send_pairing_random(local_random);
 }
 
 void sm_recv_pairing_dhkey_check(uint8_t *data, uint16_t length) {
@@ -352,40 +352,48 @@ void sm_recv_pairing_dhkey_check(uint8_t *data, uint16_t length) {
     }
 }
 
+void sm_send_pairing_resp(uint8_t *data) {
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP] = {0};
+
+    buf[0] = SM_OPERATE_PAIRING_RESP;
+    memcpy(buf + 1, data, SM_LENGTH_PAIRING_RESP);
+    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP);
+}
+
 void sm_send_pairing_public_key(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY] = { 0x00 };
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_PUBLIC_KEY;
-    memcpy(&buf[1], data, SM_LENGTH_PAIRING_PUBLIC_KEY);
+    memcpy(buf + 1, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY);
 }
 
 void sm_send_pairing_confirm(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM] = { 0x00 };
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_CONFIRM;
-    memcpy(&buf[1], data, SM_LENGTH_PAIRING_CONFIRM);
+    memcpy(buf + 1, data, SM_LENGTH_PAIRING_CONFIRM);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM);
 }
 
 void sm_send_pairing_random(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM] = { 0x00 };
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_RANDOM;
-    memcpy(&buf[1], data, SM_LENGTH_PAIRING_RANDOM);
+    memcpy(buf + 1, data, SM_LENGTH_PAIRING_RANDOM);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM);
 }
 
 void sm_send_pairing_dhkey_check(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK] = { 0x00 };
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_DHKEY_CHECK;
-    memcpy(&buf[1], data, SM_LENGTH_DHKEY_CHECK);
+    memcpy(buf + 1, data, SM_LENGTH_DHKEY_CHECK);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK);
 }
 
 void sm_send_pairing_failed(uint8_t reason) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_FAILED] = { 0x00 };
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_FAILED] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_FAILED;
     buf[1] = reason;

@@ -91,7 +91,7 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
             LOG_INFO("le_set_event_mask status:%u", data[3]);
-            hci_send_cmd_le_set_advertising_parameters();
+            hci_send_cmd_le_read_local_P256_public_key();
             break;
         case HCI_OCF_LE_SET_ADV_PARAM:
             LOG_INFO("le_set_advertising_parameters status:%u", data[3]);
@@ -161,6 +161,7 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
     case HCI_EVENT_LE_READ_LOCAL_P256_PUBLIC_KEY_COMPLETE:
         LOG_INFO("le_read_local_p256_public_key_complete status:%u", data[1]);
         sm_set_local_pairing_public_key(&data[2]);
+        hci_send_cmd_le_set_advertising_parameters();
         break;
     case HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE:
         LOG_INFO("le_generate_dhkey_complete status:%u", data[1]);
