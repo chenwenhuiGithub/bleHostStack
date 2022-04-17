@@ -14,6 +14,11 @@ uint8_t le_advertising_data[32] = {0x0f, 0x02, 0x01, 0x06, 0x0b, 0x09, 0x77, 0x6
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
+QByteArray segment_l2cap_bytearray;
+uint16_t segment_l2cap_total_length = 0;
+uint16_t segment_l2cap_current_length = 0;
+uint16_t segment_l2cap_received_length = 0;
+
 void hci_recv_evt(uint8_t *data, uint8_t length) {
     uint8_t event_code = data[0];
 
@@ -139,6 +144,9 @@ void hci_recv_evt_command_status(uint8_t *data, uint8_t length) {
         case HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY:
             LOG_INFO("le_read_local_p256_public_key status:%u", data[0]);
             break;
+        case HCI_OCF_LE_GENERATE_DHKEY:
+            LOG_INFO("le_generate_dhkey status:%u", data[0]);
+            break;
         default:
             LOG_WARNING("hci_recv_evt_command_status invalid, ogf:%u, ocf:%u", ogf, ocf);
             break;
@@ -219,9 +227,26 @@ void hci_recv_evt_number_of_completed_packets(uint8_t* data, uint8_t length) {
 
 void hci_recv_acl(uint8_t *data, uint16_t length) {
     connect_handle = data[0] | ((data[1] & 0x0f) << 8);
-    // uint8_t pb_flag = data[1] & 0x30; // TODO: support segmentation based on le_acl_data_packet_length
+    uint8_t pb_flag = data[1] & 0x30;
 
-    l2cap_recv(data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER);
+    if (HCI_ACL_SEGMENTATION_PACKET_FIRST == pb_flag) {
+        segment_l2cap_total_length = data[4] | (data[5] << 8);
+        segment_l2cap_current_length = length - HCI_LENGTH_ACL_HEADER;
+        segment_l2cap_received_length = segment_l2cap_current_length;
+        segment_l2cap_bytearray.resize(L2CAP_LENGTH_HEADER + segment_l2cap_total_length);
+        memcpy_s(&segment_l2cap_bytearray[0], segment_l2cap_received_length, data + HCI_LENGTH_ACL_HEADER, segment_l2cap_received_length);
+    } else if (HCI_ACL_SEGMENTATION_PACKET_CONTINUE == pb_flag) {
+        segment_l2cap_current_length = length - HCI_LENGTH_ACL_HEADER;
+        memcpy_s(&segment_l2cap_bytearray[segment_l2cap_received_length], segment_l2cap_current_length , data + HCI_LENGTH_ACL_HEADER, segment_l2cap_current_length);
+        segment_l2cap_received_length += segment_l2cap_current_length;
+    } else {
+        LOG_ERROR("hci_recv_acl invalid, pb_flag:%02x", pb_flag);
+        return;
+    }
+
+    if (segment_l2cap_received_length == segment_l2cap_total_length + L2CAP_LENGTH_HEADER) {
+        l2cap_recv((uint8_t*)(segment_l2cap_bytearray.data()), L2CAP_LENGTH_HEADER + segment_l2cap_total_length);
+    }
 }
 
 void hci_recv_sco(uint8_t *data, uint8_t length) {

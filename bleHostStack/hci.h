@@ -268,7 +268,7 @@
 #define HCI_LENGTH_CMD_LE_GENERATE_DHKEY                            68
 
 #define HCI_ACL_SEGMENTATION_PACKET_FIRST                           0x20
-#define HCI_ACL_SEGMENTATION_PACKET_SUBSEQUENCE                     0x10
+#define HCI_ACL_SEGMENTATION_PACKET_CONTINUE                        0x10
 
 typedef enum {
     HCI_LE_HOST_SUPPORT_DISABLE,

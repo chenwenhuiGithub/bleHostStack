@@ -224,18 +224,18 @@ void sm_get_pairing_method() {
     };
 
     secure_connection_used = (pairing_req[3] & SM_AUTH_SECURE_CONNECTION) && (pairing_resp[3] & SM_AUTH_SECURE_CONNECTION);
-    LOG_INFO("secure_connection_used: %u", secure_connection_used);
+    LOG_INFO("secure_connection_used:%u", secure_connection_used);
 
     if (secure_connection_used) {
         if (pairing_req[2] || pairing_resp[2]) {
             pairing_method = OOB;
-            LOG_INFO("pairing_method: OOB");
+            LOG_INFO("pairing_method:OOB");
             return;
         }
     } else {
         if (pairing_req[2] && pairing_resp[2]) {
             pairing_method = OOB;
-            LOG_INFO("pairing_method: OOB");
+            LOG_INFO("pairing_method:OOB");
             return;
         }
     }
@@ -248,20 +248,20 @@ void sm_get_pairing_method() {
         }
 
         if (JUST_WORKS == pairing_method) {
-            LOG_INFO("pairing_method: JUST_WORKS");
+            LOG_INFO("pairing_method:JUST_WORKS");
         } else if (PASSKEY_I_INPUT_R_DISPLAY == pairing_method) {
-            LOG_INFO("pairing_method: PASSKEY_I_INPUT_R_DISPLAY");
+            LOG_INFO("pairing_method:PASSKEY_I_INPUT_R_DISPLAY");
         } else if (PASSKEY_I_DISPLAY_R_INPUT == pairing_method) {
-            LOG_INFO("pairing_method: PASSKEY_I_DISPLAY_R_INPUT");
+            LOG_INFO("pairing_method:PASSKEY_I_DISPLAY_R_INPUT");
         } else if (PASSKEY_I_INPUT_R_INPUT == pairing_method) {
-            LOG_INFO("pairing_method: PASSKEY_I_INPUT_R_INPUT");
+            LOG_INFO("pairing_method:PASSKEY_I_INPUT_R_INPUT");
         } else if (NUMERIC_COMPARISON == pairing_method) {
-            LOG_INFO("pairing_method: NUMERIC_COMPARISON");
+            LOG_INFO("pairing_method:NUMERIC_COMPARISON");
         } else {
         }
     } else {
         pairing_method = JUST_WORKS;
-        LOG_INFO("pairing_method: JUST_WORKS");
+        LOG_INFO("pairing_method:JUST_WORKS");
     }
 }
 
@@ -294,9 +294,9 @@ void sm_recv_pairing_req(uint8_t *data, uint16_t length) {
     pairing_resp[5] = SM_KEY_DISTRIBUTION;
     pairing_resp[6] = SM_KEY_DISTRIBUTION;
 
-    LOG_INFO("pairing_req iocap:%02x, oob_flag:%02x, auth_req:%02x, max_encrypt_key_size:%u, i_key_distribution:%02x, r_key_distribution:%02x",
+    LOG_INFO("pairing_req iocap:0x%02x, oob_flag:0x%02x, auth_req:0x%02x, max_encrypt_key_size:%u, i_key_distribution:0x%02x, r_key_distribution:0x%02x",
              pairing_req[1], pairing_req[2], pairing_req[3], pairing_req[4], pairing_req[5], pairing_req[6]);
-    LOG_INFO("pairing_resp iocap:%02x, oob_flag:%02x, auth_req:%02x, max_encrypt_key_size:%u, i_key_distribution:%02x, r_key_distribution:%02x",
+    LOG_INFO("pairing_resp iocap:0x%02x, oob_flag:0x%02x, auth_req:0x%02x, max_encrypt_key_size:%u, i_key_distribution:0x%02x, r_key_distribution:0x%02x",
              pairing_resp[1], pairing_resp[2], pairing_resp[3], pairing_resp[4], pairing_resp[5], pairing_resp[6]);
 
     sm_send_pairing_resp(pairing_resp + 1);
@@ -326,7 +326,7 @@ void sm_recv_pairing_random(uint8_t *data, uint16_t length) {
 
     memcpy(remote_random, data, SM_LENGTH_PAIRING_RANDOM);
     sm_g2(remote_pairing_public_key, local_pairing_public_key, remote_random, local_random, &vb);
-    LOG_INFO("sm_g2: %u", vb);
+    LOG_INFO("sm_g2:%u", vb);
 
     sm_send_pairing_random(local_random);
 }
@@ -344,12 +344,12 @@ void sm_recv_pairing_dhkey_check(uint8_t *data, uint16_t length) {
     remote_iocap[2] = pairing_req[1];
 
     memcpy(remote_dhkey_check, data, SM_LENGTH_DHKEY_CHECK);
-    sm_f5(local_dhkey, remote_random, local_random, 1, remote_address, 0, local_address, local_mackey, local_ltk);
-    sm_f6(local_mackey, remote_random, local_random, rb, remote_iocap, 1, remote_address, 0, local_address, calc_remote_dhkey_check);
+    sm_f5(local_dhkey, remote_random, local_random, remote_address_type, remote_address, local_address_type, local_address, local_mackey, local_ltk);
+    sm_f6(local_mackey, remote_random, local_random, rb, remote_iocap, remote_address_type, remote_address, local_address_type, local_address, calc_remote_dhkey_check);
     if (memcmp(remote_dhkey_check, calc_remote_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
         sm_send_pairing_failed(SM_ERROR_DHKEY_CHECK_FAILED);
     } else {
-        sm_f6(local_mackey, local_random, remote_random, ra, local_iocap, 0, local_address, 1, remote_address, local_dhkey_check);
+        sm_f6(local_mackey, local_random, remote_random, ra, local_iocap, local_address_type, local_address, remote_address_type, remote_address, local_dhkey_check);
         sm_send_pairing_dhkey_check(local_dhkey_check);
     }
 }
