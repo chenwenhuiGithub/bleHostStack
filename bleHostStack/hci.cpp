@@ -22,6 +22,8 @@ void hci_recv_evt(uint8_t *data, uint8_t length) {
         hci_recv_evt_disconnection_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
     case HCI_EVENT_COMMAND_COMPLETE:
         hci_recv_evt_command_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_COMMAND_STATUS:
+        hci_recv_evt_command_status(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
     case HCI_EVENT_LE_META:
         hci_recv_evt_le_meta(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
     case HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS:
@@ -74,6 +76,8 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
         case HCI_OCF_READ_BD_ADDR:
             LOG_INFO("read_bd_addr status:%u, bd_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                      data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
+            sm_set_local_address(data + 4);
+            sm_set_local_address_type(HCI_ADDRESS_TYPE_RANDOM_DEVICE); // TODO: how to get local address type?
             hci_send_cmd_write_class_of_device();
             break;
         default:
@@ -86,7 +90,7 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
         case HCI_OCF_LE_READ_BUFFER_SIZE:
             LOG_INFO("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
                      data[3], (data[4] | (data[5] << 8)), data[6]);
-            l2cap_set_max_mtu(data[4] | (data[5] << 8));
+            l2cap_set_max_mtu(data[4] | (data[5] << 8)); // TODO: set att_mtu directly
             hci_send_cmd_le_set_event_mask();
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
@@ -124,6 +128,28 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
     }
 }
 
+void hci_recv_evt_command_status(uint8_t *data, uint8_t length) {
+    (void)length;
+    uint8_t ogf = data[3] >> 2;
+    uint16_t ocf = ((data[3] & 0x03) << 8) | data[2];
+
+    switch (ogf) {
+    case HCI_OGF_LE_CONTROLLER:
+        switch (ocf) {
+        case HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY:
+            LOG_INFO("le_read_local_p256_public_key status:%u", data[0]);
+            break;
+        default:
+            LOG_WARNING("hci_recv_evt_command_status invalid, ogf:%u, ocf:%u", ogf, ocf);
+            break;
+        }
+        break;
+    default:
+        LOG_WARNING("hci_recv_evt_command_status invalid, ogf:%u, ocf:%u", ogf, ocf);
+        break;
+    }
+}
+
 void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
     (void)length;
     uint8_t sub_event = data[0];
@@ -131,8 +157,11 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONNECTION_COMPLETE:
-        LOG_INFO("le_connection_complete status:%u, connect_handle:0x%02x%02x, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
-                 data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
+        LOG_INFO("le_connection_complete status:%u, connect_handle:0x%02x%02x, "
+                 "peer_address_type:%u, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
+                 data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
+        sm_set_remote_address(data + 6);
+        sm_set_remote_address_type(data[5]);
         LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_CONNECTION_UPDATE_COMPLETE:
@@ -149,8 +178,11 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
         hci_send_cmd_le_remote_connection_parameter_request_reply(remote_connection_parameter_request_reply);
         break;
     case HCI_EVENT_LE_ENHANCED_CONNECTION_COMPLETE:
-        LOG_INFO("le_enhanced_connection_complete status:%u, connect_handle:0x%02x%02x, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
-                 data[1], data[2], (data[3] & 0x0f), data[6],  data[7], data[8], data[9], data[10], data[11]);
+        LOG_INFO("le_enhanced_connection_complete status:%u, connect_handle:0x%02x%02x, "
+                 "peer_address_type:%u, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
+                 data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
+        sm_set_remote_address(data + 6);
+        sm_set_remote_address_type(data[5]);
         LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_DATA_LENGTH_CHANGE:

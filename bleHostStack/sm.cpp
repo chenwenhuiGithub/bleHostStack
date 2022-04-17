@@ -194,8 +194,10 @@ uint8_t local_random[SM_LENGTH_PAIRING_RANDOM] = {0};
 uint8_t remote_random[SM_LENGTH_PAIRING_RANDOM] = {0};
 uint8_t local_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
 uint8_t remote_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
-uint8_t local_address[6] = {0}; // TODO: get from hci
+uint8_t local_address[6] = {0};
+uint8_t local_address_type = 0;
 uint8_t remote_address[6] = {0};
+uint8_t remote_address_type = 0;
 uint8_t local_mackey[SM_LENGTH_MACKEY] = {0};
 uint8_t local_ltk[SM_LENGTH_LTK] = {0};
 uint8_t local_iocap[SM_LENGTH_IOCAP] = {0};
@@ -292,9 +294,9 @@ void sm_recv_pairing_req(uint8_t *data, uint16_t length) {
     pairing_resp[5] = SM_KEY_DISTRIBUTION;
     pairing_resp[6] = SM_KEY_DISTRIBUTION;
 
-    LOG_INFO("pairing_req iocap:%u, oob_flag:%u, auth_req:%u, max_encrypt_key_size:%u, i_key_distribution:%u, r_key_distribution:%u",
+    LOG_INFO("pairing_req iocap:%02x, oob_flag:%02x, auth_req:%02x, max_encrypt_key_size:%u, i_key_distribution:%02x, r_key_distribution:%02x",
              pairing_req[1], pairing_req[2], pairing_req[3], pairing_req[4], pairing_req[5], pairing_req[6]);
-    LOG_INFO("pairing_resp iocap:%u, oob_flag:%u, auth_req:%u, max_encrypt_key_size:%u, i_key_distribution:%u, r_key_distribution:%u",
+    LOG_INFO("pairing_resp iocap:%02x, oob_flag:%02x, auth_req:%02x, max_encrypt_key_size:%u, i_key_distribution:%02x, r_key_distribution:%02x",
              pairing_resp[1], pairing_resp[2], pairing_resp[3], pairing_resp[4], pairing_resp[5], pairing_resp[6]);
 
     sm_send_pairing_resp(pairing_resp + 1);
@@ -406,6 +408,22 @@ void sm_set_local_pairing_public_key(uint8_t *data) {
 
 void sm_set_local_dhkey(uint8_t *data) {
     memcpy(local_dhkey, data, SM_LENGTH_DHKEY);
+}
+
+void sm_set_local_address(uint8_t *data) {
+    memcpy(local_address, data, 6);
+}
+
+void sm_set_local_address_type(uint8_t type) {
+    local_address_type = type;
+}
+
+void sm_set_remote_address(uint8_t *data) {
+    memcpy(remote_address, data, 6);
+}
+
+void sm_set_remote_address_type(uint8_t type) {
+    remote_address_type = type;
 }
 
 void sm_send(uint8_t *data, uint16_t length) {

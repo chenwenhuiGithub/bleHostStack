@@ -97,6 +97,10 @@ void sm_send_pairing_dhkey_check(uint8_t *data);
 void sm_send_pairing_failed(uint8_t reason);
 void sm_set_local_pairing_public_key(uint8_t *data);
 void sm_set_local_dhkey(uint8_t *data);
+void sm_set_local_address(uint8_t *data);
+void sm_set_local_address_type(uint8_t type);
+void sm_set_remote_address(uint8_t *data);
+void sm_set_remote_address_type(uint8_t type);
 void sm_send(uint8_t *data, uint16_t length);
 void sm_get_pairing_method();
 

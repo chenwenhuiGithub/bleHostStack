@@ -280,9 +280,17 @@ typedef enum {
     HCI_LE_ADVERTISING_ENABLE
 } HCI_LE_ADVERTISING;
 
+typedef enum {
+    HCI_ADDRESS_TYPE_PUBLIC_DEVICE,
+    HCI_ADDRESS_TYPE_RANDOM_DEVICE,
+    HCI_ADDRESS_TYPE_PUBLIC_IDENTITY,
+    HCI_ADDRESS_TYPE_RANDOM_IDENTITY
+} HCI_ADDRESS_TYPE;
+
 
 void hci_recv_evt(uint8_t *data, uint8_t length);
 void hci_recv_evt_command_complete(uint8_t *data, uint8_t length);
+void hci_recv_evt_command_status(uint8_t *data, uint8_t length);
 void hci_recv_evt_le_meta(uint8_t *data, uint8_t length);
 void hci_recv_evt_disconnection_complete(uint8_t* data, uint8_t length);
 void hci_recv_evt_number_of_completed_packets(uint8_t* data, uint8_t length);
