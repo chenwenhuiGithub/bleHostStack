@@ -428,6 +428,10 @@ void sm_set_remote_address_type(uint8_t type) {
     remote_address_type = type;
 }
 
+void sm_get_local_ltk(uint8_t *data) {
+    memcpy(data, local_ltk, SM_LENGTH_LTK);
+}
+
 void sm_send(uint8_t *data, uint16_t length) {
     l2cap_send(L2CAP_CID_SM, data, length);
 }

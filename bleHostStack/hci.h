@@ -160,6 +160,7 @@
 #define HCI_OCF_LE_SET_SCAN_PARAM                                   0x0b
 #define HCI_OCF_LE_SET_SCAN_ENABLE                                  0x0c
 #define HCI_OCF_LE_CREATE_CONNECT                                   0x0d
+#define HCI_OCF_LE_LTK_REQUEST_REPLY                                0x1a
 #define HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_REPLY        0x20
 #define HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_NEG_REPLY    0x21
 #define HCI_OCF_LE_SET_DATA_LENGTH                                  0x22
@@ -266,6 +267,7 @@
 #define HCI_LENGTH_CMD_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH       8
 #define HCI_LENGTH_CMD_LE_READ_LOCAL_P256_PUBLIC_KEY                4
 #define HCI_LENGTH_CMD_LE_GENERATE_DHKEY                            68
+#define HCI_LENGTH_CMD_LE_LTK_REQUEST_REPLY                         22
 
 #define HCI_ACL_SEGMENTATION_PACKET_FIRST                           0x20
 #define HCI_ACL_SEGMENTATION_PACKET_CONTINUE                        0x10
@@ -294,6 +296,7 @@ void hci_recv_evt_command_status(uint8_t *data, uint8_t length);
 void hci_recv_evt_le_meta(uint8_t *data, uint8_t length);
 void hci_recv_evt_disconnection_complete(uint8_t* data, uint8_t length);
 void hci_recv_evt_number_of_completed_packets(uint8_t* data, uint8_t length);
+void hci_recv_evt_encryption_change(uint8_t* data, uint8_t length);
 void hci_recv_acl(uint8_t *data, uint16_t length);
 void hci_recv_sco(uint8_t *data, uint8_t length);
 void hci_send_acl(uint8_t *data, uint16_t length);
@@ -317,5 +320,6 @@ void hci_send_cmd_le_read_suggested_default_data_length();
 void hci_send_cmd_le_write_suggested_default_data_length(uint16_t tx_octets, uint16_t tx_time);
 void hci_send_cmd_le_read_local_P256_public_key();
 void hci_send_cmd_le_generate_dhkey(uint8_t* data, uint8_t length);
+void hci_send_cmd_le_ltk_req_reply(uint8_t* data, uint8_t length);
 
 #endif // HCI_H

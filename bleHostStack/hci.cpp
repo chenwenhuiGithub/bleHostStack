@@ -25,6 +25,8 @@ void hci_recv_evt(uint8_t *data, uint8_t length) {
     switch (event_code) {
     case HCI_EVENT_DISCONNECTION_COMPLETE:
         hci_recv_evt_disconnection_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_ENCRYPTION_CHANGE:
+        hci_recv_evt_encryption_change(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
     case HCI_EVENT_COMMAND_COMPLETE:
         hci_recv_evt_command_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
     case HCI_EVENT_COMMAND_STATUS:
@@ -114,6 +116,9 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
             LOG_INFO("le_set_advertising_enable status:%u", data[3]);
             LOG_INFO("/***** wait peer device to connect *****/");
             break;
+        case HCI_OCF_LE_LTK_REQUEST_REPLY:
+            LOG_INFO("le_ltk_request_reply status:%u", data[3]);
+            break;
         case HCI_OCF_LE_REMOTE_CONNECTION_PARAMETER_REQUEST_REPLY:
             LOG_INFO("le_remote_connection_parameter_request_reply status:%u, connect_handle:0x%02x%02x",
                      data[3], data[4], (data[5] & 0x0f));
@@ -162,6 +167,7 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
     (void)length;
     uint8_t sub_event = data[0];
     uint8_t remote_connection_parameter_request_reply[14] = { 0 };
+    uint8_t local_ltk[SM_LENGTH_LTK] = {0};
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONNECTION_COMPLETE:
@@ -175,6 +181,12 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
     case HCI_EVENT_LE_CONNECTION_UPDATE_COMPLETE:
         LOG_INFO("le_connection_update_complete status:%u, connect_handle:0x%02x%02x, interval:%0.2fms, latency:%u, timeout:%ums",
                  data[1], data[2], (data[3] & 0x0f), (data[4] | (data[5] << 8)) * 1.25, data[6] | (data[7] << 8), (data[8] | (data[9] << 8)) * 10);
+        break;
+    case HCI_EVENT_LE_LONG_TERM_KEY_REQUEST:
+        LOG_INFO("le_ltk_req connect_handle:0x%02x%02x, random_number:0x%02x%02x%02x%02x%02x%02x%02x%02x, encrypted_diversifier:0x%02x%02x",
+                 data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
+        sm_get_local_ltk(local_ltk);
+        hci_send_cmd_le_ltk_req_reply(local_ltk, sizeof(local_ltk));
         break;
     case HCI_EVENT_LE_REMOTE_CONNECTION_PARAMETER_REQUEST:
         LOG_INFO("le_remote_connection_parameter_request connect_handle:0x%02x%02x, interval_min:%0.2fms, interval_max:%0.2fms, max_latency:%u, timeout:%ums",
@@ -223,6 +235,13 @@ void hci_recv_evt_number_of_completed_packets(uint8_t* data, uint8_t length) {
     (void)length;
     LOG_INFO("number_of_completed_packets number_handles:%u, connect_handle[0]:0x%02x%02x, num_completed_packets[0]:%u",
              data[0], data[1], (data[2] & 0x0f), data[3] | (data[4] << 8));
+}
+
+void hci_recv_evt_encryption_change(uint8_t* data, uint8_t length) {
+    (void)length;
+    LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:%u",
+             data[0], data[1], data[2], data[3]);
+    LOG_INFO("/***** encryption enabled *****/");
 }
 
 void hci_recv_acl(uint8_t *data, uint16_t length) {
@@ -441,4 +460,15 @@ void hci_send_cmd_le_generate_dhkey(uint8_t* data, uint8_t length) {
     memcpy_s(&buffer[4], length, data, length);
     serial_write(buffer, HCI_LENGTH_CMD_LE_GENERATE_DHKEY);
     btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_GENERATE_DHKEY, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+}
+
+void hci_send_cmd_le_ltk_req_reply(uint8_t* data, uint8_t length) {
+    uint8_t buffer[HCI_LENGTH_CMD_LE_LTK_REQUEST_REPLY] = { 0x00 };
+    hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQUEST_REPLY);
+    buffer[3] = length + 2;
+    buffer[4] = connect_handle;
+    buffer[5] = (connect_handle >> 8) & 0x0f;
+    memcpy_s(&buffer[6], length, data, length);
+    serial_write(buffer, HCI_LENGTH_CMD_LE_LTK_REQUEST_REPLY);
+    btsnoop_wirte(buffer, HCI_LENGTH_CMD_LE_LTK_REQUEST_REPLY, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
