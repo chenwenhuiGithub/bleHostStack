@@ -82,7 +82,7 @@ void hci_recv_evt_command_complete(uint8_t *data, uint8_t length) {
             LOG_INFO("read_bd_addr status:%u, bd_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                      data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
             sm_set_local_address(data + 4);
-            sm_set_local_address_type(HCI_ADDRESS_TYPE_RANDOM_DEVICE); // TODO: how to get local address type?
+            sm_set_local_address_type(HCI_ADDRESS_TYPE_PUBLIC_DEVICE); // TODO: how to get local address type?
             hci_send_cmd_write_class_of_device();
             break;
         default:

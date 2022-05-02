@@ -39,7 +39,7 @@
 #define SM_IOCAP_KEYBORAD_ONLY                              0x02
 #define SM_IOCAP_NO_INPUT_NO_OUTPUT                         0x03
 #define SM_IOCAP_KEYBOARD_DISPLAY                           0x04
-#define SM_IOCAP                                            SM_IOCAP_NO_INPUT_NO_OUTPUT
+#define SM_IOCAP                                            SM_IOCAP_DISPLAY_YESNO
 
 #define SM_OOB_DATA_FLAG_NOT_PRESENT                        0x00
 #define SM_OOB_DATA_FLAG_PRESENT                            0x01

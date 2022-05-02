@@ -336,17 +336,19 @@ void sm_recv_pairing_dhkey_check(uint8_t *data, uint16_t length) {
     uint8_t rb[16] = {0};
     uint8_t calc_remote_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
 
-    local_iocap[0] = pairing_resp[3];
+    local_iocap[0] = pairing_resp[1];
     local_iocap[1] = pairing_resp[2];
-    local_iocap[2] = pairing_resp[1];
-    remote_iocap[0] = pairing_req[3];
+    local_iocap[2] = pairing_resp[3];
+    remote_iocap[0] = pairing_req[1];
     remote_iocap[1] = pairing_req[2];
-    remote_iocap[2] = pairing_req[1];
+    remote_iocap[2] = pairing_req[3];
 
     memcpy(remote_dhkey_check, data, SM_LENGTH_DHKEY_CHECK);
     sm_f5(local_dhkey, remote_random, local_random, remote_address_type, remote_address, local_address_type, local_address, local_mackey, local_ltk);
     sm_f6(local_mackey, remote_random, local_random, rb, remote_iocap, remote_address_type, remote_address, local_address_type, local_address, calc_remote_dhkey_check);
+
     if (memcmp(remote_dhkey_check, calc_remote_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
+        LOG_ERROR("remote_dhkey_check error");
         sm_send_pairing_failed(SM_ERROR_DHKEY_CHECK_FAILED);
     } else {
         sm_f6(local_mackey, local_random, remote_random, ra, local_iocap, local_address_type, local_address, remote_address_type, remote_address, local_dhkey_check);
