@@ -194,14 +194,16 @@ uint8_t local_random[SM_LENGTH_PAIRING_RANDOM] = {0};
 uint8_t remote_random[SM_LENGTH_PAIRING_RANDOM] = {0};
 uint8_t local_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
 uint8_t remote_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
-uint8_t local_address[6] = {0};
+uint8_t local_address[SM_LENGTH_ADDR] = {0};
 uint8_t local_address_type = 0;
-uint8_t remote_address[6] = {0};
+uint8_t remote_address[SM_LENGTH_ADDR] = {0};
 uint8_t remote_address_type = 0;
 uint8_t local_mackey[SM_LENGTH_MACKEY] = {0};
 uint8_t local_ltk[SM_LENGTH_LTK] = {0};
 uint8_t local_iocap[SM_LENGTH_IOCAP] = {0};
 uint8_t remote_iocap[SM_LENGTH_IOCAP] = {0};
+uint8_t local_ediv[SM_LENGTH_EDIV] = {0};
+uint8_t local_rand[SM_LENGTH_RAND] = {0};
 
 bool secure_connection_used = false;
 sm_pairing_method pairing_method = JUST_WORKS;
@@ -404,6 +406,56 @@ void sm_send_pairing_failed(uint8_t reason) {
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_FAILED);
 }
 
+void sm_send_encryption_information(uint8_t *data) {
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_LTK] = {0};
+
+    buf[0] = SM_OPERATE_ENCRYPTION_INFO;
+    memcpy(buf + 1, data, SM_LENGTH_LTK);
+    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_LTK);
+}
+
+void sm_send_central_identification(uint8_t *data) {
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
+
+    buf[0] = SM_OPERATE_CENTRAL_IDENTIFICATION;
+    memcpy(buf + 1, data, SM_LENGTH_EDIV + SM_LENGTH_RAND);
+    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND);
+}
+
+void sm_send_identity_information(uint8_t *data) {
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_IRK] = {0};
+
+    buf[0] = SM_OPERATE_IDENTITY_INFO;
+    memcpy(buf + 1, data, SM_LENGTH_IRK);
+    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_IRK);
+}
+
+void sm_send_identity_address_information(uint8_t *data) {
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR] = {0};
+
+    buf[0] = SM_OPERATE_IDENTITY_ADDRESS_INFO;
+    memcpy(buf + 1, data, SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
+    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
+}
+
+void sm_send_signing_information(uint8_t *data) {
+    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_SIGNING_INFO] = {0};
+
+    buf[0] = SM_OPERATE_SIGNING_INFO;
+    memcpy(buf + 1, data, SM_LENGTH_SIGNING_INFO);
+    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_SIGNING_INFO);
+}
+
+void sm_key_distribution() {
+    uint8_t central_identification[SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
+
+    // TODO: check key distribution flag for sending
+    sm_send_encryption_information(local_ltk);
+    memcpy(central_identification, local_ediv, SM_LENGTH_EDIV);
+    memcpy(central_identification + SM_LENGTH_EDIV, local_rand, SM_LENGTH_RAND);
+    sm_send_central_identification(central_identification);
+}
+
 void sm_set_local_pairing_public_key(uint8_t *data) {
     memcpy(local_pairing_public_key, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
 }
@@ -413,7 +465,7 @@ void sm_set_local_dhkey(uint8_t *data) {
 }
 
 void sm_set_local_address(uint8_t *data) {
-    memcpy(local_address, data, 6);
+    memcpy(local_address, data, SM_LENGTH_ADDR);
 }
 
 void sm_set_local_address_type(uint8_t type) {
@@ -421,11 +473,19 @@ void sm_set_local_address_type(uint8_t type) {
 }
 
 void sm_set_remote_address(uint8_t *data) {
-    memcpy(remote_address, data, 6);
+    memcpy(remote_address, data, SM_LENGTH_ADDR);
 }
 
 void sm_set_remote_address_type(uint8_t type) {
     remote_address_type = type;
+}
+
+void sm_set_local_ediv(uint8_t *data) {
+    memcpy(local_ediv, data, SM_LENGTH_EDIV);
+}
+
+void sm_set_local_rand(uint8_t *data) {
+    memcpy(local_rand, data, SM_LENGTH_RAND);
 }
 
 void sm_get_local_ltk(uint8_t *data) {

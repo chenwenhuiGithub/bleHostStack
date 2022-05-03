@@ -185,6 +185,8 @@ void hci_recv_evt_le_meta(uint8_t *data, uint8_t length) {
     case HCI_EVENT_LE_LONG_TERM_KEY_REQUEST:
         LOG_INFO("le_ltk_req connect_handle:0x%02x%02x, random_number:0x%02x%02x%02x%02x%02x%02x%02x%02x, encrypted_diversifier:0x%02x%02x",
                  data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
+        sm_set_local_rand(&data[3]);
+        sm_set_local_ediv(&data[11]);
         sm_get_local_ltk(local_ltk);
         hci_send_cmd_le_ltk_req_reply(local_ltk, sizeof(local_ltk));
         break;
@@ -242,6 +244,7 @@ void hci_recv_evt_encryption_change(uint8_t* data, uint8_t length) {
     LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:%u",
              data[0], data[1], data[2], data[3]);
     LOG_INFO("/***** encryption enabled *****/");
+    sm_key_distribution();
 }
 
 void hci_recv_acl(uint8_t *data, uint16_t length) {
