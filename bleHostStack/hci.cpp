@@ -4,6 +4,7 @@
 #include "l2cap.h"
 #include "log.h"
 #include "sm.h"
+#include "att.h"
 
 // Opcode Group Field (OGF) values
 #define HCI_OGF_LINK_CONTROL                                            0x01   /* Link Control Commands */
@@ -379,7 +380,7 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
         case HCI_OCF_LE_READ_BUFFER_SIZE:
             LOG_INFO("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
                      data[3], (data[4] | (data[5] << 8)), data[6]);
-            l2cap_set_max_mtu(data[4] | (data[5] << 8)); // TODO: set att_mtu directly
+            att_set_max_mtu((data[4] | (data[5] << 8)) - L2CAP_LENGTH_HEADER);
             hci_send_cmd_le_set_event_mask(le_event_mask);
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
@@ -567,6 +568,7 @@ void hci_recv_acl(uint8_t *data, uint32_t length) {
 void hci_recv_sco(uint8_t *data, uint32_t length) {
     (void)data;
     (void)length;
+    LOG_WARNING("hci_recv_sco not supported");
 }
 
 void hci_send_acl(uint8_t *data, uint32_t length) {
