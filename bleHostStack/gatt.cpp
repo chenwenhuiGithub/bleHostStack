@@ -61,27 +61,27 @@ uint8_t buff_test[36] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 
                          's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
 
-att_item items_gencric_access[] = {
+ATT_ITEM items_gencric_access[] = {
     {0x0001, GATT_DECLARATION_PRIMARY_SERVICE, uuid_gencric_access, sizeof(uuid_gencric_access), GATT_PERMISSION_READ},
     {0x0002, GATT_DECLARATION_CHARACTERISTIC, characteristic_gencric_access, sizeof(characteristic_gencric_access), GATT_PERMISSION_READ},
     {0x0003, GATT_OBJECT_TYPE_DEVICE_NAME, device_name, sizeof(device_name), GATT_PERMISSION_READ}
 };
 
-att_item items_gencric_attribute[] = {
+ATT_ITEM items_gencric_attribute[] = {
     {0x0010, GATT_DECLARATION_PRIMARY_SERVICE, uuid_gencric_attribute, sizeof(uuid_gencric_attribute), GATT_PERMISSION_READ},
     {0x0011, GATT_DECLARATION_CHARACTERISTIC, characteristic_gencric_attribute, sizeof(characteristic_gencric_attribute), GATT_PERMISSION_READ},
     {0x0012, GATT_OBJECT_TYPE_SERVICE_CHANGED, gencric_attribute, sizeof(gencric_attribute), GATT_PERMISSION_READ},
     {0x0013, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, nullptr, 0, GATT_PERMISSION_READ}
 };
 
-att_item items_battery[] = {
+ATT_ITEM items_battery[] = {
     {0x0100, GATT_DECLARATION_PRIMARY_SERVICE, uuid_battery, sizeof(uuid_battery), GATT_PERMISSION_READ},
     {0x0101, GATT_DECLARATION_CHARACTERISTIC, characteristic_battery, sizeof(characteristic_battery), GATT_PERMISSION_READ},
     {0x0102, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ},
     {0x0103, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, nullptr, 0, GATT_PERMISSION_READ}
 };
 
-att_item items_test[] = {
+ATT_ITEM items_test[] = {
     {0x1000, GATT_DECLARATION_PRIMARY_SERVICE, uuid_test, sizeof(uuid_test), GATT_PERMISSION_READ},
     {0x1001, GATT_DECLARATION_CHARACTERISTIC, characteristic_test, sizeof(characteristic_test), GATT_PERMISSION_READ},
     {0x1002, GATT_OBJECT_TYPE_TEST, buff_test, sizeof(buff_test), GATT_PERMISSION_READ},
@@ -99,7 +99,7 @@ void gatt_init() {
     gatt_add_service(items_test, 4, 0x1000, 0x1003, GATT_SERVICE_TEST);
 }
 
-void gatt_add_service(att_item *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service) {
+void gatt_add_service(ATT_ITEM *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service) {
     if (service_count < GATT_SERVICE_SIZE) {
         services[service_count].items = items;
         services[service_count].items_cnt = items_cnt;
@@ -113,7 +113,7 @@ void gatt_add_service(att_item *items, uint16_t items_cnt, uint16_t start_handle
 // read part value of one characteristic
 void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
     QByteArray byteArray;
-    att_item *item = nullptr;
+    ATT_ITEM *item = nullptr;
     uint16_t copy_bytes = 0;
     uint16_t offset= 1;
     uint16_t att_mtu = att_get_mtu();
@@ -145,7 +145,7 @@ void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
 // read value of one characteristic
 void gatt_recv_read_req(uint16_t handle) {
     QByteArray byteArray;
-    att_item *item = nullptr;
+    ATT_ITEM *item = nullptr;
     uint16_t copy_bytes = 0;
     uint16_t offset= 1;
     uint16_t att_mtu = att_get_mtu();
@@ -177,13 +177,13 @@ void gatt_recv_read_req(uint16_t handle) {
 // discover descriptors in one characteristic
 void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) {
     QByteArray byteArray;
-    att_item *item = nullptr;
+    ATT_ITEM *item = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint16_t offset= 2;
     bool found = false;
 
     byteArray.resize(att_mtu);
-    byteArray[0] = ATT_OPERATE_FIND_INFORMATION_RESP;
+    byteArray[0] = ATT_OPERATE_FIND_INFO_RESP;
     byteArray[1] = ATT_UUID_TYPE_BITS_16; // TODO: 128 bits uuid
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
@@ -217,14 +217,14 @@ void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) 
     if (found) {
         att_send((uint8_t*)byteArray.data(), offset);
     } else {
-        gatt_send_error_resp(ATT_OPERATE_FIND_INFORMATION_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+        gatt_send_error_resp(ATT_OPERATE_FIND_INFO_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
     }
 }
 
 // discover include and characteristics in one service
 void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type) {
     QByteArray byteArray;
-    att_item *item = nullptr;
+    ATT_ITEM *item = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint16_t offset= 2;
     uint16_t pair_value_length = 0;

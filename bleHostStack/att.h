@@ -2,34 +2,12 @@
 #define ATT_H
 
 #include <stdint.h>
-#include <memory>
-
-#define ATT_ERROR_INVALID_HANDLE                        0x01
-#define ATT_ERROR_READ_NOT_PERMITTED                    0x02
-#define ATT_ERROR_WRITE_NOT_PERMITTED                   0x03
-#define ATT_ERROR_INVALID_PDU                           0x04
-#define ATT_ERROR_INSUFFICIENT_AUTHENTICATION           0x05
-#define ATT_ERROR_REQUEST_NOT_SUPPORTED                 0x06
-#define ATT_ERROR_INVALID_OFFSET                        0x07
-#define ATT_ERROR_INSUFFICIENT_AUTHORIZATION            0x08
-#define ATT_ERROR_PREPARE_QUEUE_FULL                    0x09
-#define ATT_ERROR_ATTRIBUTE_NOT_FOUND                   0x0a
-#define ATT_ERROR_ATTRIBUTE_NOT_LONG                    0x0b
-#define ATT_ERROR_ENCRYPTION_KEY_SIZE_TOO_SHORT         0x0c
-#define ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH        0x0d
-#define ATT_ERROR_UNLIKELY_ERROR                        0x0e
-#define ATT_ERROR_INSUFFICIENT_ENCRYPTION               0x0f
-#define ATT_ERROR_UNSUPPORTED_GROUP_TYPE                0x10
-#define ATT_ERROR_INSUFFICIENT_RESOURCE                 0x11
-#define ATT_ERROR_DATABASE_OUT_OF_SYNC                  0x12
-#define ATT_ERROR_VALUE_NOT_ALLOWED                     0x13
-
 
 #define ATT_OPERATE_ERROR_RESP                          0x01
 #define ATT_OPERATE_EXCHANGE_MTU_REQ                    0x02
 #define ATT_OPERATE_EXCHANGE_MTU_RESP                   0x03
-#define ATT_OPERATE_FIND_INFORMATION_REQ                0x04
-#define ATT_OPERATE_FIND_INFORMATION_RESP               0x05
+#define ATT_OPERATE_FIND_INFO_REQ                       0x04
+#define ATT_OPERATE_FIND_INFO_RESP                      0x05
 #define ATT_OPERATE_FIND_BY_TYPE_VALUE_REQ              0x06
 #define ATT_OPERATE_FIND_BY_TYPE_VALUE_RESP             0x07
 #define ATT_OPERATE_READ_BY_TYPE_REQ                    0x08
@@ -57,6 +35,25 @@
 #define ATT_OPERATE_WRITE_CMD                           0x52
 #define ATT_OPERATE_SIGNED_WRITE_CMD                    0xd2
 
+#define ATT_ERROR_INVALID_HANDLE                        0x01
+#define ATT_ERROR_READ_NOT_PERMITTED                    0x02
+#define ATT_ERROR_WRITE_NOT_PERMITTED                   0x03
+#define ATT_ERROR_INVALID_PDU                           0x04
+#define ATT_ERROR_INSUFFICIENT_AUTHENTICATION           0x05
+#define ATT_ERROR_REQUEST_NOT_SUPPORTED                 0x06
+#define ATT_ERROR_INVALID_OFFSET                        0x07
+#define ATT_ERROR_INSUFFICIENT_AUTHORIZATION            0x08
+#define ATT_ERROR_PREPARE_QUEUE_FULL                    0x09
+#define ATT_ERROR_ATTRIBUTE_NOT_FOUND                   0x0a
+#define ATT_ERROR_ATTRIBUTE_NOT_LONG                    0x0b
+#define ATT_ERROR_ENCRYPTION_KEY_SIZE_TOO_SHORT         0x0c
+#define ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH        0x0d
+#define ATT_ERROR_UNLIKELY_ERROR                        0x0e
+#define ATT_ERROR_INSUFFICIENT_ENCRYPTION               0x0f
+#define ATT_ERROR_UNSUPPORTED_GROUP_TYPE                0x10
+#define ATT_ERROR_INSUFFICIENT_RESOURCE                 0x11
+#define ATT_ERROR_DATABASE_OUT_OF_SYNC                  0x12
+#define ATT_ERROR_VALUE_NOT_ALLOWED                     0x13
 
 #define ATT_LENGTH_HEADER                               1
 #define ATT_LENGTH_UUID16                               2
@@ -69,38 +66,17 @@
 
 #define ATT_MTU_DEFAULT                                 23
 
-// TODO: support 16 Bytes uuid
-#if 0
-struct att_uuid {
-    uint8_t uuid[16]; // 2 or 16 Bytes uuid
-    uint8_t length;
-
-    bool operator == (const att_uuid &id) {
-        return ((length == id.length) && (0 == memcmp(uuid, id.uuid, length)));
-    }
-};
-#endif
-
-
 typedef struct {
     uint16_t handle;
-    uint16_t type;
+    uint16_t type; // TODO: support 16 Bytes uuid
     uint8_t *value;
     uint16_t value_length;
     uint8_t permission;
-} att_item;
+} ATT_ITEM;
 
-
-void att_recv(uint8_t *data, uint16_t length);
-void att_recv_find_information_req(uint8_t *data, uint16_t length);
-void att_recv_read_by_type_req(uint8_t *data, uint16_t length);
-void att_recv_read_req(uint8_t *data, uint16_t length);
-void att_recv_read_by_group_type_req(uint8_t *data, uint16_t length);
-void att_recv_read_blob_req(uint8_t *data, uint16_t length);
-void att_send(uint8_t *data, uint16_t length);
-uint16_t att_get_mtu();
+void att_recv(uint8_t *data, uint32_t length);
+void att_send(uint8_t *data, uint32_t length);
 void att_set_max_mtu(uint16_t mtu);
-void att_recv_exchange_mtu_req(uint8_t *data, uint16_t length);
-void att_send_exchange_mtu_resp(uint16_t mtu);
+uint16_t att_get_mtu();
 
 #endif // ATT_H
