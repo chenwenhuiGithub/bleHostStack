@@ -285,6 +285,7 @@ void sm_recv(uint8_t *data, uint16_t length) {
 }
 
 void sm_recv_pairing_req(uint8_t *data, uint16_t length) {
+    (void)length;
     pairing_req[0] = SM_OPERATE_PAIRING_REQ;
     memcpy(pairing_req + 1, data, SM_LENGTH_PAIRING_REQ);
 
@@ -305,8 +306,15 @@ void sm_recv_pairing_req(uint8_t *data, uint16_t length) {
 }
 
 void sm_recv_pairing_public_key(uint8_t *data, uint16_t length) {
+    (void)length;
+    HCI_LE_GENERATE_DHKEY generate_dhkey;
+
     memcpy(remote_pairing_public_key, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
-    hci_send_cmd_le_generate_dhkey(remote_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY); // wait HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE
+
+    memcpy_s(generate_dhkey.key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
+    memcpy_s(generate_dhkey.key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key + HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
+    hci_send_cmd_le_generate_dhkey(&generate_dhkey); // wait HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE
+
     sm_send_pairing_public_key(local_pairing_public_key);
 
     sm_get_pairing_method();
@@ -324,6 +332,7 @@ void sm_recv_pairing_public_key(uint8_t *data, uint16_t length) {
 }
 
 void sm_recv_pairing_random(uint8_t *data, uint16_t length) {
+    (void)length;
     uint32_t vb = 0;
 
     memcpy(remote_random, data, SM_LENGTH_PAIRING_RANDOM);
@@ -334,6 +343,7 @@ void sm_recv_pairing_random(uint8_t *data, uint16_t length) {
 }
 
 void sm_recv_pairing_dhkey_check(uint8_t *data, uint16_t length) {
+    (void)length;
     uint8_t ra[16] = {0};
     uint8_t rb[16] = {0};
     uint8_t calc_remote_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
