@@ -454,8 +454,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONN_COMPLETE:
-        LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, "
-                 "peer_addr_type:%u, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
+        LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:%u, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         sm_set_remote_address(data + 6);
         sm_set_remote_address_type(data[5]);
@@ -468,9 +467,6 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
     case HCI_EVENT_LE_LTK_REQ:
         LOG_INFO("le_ltk_req connect_handle:0x%02x%02x, random_number:0x%02x%02x%02x%02x%02x%02x%02x%02x, encrypted_diversifier:0x%02x%02x",
                  data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
-        sm_set_local_rand(&data[3]);
-        sm_set_local_ediv(&data[11]);
-
         ltk_req_reply.connect_handle = connect_handle;
         sm_get_local_ltk(ltk_req_reply.ltk);
         hci_send_cmd_le_ltk_req_reply(&ltk_req_reply);
