@@ -66,14 +66,6 @@
 
 #define ATT_MTU_DEFAULT                                 23
 
-typedef struct {
-    uint16_t handle;
-    uint16_t type; // TODO: support 16 Bytes uuid
-    uint8_t *value;
-    uint16_t value_length;
-    uint8_t permission;
-} ATT_ITEM;
-
 void att_recv(uint8_t *data, uint32_t length);
 void att_send(uint8_t *data, uint32_t length);
 void att_set_max_mtu(uint16_t mtu);
