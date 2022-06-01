@@ -142,6 +142,7 @@ uint8_t local_csrk[SM_LENGTH_CSRK] = {0};
 uint8_t remote_csrk[SM_LENGTH_CSRK] = {0};
 
 SM_PAIRING_METHOD pairing_method = JUST_WORKS;
+uint8_t is_local_ltk_generated = 0;
 uint8_t is_secure_connection = 0;
 uint8_t is_received_key_distribution_ltk = 0;
 uint8_t is_received_key_distribution_id = 0;
@@ -528,22 +529,9 @@ static void __sm_recv_pairing_public_key(uint8_t *data, uint32_t length) {
 
     memcpy_s(generate_dhkey.key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
     memcpy_s(generate_dhkey.key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key + HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
-    hci_send_cmd_le_generate_dhkey(&generate_dhkey); // wait HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE
+    hci_send_cmd_le_generate_dhkey(&generate_dhkey);
 
     sm_send_pairing_public_key(local_pairing_public_key);
-
-    __sm_get_pairing_method();
-    if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
-        uint8_t cb[16] = {0};
-        *(uint32_t *)(local_random) = rand();
-        *(uint32_t *)(local_random + 4) = rand();
-        *(uint32_t *)(local_random + 8) = rand();
-        *(uint32_t *)(local_random + 12) = rand();
-        __sm_f4(local_pairing_public_key, remote_pairing_public_key, local_random, 0, cb);
-        sm_send_pairing_confirm(cb);
-    } else {
-        // TODO: other methods
-    }
 }
 
 static void __sm_recv_pairing_random(uint8_t *data, uint32_t length) {
@@ -583,6 +571,7 @@ static void __sm_recv_pairing_dhkey_check(uint8_t *data, uint32_t length) {
         __sm_f6(local_mackey, local_random, remote_random, ra, local_iocap, local_addr_type, local_addr,
                 remote_addr_type, remote_addr, local_dhkey_check);
         sm_send_pairing_dhkey_check(local_dhkey_check);
+        is_local_ltk_generated = 1;
     }
 }
 
@@ -715,6 +704,19 @@ void sm_set_local_pairing_public_key(uint8_t *data) {
 
 void sm_set_local_dhkey(uint8_t *data) {
     memcpy(local_dhkey, data, SM_LENGTH_DHKEY);
+
+    __sm_get_pairing_method();
+    if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
+        uint8_t cb[16] = {0};
+        *(uint32_t *)(local_random) = rand();
+        *(uint32_t *)(local_random + 4) = rand();
+        *(uint32_t *)(local_random + 8) = rand();
+        *(uint32_t *)(local_random + 12) = rand();
+        __sm_f4(local_pairing_public_key, remote_pairing_public_key, local_random, 0, cb);
+        sm_send_pairing_confirm(cb);
+    } else {
+        // TODO: other methods
+    }
 }
 
 void sm_set_remote_ltk(uint8_t *data) {
@@ -724,20 +726,19 @@ void sm_set_remote_ltk(uint8_t *data) {
 void sm_get_local_ltk(uint8_t *data) {
     char *buffer = nullptr;
     uint32_t device_info_size = sizeof(SM_DEVICE_INFO);
-    uint32_t read_buffer_len = 0;
 
-    buffer = (char *)malloc(device_info_size);
-    device_info_file.setFileName(SM_DEVICE_INFO_FILE_NAME);
-    device_info_file.open(QIODevice::ReadOnly);
-    read_buffer_len = device_info_file.read(buffer, device_info_size);
-    device_info_file.close();
-
-    if (read_buffer_len > 0) { // already encrypted, get ltk from db
-        memcpy(data, buffer, SM_LENGTH_LTK);
-    } else { // encrypting, get ltk from memory
+    if (is_local_ltk_generated) { // first encrypt, get ltk from memory
         memcpy(data, local_ltk, SM_LENGTH_LTK);
+    } else { // already encrypted, get ltk from db
+        buffer = (char *)malloc(device_info_size);
+        device_info_file.setFileName(SM_DEVICE_INFO_FILE_NAME);
+        device_info_file.open(QIODevice::ReadOnly);
+        device_info_file.read(buffer, device_info_size);
+        device_info_file.close();
+
+        memcpy(data, buffer, SM_LENGTH_LTK); // TODO: find ltk in multy device_info
+        free(buffer);
     }
-    free(buffer);
 }
 
 void sm_set_remote_ediv(uint8_t *data) {
