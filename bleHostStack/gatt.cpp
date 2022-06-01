@@ -66,6 +66,8 @@
 
 #define GATT_SERVICE_MAX_COUNT                              10
 
+#define GATT_MAXSIZE_DEVICE_NAME                            16
+#define GATT_MAXSIZE_TEST_BUFFER                            128
 
 typedef struct {
     ATT_ITEM *items;
@@ -77,29 +79,28 @@ typedef struct {
 
 
 /*
-att_handle(2B)	att_type(UUID, 2B/16B)							att_value(0-512B)                               att_permission(1B)
+att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B)                               att_permission(1B)
 
 // GAP service
-0x0001			0x2800(GATT_DECLARATION_PRIMARY_SERVICE)		0x1800(GATT_SERVICE_GENERIC_ACCESS)             0x01(GATT_PERMISSION_READ)
-0x0002			0x2803(GATT_DECLARATION_CHARACTERISTIC)			0x02(GATT_CHARACTERISTIC_PROPERITY_READ)        0x01(GATT_PERMISSION_READ)
+0x0001          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x1800(GATT_SERVICE_GENERIC_ACCESS)             0x01(GATT_PERMISSION_READ)
+0x0002          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x02(GATT_CHARACTERISTIC_PROPERITY_READ)        0x01(GATT_PERMISSION_READ)
                                                                 0x0003(handle)
                                                                 0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)
-0x0003			0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)			"ble_demo"                                      0x01(GATT_PERMISSION_READ)
+0x0003          0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)            [16 Bytes]                                      0x01(GATT_PERMISSION_READ)
 
 // GATT service
-0x0010			0x2800(GATT_DECLARATION_PRIMARY_SERVICE)		0x1801(GATT_SERVICE_GATT)                       0x01(GATT_PERMISSION_READ)
-0x0011			0x2803(GATT_DECLARATION_CHARACTERISTIC)			0x20(GATT_CHARACTERISTIC_PROPERITY_INDICATE)    0x01(GATT_PERMISSION_READ)
+0x0010          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x1801(GATT_SERVICE_GATT)                       0x01(GATT_PERMISSION_READ)
+0x0011          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x20(GATT_CHARACTERISTIC_PROPERITY_INDICATE)    0x01(GATT_PERMISSION_READ)
                                                                 0x0012(handle)
                                                                 0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)
-0x0012			0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)		0x0000, 0x0000                                  0x01(GATT_PERMISSION_READ)
-0x0013          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
+0x0012          0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)        0x0000, 0x0000                                  0x01(GATT_PERMISSION_READ)
 
 // BATTERY service
-0x0100			0x2800(GATT_DECLARATION_PRIMARY_SERVICE)		0x180f(GATT_SERVICE_BATTERY)                    0x01(GATT_PERMISSION_READ)
-0x0101			0x2803(GATT_DECLARATION_CHARACTERISTIC)			0x12(GATT_CHARACTERISTIC_PROPERITY_READ/NOTIFY) 0x01(GATT_PERMISSION_READ)
+0x0100          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x180f(GATT_SERVICE_BATTERY)                    0x01(GATT_PERMISSION_READ)
+0x0101          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x12(GATT_CHARACTERISTIC_PROPERITY_READ/NOTIFY) 0x01(GATT_PERMISSION_READ)
                                                                 0x0102(handle)
                                                                 0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)
-0x0102			0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)			0x62(98%)                                       0x01(GATT_PERMISSION_READ)
+0x0102          0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)          0x62(98%)                                       0x01(GATT_PERMISSION_READ)
 0x0103          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
 
 // TEST service
@@ -107,64 +108,66 @@ att_handle(2B)	att_type(UUID, 2B/16B)							att_value(0-512B)                   
 0x1001          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x16(GATT_CHARACTERISTIC_PROPERITY_READ/WRITE_NORESP/NOTIFY)  0x01(GATT_PERMISSION_READ)
                                                                 0x1002(handle)
                                                                 0x2aff(GATT_OBJECT_TYPE_TEST)
-0x1002          0x2aff(GATT_OBJECT_TYPE_TEST)                   [36 Bytes]                                      0x01(GATT_PERMISSION_READ)
+0x1002          0x2aff(GATT_OBJECT_TYPE_TEST)                   [128 Bytes]                                     0x01(GATT_PERMISSION_READ)
 0x1003          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
 */
 
-uint8_t uuid_gencric_access[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
-uint8_t characteristic_gencric_access[] = {GATT_CHARACTERISTIC_PROPERITY_READ,
-                                           0x03, 0x00,
-                                           (uint8_t)GATT_OBJECT_TYPE_DEVICE_NAME, GATT_OBJECT_TYPE_DEVICE_NAME >> 8};
-uint8_t device_name[] = {'b', 'l', 'e', '_', 'd', 'e', 'm', 'o'};
+uint8_t gacc_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
+uint8_t gacc_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ,
+                                 0x03, 0x00,
+                                 (uint8_t)GATT_OBJECT_TYPE_DEVICE_NAME, GATT_OBJECT_TYPE_DEVICE_NAME >> 8};
+uint8_t gacc_device_name[GATT_MAXSIZE_DEVICE_NAME] = {'b', 'l', 'e', '_', 'd', 'e', 'm', 'o'};
 
 
-uint8_t uuid_gencric_attribute[] = {(uint8_t)GATT_SERVICE_GENERIC_ATTRIBUTE, GATT_SERVICE_GENERIC_ATTRIBUTE >> 8};
-uint8_t characteristic_gencric_attribute[] = {GATT_CHARACTERISTIC_PROPERITY_INDICATE,
-                                              0x12, 0x00,
-                                              (uint8_t)GATT_OBJECT_TYPE_SERVICE_CHANGED, GATT_OBJECT_TYPE_SERVICE_CHANGED >> 8};
-uint8_t gencric_attribute[] = {0x00, 0x00, 0x00, 0x00};
+uint8_t gatt_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ATTRIBUTE, GATT_SERVICE_GENERIC_ATTRIBUTE >> 8};
+uint8_t gatt_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_INDICATE,
+                                 0x12, 0x00,
+                                 (uint8_t)GATT_OBJECT_TYPE_SERVICE_CHANGED, GATT_OBJECT_TYPE_SERVICE_CHANGED >> 8};
+uint8_t gatt_service_changed[] = {0x00, 0x00, 0x00, 0x00};
 
 
-uint8_t uuid_battery[] = {(uint8_t)GATT_SERVICE_BATTERY, GATT_SERVICE_BATTERY >> 8};
-uint8_t characteristic_battery[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
+uint8_t battery_uuid[] = {(uint8_t)GATT_SERVICE_BATTERY, GATT_SERVICE_BATTERY >> 8};
+uint8_t battery_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
                                     0x02, 0x01,
                                     (uint8_t)GATT_OBJECT_TYPE_BATTERY_LEVEL, GATT_OBJECT_TYPE_BATTERY_LEVEL >> 8};
 uint8_t battery_level[] = {0x62}; // 98%
+uint8_t battery_ccc[] = {0x00, 0x00};
 
 
-uint8_t uuid_test[] = {(uint8_t)GATT_SERVICE_TEST, GATT_SERVICE_TEST >> 8};
-uint8_t characteristic_test[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP| GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
+uint8_t test_uuid[] = {(uint8_t)GATT_SERVICE_TEST, GATT_SERVICE_TEST >> 8};
+uint8_t test_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP| GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
                                  0x02, 0x10,
                                  (uint8_t)GATT_OBJECT_TYPE_TEST, GATT_OBJECT_TYPE_TEST >> 8};
-uint8_t buff_test[36] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
-                         's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+uint8_t test_buffer[GATT_MAXSIZE_TEST_BUFFER] = {
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
+    's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+uint8_t test_ccc[] = {0x00, 0x00};
 
 
-ATT_ITEM items_gencric_access[] = {
-    {0x0001, GATT_DECLARATION_PRIMARY_SERVICE, uuid_gencric_access, sizeof(uuid_gencric_access), GATT_PERMISSION_READ},
-    {0x0002, GATT_DECLARATION_CHARACTERISTIC, characteristic_gencric_access, sizeof(characteristic_gencric_access), GATT_PERMISSION_READ},
-    {0x0003, GATT_OBJECT_TYPE_DEVICE_NAME, device_name, sizeof(device_name), GATT_PERMISSION_READ}
+ATT_ITEM items_gacc[] = {
+    {0x0001, GATT_DECLARATION_PRIMARY_SERVICE, gacc_uuid, sizeof(gacc_uuid), GATT_PERMISSION_READ},
+    {0x0002, GATT_DECLARATION_CHARACTERISTIC, gacc_characteristic, sizeof(gacc_characteristic), GATT_PERMISSION_READ},
+    {0x0003, GATT_OBJECT_TYPE_DEVICE_NAME, gacc_device_name, sizeof(gacc_device_name), GATT_PERMISSION_READ}
 };
 
-ATT_ITEM items_gencric_attribute[] = {
-    {0x0010, GATT_DECLARATION_PRIMARY_SERVICE, uuid_gencric_attribute, sizeof(uuid_gencric_attribute), GATT_PERMISSION_READ},
-    {0x0011, GATT_DECLARATION_CHARACTERISTIC, characteristic_gencric_attribute, sizeof(characteristic_gencric_attribute), GATT_PERMISSION_READ},
-    {0x0012, GATT_OBJECT_TYPE_SERVICE_CHANGED, gencric_attribute, sizeof(gencric_attribute), GATT_PERMISSION_READ},
-    {0x0013, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, nullptr, 0, GATT_PERMISSION_READ}
+ATT_ITEM items_gatt[] = {
+    {0x0010, GATT_DECLARATION_PRIMARY_SERVICE, gatt_uuid, sizeof(gatt_uuid), GATT_PERMISSION_READ},
+    {0x0011, GATT_DECLARATION_CHARACTERISTIC, gatt_characteristic, sizeof(gatt_characteristic), GATT_PERMISSION_READ},
+    {0x0012, GATT_OBJECT_TYPE_SERVICE_CHANGED, gatt_service_changed, sizeof(gatt_service_changed), GATT_PERMISSION_READ}
 };
 
 ATT_ITEM items_battery[] = {
-    {0x0100, GATT_DECLARATION_PRIMARY_SERVICE, uuid_battery, sizeof(uuid_battery), GATT_PERMISSION_READ},
-    {0x0101, GATT_DECLARATION_CHARACTERISTIC, characteristic_battery, sizeof(characteristic_battery), GATT_PERMISSION_READ},
+    {0x0100, GATT_DECLARATION_PRIMARY_SERVICE, battery_uuid, sizeof(battery_uuid), GATT_PERMISSION_READ},
+    {0x0101, GATT_DECLARATION_CHARACTERISTIC, battery_characteristic, sizeof(battery_characteristic), GATT_PERMISSION_READ},
     {0x0102, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ},
-    {0x0103, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, nullptr, 0, GATT_PERMISSION_READ}
+    {0x0103, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, battery_ccc, sizeof(battery_ccc), GATT_PERMISSION_READ}
 };
 
 ATT_ITEM items_test[] = {
-    {0x1000, GATT_DECLARATION_PRIMARY_SERVICE, uuid_test, sizeof(uuid_test), GATT_PERMISSION_READ},
-    {0x1001, GATT_DECLARATION_CHARACTERISTIC, characteristic_test, sizeof(characteristic_test), GATT_PERMISSION_READ},
-    {0x1002, GATT_OBJECT_TYPE_TEST, buff_test, sizeof(buff_test), GATT_PERMISSION_READ},
-    {0x1003, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, nullptr, 0, GATT_PERMISSION_READ}
+    {0x1000, GATT_DECLARATION_PRIMARY_SERVICE, test_uuid, sizeof(test_uuid), GATT_PERMISSION_READ},
+    {0x1001, GATT_DECLARATION_CHARACTERISTIC, test_characteristic, sizeof(test_characteristic), GATT_PERMISSION_READ},
+    {0x1002, GATT_OBJECT_TYPE_TEST, test_buffer, sizeof(test_buffer), GATT_PERMISSION_READ},
+    {0x1003, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, test_ccc, sizeof(test_ccc), GATT_PERMISSION_READ}
 };
 
 
@@ -172,8 +175,8 @@ GATT_SERVICE services[GATT_SERVICE_MAX_COUNT];
 uint8_t service_count = 0;
 
 void gatt_init() {
-    gatt_add_service(items_gencric_access, 3, 0x0001, 0x0003, GATT_SERVICE_GENERIC_ACCESS);
-    gatt_add_service(items_gencric_attribute, 4, 0x0010, 0x0013, GATT_SERVICE_GENERIC_ATTRIBUTE);
+    gatt_add_service(items_gacc, 3, 0x0001, 0x0003, GATT_SERVICE_GENERIC_ACCESS);
+    gatt_add_service(items_gatt, 3, 0x0010, 0x0012, GATT_SERVICE_GENERIC_ATTRIBUTE);
     gatt_add_service(items_battery, 4, 0x0100, 0x0103, GATT_SERVICE_BATTERY);
     gatt_add_service(items_test, 4, 0x1000, 0x1003, GATT_SERVICE_TEST);
 }
@@ -191,11 +194,19 @@ void gatt_add_service(ATT_ITEM *items, uint16_t items_cnt, uint16_t start_handle
 
 // read part value of one characteristic
 void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
-    uint8_t *buffer = nullptr;
     ATT_ITEM *item = nullptr;
-    uint16_t copy_bytes = 0;
-    uint16_t offset= 1;
+    ATT_ITEM *item_first = &(services[0].items[0]);
+    ATT_ITEM *item_last = &(services[service_count - 1].items[services[service_count - 1].items_cnt -1]);
+    uint8_t *buffer = nullptr;
+    uint16_t copy_length = 0;
+    uint16_t offset = 1;
     uint16_t att_mtu = att_get_mtu();
+    uint8_t error_code = 0;
+
+    if ((item_first->handle > handle) || (item_last->handle < handle)) {
+        error_code = ATT_ERROR_INVALID_HANDLE;
+        goto RET;
+    }
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
@@ -205,29 +216,56 @@ void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
                 continue;
             }
 
-            copy_bytes = item->value_length - value_offset;
-            if (copy_bytes > att_mtu - 1) {
-                copy_bytes = att_mtu - 1;
+            if (item->value_length < value_offset) {
+                error_code = ATT_ERROR_INVALID_OFFSET;
+                goto RET;
+            }
+
+            if (item->value_length <= att_mtu - offset) { // if value_length <= att_mtu - 1, shouldn't use read_blob_req command
+                error_code = ATT_ERROR_ATTRIBUTE_NOT_LONG;
+                goto RET;
             }
 
             buffer = (uint8_t *)malloc(att_mtu);
             buffer[0] = ATT_OPERATE_READ_BLOB_RESP;
-            memcpy_s(buffer + offset, copy_bytes, item->value + value_offset, copy_bytes);
-            offset += copy_bytes;
-            att_send(buffer, offset);
-            free(buffer);
-            return;
+            copy_length = item->value_length - value_offset;
+            if (copy_length > att_mtu - offset) {
+                copy_length = att_mtu - offset;
+            }
+            memcpy_s(buffer + offset, copy_length, item->value + value_offset, copy_length);
+            offset += copy_length;
+            goto RET;
         }
+    }
+
+RET:
+    if (error_code) {
+        gatt_send_error_resp(ATT_OPERATE_READ_BLOB_REQ, handle, error_code);
+    } else {
+        att_send(buffer, offset);
+    }
+
+    if (buffer) {
+        free(buffer);
+        buffer = nullptr;
     }
 }
 
 // read value of one characteristic
 void gatt_recv_read_req(uint16_t handle) {
-    uint8_t *buffer = nullptr;
     ATT_ITEM *item = nullptr;
-    uint16_t copy_bytes = 0;
-    uint16_t offset= 1;
+    ATT_ITEM *item_first = &(services[0].items[0]);
+    ATT_ITEM *item_last = &(services[service_count - 1].items[services[service_count - 1].items_cnt -1]);
+    uint8_t *buffer = nullptr;
+    uint16_t copy_length = 0;
+    uint16_t offset = 1;
     uint16_t att_mtu = att_get_mtu();
+    uint8_t error_code = 0;
+
+    if ((item_first->handle > handle) || (item_last->handle < handle)) {
+        error_code = ATT_ERROR_INVALID_HANDLE;
+        goto RET;
+    }
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
@@ -237,29 +275,46 @@ void gatt_recv_read_req(uint16_t handle) {
                 continue;
             }
 
-            copy_bytes = item->value_length;
-            if (copy_bytes > att_mtu - 1) {
-                copy_bytes = att_mtu - 1;
-            }
-
             buffer = (uint8_t *)malloc(att_mtu);
             buffer[0] = ATT_OPERATE_READ_RESP;
-            memcpy_s(buffer + offset, copy_bytes, item->value, copy_bytes);
-            offset += copy_bytes;
-            att_send(buffer, offset);
-            free(buffer);
-            return;
+            copy_length = item->value_length;
+            if (copy_length > att_mtu - offset) {
+                copy_length = att_mtu - offset;
+            }
+            memcpy_s(buffer + offset, copy_length, item->value, copy_length);
+            offset += copy_length;
+            goto RET;
         }
+    }
+
+RET:
+    if (error_code) {
+        gatt_send_error_resp(ATT_OPERATE_READ_REQ, handle, error_code);
+    } else {
+        att_send(buffer, offset);
+    }
+
+    if (buffer) {
+        free(buffer);
+        buffer = nullptr;
     }
 }
 
 // discover descriptors in one characteristic
 void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) {
-    uint8_t *buffer = nullptr;
     ATT_ITEM *item = nullptr;
+    ATT_ITEM *item_first = &(services[0].items[0]);
+    ATT_ITEM *item_last = &(services[service_count - 1].items[services[service_count - 1].items_cnt -1]);
+    uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
-    uint16_t offset= 2;
-    bool found = false;
+    uint16_t offset = 2;
+    uint16_t pair_value_length = 4;
+    uint8_t error_code = 0;
+
+    if ((item_first->handle > end_handle) || (item_last->handle < start_handle)) {
+        error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
+        goto RET;
+    }
 
     buffer = (uint8_t *)malloc(att_mtu);
     buffer[0] = ATT_OPERATE_FIND_INFO_RESP;
@@ -272,7 +327,6 @@ void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) 
             if (item->handle < start_handle) {
                 continue;
             }
-            found = true;
 
             buffer[offset] = (uint8_t)item->handle;
             offset++;
@@ -282,35 +336,46 @@ void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) 
             offset++;
             buffer[offset] = item->type >> 8;
             offset++;
-
-            if ((offset + 4) > att_mtu) {
-                break;
+            if ((offset + pair_value_length) > att_mtu) {
+                goto RET;
             }
 
             if (item->handle > end_handle) {
-                break;
+                goto RET;
             }
         }
     }
 
-    if (found) {
-        att_send(buffer, offset);
+RET:
+    if (error_code) {
+        gatt_send_error_resp(ATT_OPERATE_FIND_INFO_REQ, start_handle, error_code);
     } else {
-        gatt_send_error_resp(ATT_OPERATE_FIND_INFO_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+        att_send(buffer, offset);
     }
 
-    free(buffer);
+    if (buffer) {
+        free(buffer);
+        buffer = nullptr;
+    }
 }
 
 // discover the handle and group end handle of one att value
 void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle,
                                       uint16_t att_type, uint8_t *att_value, uint32_t att_value_length) {
-    uint8_t *buffer = nullptr;
     ATT_ITEM *item = nullptr;
+    ATT_ITEM *item_first = &(services[0].items[0]);
+    ATT_ITEM *item_last = &(services[service_count - 1].items[services[service_count - 1].items_cnt -1]);
+    uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint16_t offset = 1;
     uint16_t pair_value_length = 4;
-    bool found = false;
+    uint8_t error_code = 0;
+    uint8_t found = 0;
+
+    if ((item_first->handle > end_handle) || (item_last->handle < start_handle)) {
+        error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
+        goto RET;
+    }
 
     buffer = (uint8_t *)malloc(att_mtu);
     buffer[0] = ATT_OPERATE_FIND_BY_TYPE_VALUE_RESP;
@@ -324,8 +389,7 @@ void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle
             }
 
             if ((item->type == att_type) && (item->value_length == att_value_length) && (!memcmp(item->value, att_value, att_value_length))) {
-                found = true;
-
+                found = 1;
                 buffer[offset] = (uint8_t)item->handle;
                 offset++;
                 buffer[offset] = item->handle >> 8;
@@ -335,33 +399,49 @@ void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle
                 buffer[offset] = services[index_service].end_handle >> 8;
                 offset++;
                 if ((offset + pair_value_length) > att_mtu) {
-                    break;
+                    goto RET;
                 }
             }
 
             if (item->handle > end_handle) {
-                break;
+                goto RET;
             }
         }
     }
 
-    if (found) {
-        att_send(buffer, offset);
-    } else {
-        gatt_send_error_resp(ATT_OPERATE_READ_BY_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+RET:
+    if (!found) {
+        error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
     }
 
-    free(buffer);
+    if (error_code) {
+        gatt_send_error_resp(ATT_OPERATE_FIND_BY_TYPE_VALUE_REQ, start_handle, error_code);
+    } else {
+        att_send(buffer, offset);
+    }
+
+    if (buffer) {
+        free(buffer);
+        buffer = nullptr;
+    }
 }
 
 // discover include and characteristics in one service
 void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type) {
-    uint8_t *buffer = nullptr;
     ATT_ITEM *item = nullptr;
+    ATT_ITEM *item_first = &(services[0].items[0]);
+    ATT_ITEM *item_last = &(services[service_count - 1].items[services[service_count - 1].items_cnt -1]);
+    uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint16_t offset = 2;
     uint16_t pair_value_length = 0;
-    bool found = false;
+    uint8_t error_code = 0;
+    uint8_t found = 0;
+
+    if ((item_first->handle > end_handle) || (item_last->handle < start_handle)) {
+        error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
+        goto RET;
+    }
 
     buffer = (uint8_t *)malloc(att_mtu);
     buffer[0] = ATT_OPERATE_READ_BY_TYPE_RESP;
@@ -375,14 +455,14 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
             }
 
             if (item->type == att_type) {
-                if (found == false) { // the first item matched
+                if (found == 0) { // the first item matched
                     pair_value_length = item->value_length;
                     buffer[1] = 2 + pair_value_length;
                 }
-                found = true;
+                found = 1;
 
                 if (pair_value_length != item->value_length) { // subsequent items not matched
-                    break;
+                    goto RET;
                 }
 
                 buffer[offset] = (uint8_t)item->handle;
@@ -392,31 +472,41 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
                 memcpy_s(buffer + offset, pair_value_length, item->value, pair_value_length);
                 offset += pair_value_length;
                 if ((offset + 2 + pair_value_length) > att_mtu) {
-                    break;
+                    goto RET;
                 }
             }
 
             if (item->handle > end_handle) {
-                break;
+                goto RET;
             }
         }
     }
 
-    if (found) {
-        att_send(buffer, offset);
-    } else {
-        gatt_send_error_resp(ATT_OPERATE_READ_BY_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+RET:
+    if (!found) {
+        error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
     }
 
-    free(buffer);
+    if (error_code) {
+        gatt_send_error_resp(ATT_OPERATE_READ_BY_TYPE_REQ, start_handle, error_code);
+    } else {
+        att_send(buffer, offset);
+    }
+
+    if (buffer) {
+        free(buffer);
+        buffer = nullptr;
+    }
 }
 
 // discover all services and it's start and end handle, just used for primary and second service
 void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type) {
+    ATT_ITEM *item = nullptr;
     uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
-    uint16_t offset= 2;
-    bool found = false;
+    uint16_t offset = 2;
+    uint8_t error_code = 0;
+    uint8_t found = 0;
 
     buffer = (uint8_t *)malloc(att_mtu);
     buffer[0] = ATT_OPERATE_READ_BY_GROUP_TYPE_RESP;
@@ -424,8 +514,9 @@ void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle
 
     for (uint8_t index = 0; index < service_count; index++) {
         if ((start_handle <= services[index].start_handle) && (services[index].end_handle <= end_handle)) {
-            if (services[index].items[0].type == group_type) {
-                found = true;
+            item = &services[index].items[0];
+            if (item->type == group_type) {
+                found = 1;
 
                 buffer[offset] = (uint8_t)services[index].start_handle;
                 offset++;
@@ -435,23 +526,147 @@ void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle
                 offset++;
                 buffer[offset] = services[index].end_handle >> 8;
                 offset++;
-                memcpy_s(buffer + offset, services[index].items[0].value_length, services[index].items[0].value,
-                         services[index].items[0].value_length);
-                offset += services[index].items[0].value_length;
+                memcpy_s(buffer + offset, item->value_length, item->value, item->value_length);
+                offset += item->value_length;
                 if ((offset + 6) > att_mtu) {
-                    break;
+                    goto RET;
                 }
             }
         }
     }
 
-    if (found) {
-        att_send(buffer, offset);
-    } else {
-        gatt_send_error_resp(ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+RET:
+    if (!found) {
+        error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
     }
 
-    free(buffer);
+    if (error_code) {
+        gatt_send_error_resp(ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, start_handle, error_code);
+    } else {
+        att_send(buffer, offset);
+    }
+
+    if (buffer) {
+        free(buffer);
+        buffer = nullptr;
+    }
+}
+
+void gatt_recv_write_req(uint16_t handle, uint8_t *value, uint32_t value_length) {
+    // TODO: check permission
+    ATT_ITEM *item = nullptr;
+    ATT_ITEM *item_first = &(services[0].items[0]);
+    ATT_ITEM *item_last = &(services[service_count - 1].items[services[service_count - 1].items_cnt -1]);
+    uint8_t buffer[1] = {ATT_OPERATE_WRITE_RESP};
+    uint16_t offset = 1;
+    uint8_t error_code = 0;
+
+    if ((item_first->handle > handle) || (item_last->handle < handle)) {
+        error_code = ATT_ERROR_INVALID_HANDLE;
+        goto RET;
+    }
+
+    for (uint8_t index_service = 0; index_service < service_count; index_service++) {
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < handle) {
+                continue;
+            }
+
+            if (value_length <= item->value_length) {
+                memcpy_s(item->value, value_length, value, value_length);
+            } else {
+                error_code = ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH;
+            }
+            goto RET;
+        }
+    }
+
+RET:
+    if (error_code) {
+        gatt_send_error_resp(ATT_OPERATE_WRITE_REQ, handle, error_code);
+    } else {
+        att_send(buffer, offset);
+    }
+}
+
+void gatt_recv_handle_value_cfm() {
+    // set flag to enable send next indication
+}
+
+void gatt_send_handle_value_notify(uint16_t handle) {
+    // TODO: check permission
+    uint8_t *buffer = nullptr;
+    ATT_ITEM *item = nullptr;
+    uint16_t copy_bytes = 0;
+    uint16_t offset = 1;
+    uint16_t att_mtu = att_get_mtu();
+
+    for (uint8_t index_service = 0; index_service < service_count; index_service++) {
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < handle) {
+                continue;
+            }
+
+            buffer = (uint8_t *)malloc(att_mtu);
+            buffer[0] = ATT_OPERATE_HANDLE_VALUE_NTF;
+
+            buffer[offset] = (uint8_t)item->handle;
+            offset++;
+            buffer[offset] = item->handle >> 8;
+            offset++;
+            copy_bytes = item->value_length;
+            if (copy_bytes > att_mtu - offset) {
+                copy_bytes = att_mtu - offset;
+            }
+            memcpy_s(buffer + offset, copy_bytes, item->value, copy_bytes);
+            offset += copy_bytes;
+
+            att_send(buffer, offset);
+            free(buffer);
+            return;
+        }
+    }
+}
+
+void gatt_send_handle_value_indication(uint16_t handle) {
+    // TODO: check permission and previous cfm is received
+    uint8_t *buffer = nullptr;
+    ATT_ITEM *item = nullptr;
+    uint16_t copy_bytes = 0;
+    uint16_t offset = 1;
+    uint16_t att_mtu = att_get_mtu();
+
+    for (uint8_t index_service = 0; index_service < service_count; index_service++) {
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < handle) {
+                continue;
+            }
+
+            buffer = (uint8_t *)malloc(att_mtu);
+            buffer[0] = ATT_OPERATE_HANDLE_VALUE_IND;
+
+            buffer[offset] = (uint8_t)item->handle;
+            offset++;
+            buffer[offset] = item->handle >> 8;
+            offset++;
+            copy_bytes = item->value_length;
+            if (copy_bytes > att_mtu - offset) {
+                copy_bytes = att_mtu - offset;
+            }
+            memcpy_s(buffer + offset, copy_bytes, item->value, copy_bytes);
+            offset += copy_bytes;
+
+            att_send(buffer, offset);
+            free(buffer);
+            return;
+        }
+    }
 }
 
 void gatt_send_error_resp(uint8_t op_code, uint16_t handle, uint8_t error_code) {
