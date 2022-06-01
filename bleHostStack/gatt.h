@@ -16,6 +16,8 @@ void gatt_init();
 void gatt_add_service(ATT_ITEM *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service_id);
 void gatt_recv_read_req(uint16_t handle);
 void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle);
+void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle,
+                                      uint16_t att_type, uint8_t *att_value, uint32_t att_value_length);
 void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type);
 void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type);
 void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset);

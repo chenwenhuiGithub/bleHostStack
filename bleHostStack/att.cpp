@@ -4,6 +4,7 @@
 #include "log.h"
 
 static void __att_recv_find_info_req(uint8_t *data, uint32_t length);
+static void __att_recv_find_by_type_value_req(uint8_t *data, uint32_t length);
 static void __att_recv_read_by_type_req(uint8_t *data, uint32_t length);
 static void __att_recv_read_req(uint8_t *data, uint32_t length);
 static void __att_recv_read_by_group_type_req(uint8_t *data, uint32_t length);
@@ -24,6 +25,9 @@ void att_recv(uint8_t *data, uint32_t length) {
     case ATT_OPERATE_FIND_INFO_REQ:
         __att_recv_find_info_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER);
         break;
+    case ATT_OPERATE_FIND_BY_TYPE_VALUE_REQ:
+        __att_recv_find_by_type_value_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER);
+        break;
     case ATT_OPERATE_READ_BY_TYPE_REQ:
         __att_recv_read_by_type_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER);
         break;
@@ -37,7 +41,7 @@ void att_recv(uint8_t *data, uint32_t length) {
         __att_recv_read_by_group_type_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER);
         break;
     default:
-        LOG_WARNING("att_recv invalid, op_code:%u", op_code);
+        LOG_WARNING("att_recv invalid, op_code:0x%02x", op_code);
         break;
     }
 }
@@ -63,6 +67,16 @@ static void __att_recv_find_info_req(uint8_t *data, uint32_t length) {
     uint16_t end_handle = data[2] | (data[3] << 8);
 
     gatt_recv_find_information_req(start_handle, end_handle);
+}
+
+static void __att_recv_find_by_type_value_req(uint8_t *data, uint32_t length) {
+    uint16_t start_handle = data[0] | (data[1] << 8);
+    uint16_t end_handle = data[2] | (data[3] << 8);
+    uint16_t att_type = data[4] | (data[5] << 8);
+    uint32_t offset = 6;
+
+    // this command only support 16 Bytes uuid
+    gatt_recv_find_by_type_value_req(start_handle, end_handle, att_type, data + offset, length - offset);
 }
 
 static void __att_recv_read_by_type_req(uint8_t *data, uint32_t length) {

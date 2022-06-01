@@ -343,7 +343,7 @@ static void __sm_get_pairing_method() {
     };
 
     is_secure_connection = (pairing_req[3] & SM_AUTH_SECURE_CONNECTION) && (pairing_resp[3] & SM_AUTH_SECURE_CONNECTION);
-    LOG_INFO("is_secure_connection:%u", is_secure_connection);
+    LOG_INFO("is_secure_connection:0x%02x", is_secure_connection);
 
     if (is_secure_connection) {
         if (pairing_req[2] || pairing_resp[2]) {
@@ -407,7 +407,7 @@ void sm_recv(uint8_t *data, uint32_t length) {
     case SM_OPERATE_PAIRING_DHKEY_CHECK:
         __sm_recv_pairing_dhkey_check(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     default:
-        LOG_WARNING("sm_recv invalid, op_code:%u", op_code); break;
+        LOG_WARNING("sm_recv invalid, op_code:0x%02x", op_code); break;
     }
 }
 

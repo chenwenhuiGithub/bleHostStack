@@ -15,7 +15,7 @@ void l2cap_recv(uint8_t *data, uint32_t length) {
         sm_recv(data + L2CAP_LENGTH_HEADER, length - L2CAP_LENGTH_HEADER);
         break;
     default:
-        LOG_WARNING("l2cap_recv invalid, cid:%u", cid);
+        LOG_WARNING("l2cap_recv invalid, cid:0x%04x", cid);
         break;
     }
 }

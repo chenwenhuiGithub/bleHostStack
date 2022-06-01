@@ -319,7 +319,7 @@ void hci_recv_evt(uint8_t *data, uint32_t length) {
     case HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS:
         __hci_recv_evt_number_of_completed_packets(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
     default:
-        LOG_WARNING("hci_recv_evt invalid, event_code:%u", event_code); break;
+        LOG_WARNING("hci_recv_evt invalid, event_code:0x%02x", event_code); break;
     }
 }
 
@@ -349,7 +349,7 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             hci_send_cmd_le_read_buffer_size();
             break;
         default:
-            LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+            LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
             break;
         }
         break;
@@ -371,7 +371,7 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             hci_send_cmd_write_class_of_device(class_of_device);
             break;
         default:
-            LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+            LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
             break;
         }
         break;
@@ -411,12 +411,12 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
                      data[3], data[4], (data[5] & 0x0f));
             break;
         default:
-            LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+            LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
             break;
         }
         break;
     default:
-        LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:%u, ocf:%u", ogf, ocf);
+        LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
         break;
     }
 }
@@ -436,12 +436,12 @@ static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length) {
             LOG_INFO("le_generate_dhkey status:%u", data[0]);
             break;
         default:
-            LOG_WARNING("__hci_recv_evt_command_status invalid, ogf:%u, ocf:%u", ogf, ocf);
+            LOG_WARNING("__hci_recv_evt_command_status invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
             break;
         }
         break;
     default:
-        LOG_WARNING("__hci_recv_evt_command_status invalid, ogf:%u, ocf:%u", ogf, ocf);
+        LOG_WARNING("__hci_recv_evt_command_status invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
         break;
     }
 }
@@ -454,7 +454,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONN_COMPLETE:
-        LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:%u, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
+        LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         sm_set_remote_address(data + 6);
         sm_set_remote_address_type(data[5]);
@@ -485,8 +485,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         hci_send_cmd_le_remote_conn_param_req_reply(&remote_conn_param_req_reply);
         break;
     case HCI_EVENT_LE_ENHANCED_CONN_COMPLETE:
-        LOG_INFO("le_enhanced_conn_complete status:%u, connect_handle:0x%02x%02x, "
-                 "peer_address_type:%u, peer_address:%02x:%02x:%02x:%02x:%02x:%02x",
+        LOG_INFO("le_enhanced_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         sm_set_remote_address(data + 6);
         sm_set_remote_address_type(data[5]);
@@ -507,7 +506,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         sm_set_local_dhkey(&data[2]);
         break;
     default:
-        LOG_WARNING("__hci_recv_evt_le_meta invalid, sub_event:%u", sub_event);
+        LOG_WARNING("__hci_recv_evt_le_meta invalid, sub_event:0x%02x", sub_event);
         break;
     }
 }
@@ -526,7 +525,7 @@ static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t l
 
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length) {
     (void)length;
-    LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:%u",
+    LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:0x%02x",
              data[0], data[1], data[2], data[3]);
     LOG_INFO("/***** encryption enabled *****/");
     sm_key_distribution();
@@ -550,7 +549,7 @@ void hci_recv_acl(uint8_t *data, uint32_t length) {
         memcpy_s(&segment_l2cap_buffer[segment_l2cap_received_length], segment_l2cap_current_length , data + HCI_LENGTH_ACL_HEADER, segment_l2cap_current_length);
         segment_l2cap_received_length += segment_l2cap_current_length;
     } else {
-        LOG_ERROR("hci_recv_acl invalid, pb_flag:%02x", pb_flag);
+        LOG_ERROR("hci_recv_acl invalid, pb_flag:0x%02x", pb_flag);
         return;
     }
 

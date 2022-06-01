@@ -302,12 +302,64 @@ void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) 
     free(buffer);
 }
 
+// discover the handle and group end handle of one att value
+void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle,
+                                      uint16_t att_type, uint8_t *att_value, uint32_t att_value_length) {
+    uint8_t *buffer = nullptr;
+    ATT_ITEM *item = nullptr;
+    uint16_t att_mtu = att_get_mtu();
+    uint16_t offset = 1;
+    uint16_t pair_value_length = 4;
+    bool found = false;
+
+    buffer = (uint8_t *)malloc(att_mtu);
+    buffer[0] = ATT_OPERATE_FIND_BY_TYPE_VALUE_RESP;
+
+    for (uint8_t index_service = 0; index_service < service_count; index_service++) {
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < start_handle) {
+                continue;
+            }
+
+            if ((item->type == att_type) && (item->value_length == att_value_length) && (!memcmp(item->value, att_value, att_value_length))) {
+                found = true;
+
+                buffer[offset] = (uint8_t)item->handle;
+                offset++;
+                buffer[offset] = item->handle >> 8;
+                offset++;
+                buffer[offset] = (uint8_t)services[index_service].end_handle;
+                offset++;
+                buffer[offset] = services[index_service].end_handle >> 8;
+                offset++;
+                if ((offset + pair_value_length) > att_mtu) {
+                    break;
+                }
+            }
+
+            if (item->handle > end_handle) {
+                break;
+            }
+        }
+    }
+
+    if (found) {
+        att_send(buffer, offset);
+    } else {
+        gatt_send_error_resp(ATT_OPERATE_READ_BY_TYPE_REQ, start_handle, ATT_ERROR_ATTRIBUTE_NOT_FOUND);
+    }
+
+    free(buffer);
+}
+
 // discover include and characteristics in one service
 void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type) {
     uint8_t *buffer = nullptr;
     ATT_ITEM *item = nullptr;
     uint16_t att_mtu = att_get_mtu();
-    uint16_t offset= 2;
+    uint16_t offset = 2;
     uint16_t pair_value_length = 0;
     bool found = false;
 
