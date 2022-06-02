@@ -22,6 +22,7 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
 void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type);
 void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset);
 void gatt_recv_write_req(uint16_t handle, uint8_t *value, uint32_t value_length);
+void gatt_recv_write_cmd(uint16_t handle, uint8_t *value, uint32_t value_length);
 void gatt_recv_handle_value_cfm();
 void gatt_send_handle_value_notify(uint16_t handle);
 void gatt_send_handle_value_indication(uint16_t handle);

@@ -580,6 +580,30 @@ RET:
     }
 }
 
+void gatt_recv_write_cmd(uint16_t handle, uint8_t *value, uint32_t value_length) {
+    // TODO: check permission
+    ATT_ITEM *item = nullptr;
+
+    for (uint8_t index_service = 0; index_service < service_count; index_service++) {
+        for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
+            item = &(services[index_service].items[index_item]);
+
+            if (item->handle < handle) {
+                continue;
+            }
+
+            if (item->handle > handle) {
+                return;
+            }
+
+            if (value_length <= item->value_length) {
+                memcpy_s(item->value, value_length, value, value_length);
+                return;
+            }
+        }
+    }
+}
+
 void gatt_recv_handle_value_cfm() {
     // set flag to enable send next indication
 }

@@ -10,6 +10,7 @@ static void __att_recv_read_req(uint8_t *data, uint32_t length);
 static void __att_recv_read_by_group_type_req(uint8_t *data, uint32_t length);
 static void __att_recv_read_blob_req(uint8_t *data, uint32_t length);
 static void __att_recv_write_req(uint8_t *data, uint32_t length);
+static void __att_recv_write_cmd(uint8_t *data, uint32_t length);
 static void __att_recv_handle_value_cfm();
 static void __att_recv_exchange_mtu_req(uint8_t *data, uint32_t length);
 static void __att_send_exchange_mtu_resp(uint16_t mtu);
@@ -44,6 +45,9 @@ void att_recv(uint8_t *data, uint32_t length) {
         break;
     case ATT_OPERATE_WRITE_REQ:
         __att_recv_write_req(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER);
+        break;
+    case ATT_OPERATE_WRITE_CMD:
+        __att_recv_write_cmd(data + ATT_LENGTH_HEADER, length - ATT_LENGTH_HEADER);
         break;
     case ATT_OPERATE_HANDLE_VALUE_CFM:
         __att_recv_handle_value_cfm();
@@ -138,6 +142,13 @@ static void __att_recv_write_req(uint8_t *data, uint32_t length) {
     uint32_t offset = 2;
 
     gatt_recv_write_req(handle, data + offset, length - offset);
+}
+
+static void __att_recv_write_cmd(uint8_t *data, uint32_t length) {
+    uint16_t handle = data[0] | (data[1] << 8);
+    uint32_t offset = 2;
+
+    gatt_recv_write_cmd(handle, data + offset, length - offset);
 }
 
 static void __att_recv_handle_value_cfm() {
