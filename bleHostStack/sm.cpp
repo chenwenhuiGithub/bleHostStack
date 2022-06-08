@@ -211,11 +211,11 @@ static void __sm_c1(uint8_t* k, uint8_t* r, uint8_t* preq, uint8_t *pres, uint8_
 
     p1[0] = iat;
     p1[1] = rat;
-    memcpy(p1 + 2, preq, 7);
-    memcpy(p1 + 9, pres, 7);
+    memcpy_s(p1 + 2, 7, preq, 7);
+    memcpy_s(p1 + 9, 7, pres, 7);
 
-    memcpy(p2, ra, 6);
-    memcpy(p2 + 6, ia, 6);
+    memcpy_s(p2, 6, ra, 6);
+    memcpy_s(p2 + 6, 6, ia, 6);
 
     for (i = 0; i < 16; i++) {
         tmp[i] = r[i] ^ p1[i];
@@ -231,8 +231,8 @@ static void __sm_c1(uint8_t* k, uint8_t* r, uint8_t* preq, uint8_t *pres, uint8_
 static void __sm_s1(uint8_t* k, uint8_t* r1, uint8_t* r2, uint8_t* out_stk) {
     uint8_t tmp[16] = {0};
 
-    memcpy(tmp, r2, 8);
-    memcpy(tmp + 8, r1, 8);
+    memcpy_s(tmp, 8, r2, 8);
+    memcpy_s(tmp + 8, 8, r1, 8);
 
     __sm_encrypt(k, tmp, out_stk);
 }
@@ -296,10 +296,10 @@ static void __sm_f6(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t* r, uint8_t* i
     __mem_swap_copy(m + 32, r, 16);
     __mem_swap_copy(m + 48, iocap, 3);
     m[51] = at1;
-    memcpy(m + 52, a1, 6); // no need?
+    memcpy_s(m + 52, 6, a1, 6); // no need?
     __mem_swap_copy(m + 52, a1, 6);
     m[58] = at2;
-    memcpy(m + 59, a2, 6); // no need?
+    memcpy_s(m + 59, 6, a2, 6); // no need?
     __mem_swap_copy(m + 59, a2, 6);
 
     __mem_swap_copy(ws, w, 16);
@@ -414,7 +414,7 @@ void sm_recv(uint8_t *data, uint32_t length) {
 static void __sm_recv_pairing_req(uint8_t *data, uint32_t length) {
     (void)length;
     pairing_req[0] = SM_OPERATE_PAIRING_REQ;
-    memcpy(pairing_req + 1, data, SM_LENGTH_PAIRING_REQ);
+    memcpy_s(&pairing_req[1], SM_LENGTH_PAIRING_REQ, data, SM_LENGTH_PAIRING_REQ);
 
     pairing_resp[0] = SM_OPERATE_PAIRING_RESP;
     pairing_resp[1] = SM_IOCAP;
@@ -495,20 +495,20 @@ static void __sm_save_device_info() {
         }
     }
 
-    memcpy(device_info.local_ltk, local_ltk, SM_LENGTH_LTK);
-    memcpy(device_info.local_ediv, local_ediv, SM_LENGTH_EDIV);
-    memcpy(device_info.local_rand, local_rand, SM_LENGTH_RAND);
-    memcpy(device_info.local_irk, local_irk, SM_LENGTH_IRK);
+    memcpy_s(device_info.local_ltk, SM_LENGTH_LTK, local_ltk, SM_LENGTH_LTK);
+    memcpy_s(device_info.local_ediv, SM_LENGTH_EDIV, local_ediv, SM_LENGTH_EDIV);
+    memcpy_s(device_info.local_rand, SM_LENGTH_RAND, local_rand, SM_LENGTH_RAND);
+    memcpy_s(device_info.local_irk, SM_LENGTH_IRK, local_irk, SM_LENGTH_IRK);
     device_info.local_addr_type = local_addr_type;
-    memcpy(device_info.local_addr, local_addr, SM_LENGTH_ADDR);
-    memcpy(device_info.local_csrk, local_csrk, SM_LENGTH_CSRK);
-    memcpy(device_info.remote_ltk, remote_ltk, SM_LENGTH_LTK);
-    memcpy(device_info.remote_ediv, remote_ediv, SM_LENGTH_EDIV);
-    memcpy(device_info.remote_rand, remote_rand, SM_LENGTH_RAND);
-    memcpy(device_info.remote_irk, remote_irk, SM_LENGTH_IRK);
+    memcpy_s(device_info.local_addr, SM_LENGTH_ADDR, local_addr, SM_LENGTH_ADDR);
+    memcpy_s(device_info.local_csrk, SM_LENGTH_CSRK, local_csrk, SM_LENGTH_CSRK);
+    memcpy_s(device_info.remote_ltk, SM_LENGTH_LTK, remote_ltk, SM_LENGTH_LTK);
+    memcpy_s(device_info.remote_ediv, SM_LENGTH_EDIV, remote_ediv, SM_LENGTH_EDIV);
+    memcpy_s(device_info.remote_rand, SM_LENGTH_RAND, remote_rand, SM_LENGTH_RAND);
+    memcpy_s(device_info.remote_irk, SM_LENGTH_IRK, remote_irk, SM_LENGTH_IRK);
     device_info.remote_addr_type = remote_addr_type;
-    memcpy(device_info.remote_addr, remote_addr, SM_LENGTH_ADDR);
-    memcpy(device_info.remote_csrk, remote_csrk, SM_LENGTH_CSRK);
+    memcpy_s(device_info.remote_addr, SM_LENGTH_ADDR, remote_addr, SM_LENGTH_ADDR);
+    memcpy_s(device_info.remote_csrk, SM_LENGTH_CSRK, remote_csrk, SM_LENGTH_CSRK);
     device_info.key_size = 0; // TODO
     device_info.is_authenticated = 0; // TODO
     device_info.is_authorized = 0; // TODO
@@ -525,7 +525,7 @@ static void __sm_recv_pairing_public_key(uint8_t *data, uint32_t length) {
     (void)length;
     HCI_LE_GENERATE_DHKEY generate_dhkey;
 
-    memcpy(remote_pairing_public_key, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
+    memcpy_s(remote_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
 
     memcpy_s(generate_dhkey.key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
     memcpy_s(generate_dhkey.key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key + HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
@@ -538,7 +538,7 @@ static void __sm_recv_pairing_random(uint8_t *data, uint32_t length) {
     (void)length;
     uint32_t vb = 0;
 
-    memcpy(remote_random, data, SM_LENGTH_PAIRING_RANDOM);
+    memcpy_s(remote_random, SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
     __sm_g2(remote_pairing_public_key, local_pairing_public_key, remote_random, local_random, &vb);
     LOG_INFO("__sm_g2:%u", vb);
 
@@ -558,7 +558,7 @@ static void __sm_recv_pairing_dhkey_check(uint8_t *data, uint32_t length) {
     remote_iocap[1] = pairing_req[2];
     remote_iocap[2] = pairing_req[3];
 
-    memcpy(remote_dhkey_check, data, SM_LENGTH_DHKEY_CHECK);
+    memcpy_s(remote_dhkey_check, SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
     __sm_f5(local_dhkey, remote_random, local_random, remote_addr_type, remote_addr,
             local_addr_type, local_addr, local_mackey, local_ltk);
     __sm_f6(local_mackey, remote_random, local_random, rb, remote_iocap, remote_addr_type, remote_addr,
@@ -579,7 +579,7 @@ void sm_send_pairing_resp(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_RESP;
-    memcpy(buf + 1, data, SM_LENGTH_PAIRING_RESP);
+    memcpy_s(&buf[1], SM_LENGTH_PAIRING_RESP, data, SM_LENGTH_PAIRING_RESP);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP);
 }
 
@@ -587,7 +587,7 @@ void sm_send_pairing_public_key(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_PUBLIC_KEY;
-    memcpy(buf + 1, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
+    memcpy_s(&buf[1], SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY);
 }
 
@@ -595,7 +595,7 @@ void sm_send_pairing_confirm(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_CONFIRM;
-    memcpy(buf + 1, data, SM_LENGTH_PAIRING_CONFIRM);
+    memcpy_s(&buf[1], SM_LENGTH_PAIRING_CONFIRM, data, SM_LENGTH_PAIRING_CONFIRM);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM);
 }
 
@@ -603,7 +603,7 @@ void sm_send_pairing_random(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_RANDOM;
-    memcpy(buf + 1, data, SM_LENGTH_PAIRING_RANDOM);
+    memcpy_s(&buf[1], SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM);
 }
 
@@ -611,7 +611,7 @@ void sm_send_pairing_dhkey_check(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK] = {0};
 
     buf[0] = SM_OPERATE_PAIRING_DHKEY_CHECK;
-    memcpy(buf + 1, data, SM_LENGTH_DHKEY_CHECK);
+    memcpy_s(&buf[1], SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK);
 }
 
@@ -627,7 +627,7 @@ void sm_send_encryption_information(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_LTK] = {0};
 
     buf[0] = SM_OPERATE_ENCRYPTION_INFO;
-    memcpy(buf + 1, data, SM_LENGTH_LTK);
+    memcpy_s(&buf[1], SM_LENGTH_LTK, data, SM_LENGTH_LTK);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_LTK);
 }
 
@@ -635,7 +635,7 @@ void sm_send_central_identification(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
 
     buf[0] = SM_OPERATE_CENTRAL_IDENTIFICATION;
-    memcpy(buf + 1, data, SM_LENGTH_EDIV + SM_LENGTH_RAND);
+    memcpy_s(&buf[1], SM_LENGTH_EDIV + SM_LENGTH_RAND, data, SM_LENGTH_EDIV + SM_LENGTH_RAND);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND);
 }
 
@@ -643,7 +643,7 @@ void sm_send_identity_information(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_IRK] = {0};
 
     buf[0] = SM_OPERATE_IDENTITY_INFO;
-    memcpy(buf + 1, data, SM_LENGTH_IRK);
+    memcpy_s(&buf[1], SM_LENGTH_IRK, data, SM_LENGTH_IRK);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_IRK);
 }
 
@@ -651,7 +651,7 @@ void sm_send_identity_address_information(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR] = {0};
 
     buf[0] = SM_OPERATE_IDENTITY_ADDRESS_INFO;
-    memcpy(buf + 1, data, SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
+    memcpy_s(&buf[1], SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR, data, SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
 }
 
@@ -659,7 +659,7 @@ void sm_send_signing_information(uint8_t *data) {
     uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_CSRK] = {0};
 
     buf[0] = SM_OPERATE_SIGNING_INFO;
-    memcpy(buf + 1, data, SM_LENGTH_CSRK);
+    memcpy_s(&buf[1], SM_LENGTH_CSRK, data, SM_LENGTH_CSRK);
     sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_CSRK);
 }
 
@@ -672,8 +672,8 @@ void sm_key_distribution() {
         sm_send_encryption_information(local_ltk);
 
         // local_ediv/local_rand: for le secure connection, set to 0, TODO: for legacy pairing
-        memcpy(central_id, local_ediv, SM_LENGTH_EDIV);
-        memcpy(central_id + SM_LENGTH_EDIV, local_rand, SM_LENGTH_RAND);
+        memcpy_s(central_id, SM_LENGTH_EDIV, local_ediv, SM_LENGTH_EDIV);
+        memcpy_s(&central_id[SM_LENGTH_EDIV], SM_LENGTH_RAND, local_rand, SM_LENGTH_RAND);
         sm_send_central_identification(central_id);
     }
 
@@ -685,7 +685,7 @@ void sm_key_distribution() {
         sm_send_identity_information(local_irk);
 
         addr_info[0] = local_addr_type;
-        memcpy(addr_info + SM_LENGTH_ADDR_TYPE, local_addr, SM_LENGTH_ADDR);
+        memcpy_s(&addr_info[1], SM_LENGTH_ADDR, local_addr, SM_LENGTH_ADDR);
         sm_send_identity_address_information(addr_info);
     }
 
@@ -699,11 +699,11 @@ void sm_key_distribution() {
 }
 
 void sm_set_local_pairing_public_key(uint8_t *data) {
-    memcpy(local_pairing_public_key, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
+    memcpy_s(local_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
 }
 
 void sm_set_local_dhkey(uint8_t *data) {
-    memcpy(local_dhkey, data, SM_LENGTH_DHKEY);
+    memcpy_s(local_dhkey, SM_LENGTH_DHKEY, data, SM_LENGTH_DHKEY);
 
     __sm_get_pairing_method();
     if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
@@ -720,7 +720,7 @@ void sm_set_local_dhkey(uint8_t *data) {
 }
 
 void sm_set_remote_ltk(uint8_t *data) {
-    memcpy(remote_ltk, data, SM_LENGTH_LTK);
+    memcpy_s(remote_ltk, SM_LENGTH_LTK, data, SM_LENGTH_LTK);
 }
 
 void sm_get_local_ltk(uint8_t *data) {
@@ -728,7 +728,7 @@ void sm_get_local_ltk(uint8_t *data) {
     uint32_t device_info_size = sizeof(SM_DEVICE_INFO);
 
     if (is_local_ltk_generated) { // first encrypt, get ltk from memory
-        memcpy(data, local_ltk, SM_LENGTH_LTK);
+        memcpy_s(data, SM_LENGTH_LTK, local_ltk, SM_LENGTH_LTK);
     } else { // already encrypted, get ltk from db
         buffer = (char *)malloc(device_info_size);
         device_info_file.setFileName(SM_DEVICE_INFO_FILE_NAME);
@@ -736,21 +736,21 @@ void sm_get_local_ltk(uint8_t *data) {
         device_info_file.read(buffer, device_info_size);
         device_info_file.close();
 
-        memcpy(data, buffer, SM_LENGTH_LTK); // TODO: find ltk in multy device_info
+        memcpy_s(data, SM_LENGTH_LTK, buffer, SM_LENGTH_LTK); // TODO: find ltk in multy device_info
         free(buffer);
     }
 }
 
 void sm_set_remote_ediv(uint8_t *data) {
-    memcpy(remote_ediv, data, SM_LENGTH_EDIV);
+    memcpy_s(remote_ediv, SM_LENGTH_EDIV, data, SM_LENGTH_EDIV);
 }
 
 void sm_set_remote_rand(uint8_t *data) {
-    memcpy(remote_rand, data, SM_LENGTH_RAND);
+    memcpy_s(remote_rand, SM_LENGTH_RAND, data, SM_LENGTH_RAND);
 }
 
 void sm_set_remote_irk(uint8_t *data) {
-    memcpy(remote_irk, data, SM_LENGTH_IRK);
+    memcpy_s(remote_irk, SM_LENGTH_IRK, data, SM_LENGTH_IRK);
 }
 
 void sm_set_local_address_type(uint8_t type) {
@@ -758,7 +758,7 @@ void sm_set_local_address_type(uint8_t type) {
 }
 
 void sm_set_local_address(uint8_t *data) {
-    memcpy(local_addr, data, SM_LENGTH_ADDR);
+    memcpy_s(local_addr, SM_LENGTH_ADDR, data, SM_LENGTH_ADDR);
 }
 
 void sm_set_remote_address_type(uint8_t type) {
@@ -766,11 +766,11 @@ void sm_set_remote_address_type(uint8_t type) {
 }
 
 void sm_set_remote_address(uint8_t *data) {
-    memcpy(remote_addr, data, SM_LENGTH_ADDR);
+    memcpy_s(remote_addr, SM_LENGTH_ADDR, data, SM_LENGTH_ADDR);
 }
 
 void sm_set_remote_csrk(uint8_t *data) {
-    memcpy(remote_csrk, data, SM_LENGTH_CSRK);
+    memcpy_s(remote_csrk, SM_LENGTH_CSRK, data, SM_LENGTH_CSRK);
 }
 
 void sm_send(uint8_t *data, uint32_t length) {
