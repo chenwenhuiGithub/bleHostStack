@@ -262,8 +262,9 @@
 #define HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY                          64
 #define HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY                           18
 
-#define HCI_ACL_SEGMENTATION_PACKET_FIRST                               0x20
-#define HCI_ACL_SEGMENTATION_PACKET_CONTINUE                            0x10
+#define HCI_ACL_SEGMENT_PACKET_FIRST                                    0x20
+#define HCI_ACL_SEGMENT_PACKET_CONTINUE                                 0x10
+
 
 static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length);
 static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length);
@@ -273,34 +274,53 @@ static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t l
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length);
 static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf);
 
-uint8_t class_of_device[HCI_LENGTH_CLASS_OF_DEVICE] = {0x92, 0x07, 0x14};
-uint8_t event_mask[HCI_LENGTH_EVENT_MASK] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f};
-uint8_t le_event_mask[HCI_LENGTH_LE_EVENT_MASK] = {0xff, 0xff, 0xff, 0xff, 0x07, 0x00, 0x00, 0x00};
-HCI_LE_ADV_PARAM le_adv_param = {
-    .adv_interval_min = 0x0800,
-    .adv_interval_max = 0x0800,
-    .adv_type = HCI_ADV_TYPE_ADV_IND,
-    .own_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
-    .peer_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
-    .peer_addr = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-    .adv_channel_map = HCI_ADV_CHANNEL_MAP_37 | HCI_ADV_CHANNEL_MAP_38 | HCI_ADV_CHANNEL_MAP_39,
-    .adv_filter_policy = HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_ALL
-};
-HCI_LE_ADV_DATA le_adv_data = {
-    .adv_data_length = 0x0d,
-    .adv_data = {
-        0x02, 0x01, 0x06, // flag:0x06
-        0x09, 0x09, 0x62, 0x6c, 0x65, 0x5f, 0x64, 0x65, 0x6d, 0x6f, // device_name:ble_demo
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    }
-};
 
+typedef struct {
+    uint8_t class_of_device[HCI_LENGTH_CLASS_OF_DEVICE];
+    uint8_t event_mask[HCI_LENGTH_EVENT_MASK];
+    uint8_t le_event_mask[HCI_LENGTH_LE_EVENT_MASK];
+
+    HCI_LE_ADV_PARAM le_adv_param;
+    HCI_LE_ADV_DATA le_adv_data;
+
+    uint8_t *segment_buffer;
+    uint16_t segment_total_length;
+    uint16_t segment_current_length;
+    uint16_t segment_received_length;
+} hci_stack_t;
+
+
+hci_stack_t hci_stack = {
+    .class_of_device = {0x0c, 0x02, 0x7a},
+    .event_mask = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f},
+    .le_event_mask = {0xff, 0xff, 0xff, 0xff, 0x07, 0x00, 0x00, 0x00},
+
+    .le_adv_param = {
+        .adv_interval_min = 0x0800,
+        .adv_interval_max = 0x0800,
+        .adv_type = HCI_ADV_TYPE_ADV_IND,
+        .own_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
+        .peer_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
+        .peer_addr = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+        .adv_channel_map = HCI_ADV_CHANNEL_MAP_37 | HCI_ADV_CHANNEL_MAP_38 | HCI_ADV_CHANNEL_MAP_39,
+        .adv_filter_policy = HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_ALL
+    },
+    .le_adv_data = {
+        .adv_data_length = 0x0d,
+        .adv_data = {
+            0x02, 0x01, 0x06, // flag:0x06
+            0x09, 0x09, 0x62, 0x6c, 0x65, 0x5f, 0x64, 0x65, 0x6d, 0x6f, // device_name:ble_demo
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        }
+    },
+
+    .segment_buffer = nullptr,
+    .segment_total_length = 0,
+    .segment_current_length = 0,
+    .segment_received_length = 0
+};
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
-uint8_t *segment_l2cap_buffer = nullptr;
-uint16_t segment_l2cap_total_length = 0;
-uint16_t segment_l2cap_current_length = 0;
-uint16_t segment_l2cap_received_length = 0;
 
 void hci_recv_evt(uint8_t *data, uint32_t length) {
     uint8_t event_code = data[0];
@@ -338,7 +358,7 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             break;
         case HCI_OCF_WRITE_CLASS_OF_DEVICE:
             LOG_INFO("write_class_of_device status:%u", data[3]);
-            hci_send_cmd_set_event_mask(event_mask);
+            hci_send_cmd_set_event_mask(hci_stack.event_mask);
             break;
         case HCI_OCF_SET_EVENT_MASK:
             LOG_INFO("set_event_mask status:%u", data[3]);
@@ -368,7 +388,7 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
                      data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
             sm_set_local_address(data + 4);
             sm_set_local_address_type(HCI_ADDR_TYPE_PUBLIC_DEVICE); // TODO: how to get local address type?
-            hci_send_cmd_write_class_of_device(class_of_device);
+            hci_send_cmd_write_class_of_device(hci_stack.class_of_device);
             break;
         default:
             LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
@@ -381,7 +401,7 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             LOG_INFO("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
                      data[3], (data[4] | (data[5] << 8)), data[6]);
             att_set_max_mtu((data[4] | (data[5] << 8)) - L2CAP_LENGTH_HEADER);
-            hci_send_cmd_le_set_event_mask(le_event_mask);
+            hci_send_cmd_le_set_event_mask(hci_stack.le_event_mask);
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
             LOG_INFO("le_set_event_mask status:%u", data[3]);
@@ -389,7 +409,7 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             break;
         case HCI_OCF_LE_SET_ADV_PARAM:
             LOG_INFO("le_set_adv_param status:%u", data[3]);
-            hci_send_cmd_le_set_adv_data(&le_adv_data);
+            hci_send_cmd_le_set_adv_data(&hci_stack.le_adv_data);
             break;
         case HCI_OCF_LE_SET_ADV_DATA:
             LOG_INFO("le_set_adv_data status:%u", data[3]);
@@ -499,7 +519,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
     case HCI_EVENT_LE_READ_LOCAL_P256_PUBLIC_KEY_COMPLETE:
         LOG_INFO("le_read_local_p256_public_key_complete status:%u", data[1]);
         sm_set_local_pairing_public_key(&data[2]);
-        hci_send_cmd_le_set_adv_param(&le_adv_param);
+        hci_send_cmd_le_set_adv_param(&hci_stack.le_adv_param);
         break;
     case HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE:
         LOG_INFO("le_generate_dhkey_complete status:%u", data[1]);
@@ -535,28 +555,31 @@ void hci_recv_acl(uint8_t *data, uint32_t length) {
     connect_handle = data[0] | ((data[1] & 0x0f) << 8);
     uint8_t pb_flag = data[1] & 0x30;
 
-    if (HCI_ACL_SEGMENTATION_PACKET_FIRST == pb_flag) {
-        segment_l2cap_total_length = data[4] | (data[5] << 8);
-        segment_l2cap_current_length = length - HCI_LENGTH_ACL_HEADER;
-        segment_l2cap_received_length = segment_l2cap_current_length;
-        segment_l2cap_buffer = (uint8_t *)malloc(L2CAP_LENGTH_HEADER + segment_l2cap_total_length);
-        if (nullptr == segment_l2cap_buffer) {
-            LOG_ERROR("hci_recv_acl malloc error");
+    if (HCI_ACL_SEGMENT_PACKET_FIRST == pb_flag) {
+        hci_stack.segment_total_length = data[4] | (data[5] << 8);
+        hci_stack.segment_current_length = length - HCI_LENGTH_ACL_HEADER;
+        hci_stack.segment_received_length = length - HCI_LENGTH_ACL_HEADER;
+
+        if (hci_stack.segment_received_length == hci_stack.segment_total_length + L2CAP_LENGTH_HEADER) { // no need segment
+            l2cap_recv(data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER);
+            return;
         }
-        memcpy_s(segment_l2cap_buffer, segment_l2cap_received_length, data + HCI_LENGTH_ACL_HEADER, segment_l2cap_received_length);
-    } else if (HCI_ACL_SEGMENTATION_PACKET_CONTINUE == pb_flag) {
-        segment_l2cap_current_length = length - HCI_LENGTH_ACL_HEADER;
-        memcpy_s(&segment_l2cap_buffer[segment_l2cap_received_length], segment_l2cap_current_length , data + HCI_LENGTH_ACL_HEADER, segment_l2cap_current_length);
-        segment_l2cap_received_length += segment_l2cap_current_length;
+        hci_stack.segment_buffer = (uint8_t *)malloc(L2CAP_LENGTH_HEADER + hci_stack.segment_total_length);
+        memcpy_s(hci_stack.segment_buffer, hci_stack.segment_current_length,
+                 data + HCI_LENGTH_ACL_HEADER, hci_stack.segment_current_length);
+    } else if (HCI_ACL_SEGMENT_PACKET_CONTINUE == pb_flag) {
+        hci_stack.segment_current_length = length - HCI_LENGTH_ACL_HEADER;
+        memcpy_s(&hci_stack.segment_buffer[hci_stack.segment_received_length], hci_stack.segment_current_length,
+                 data + HCI_LENGTH_ACL_HEADER, hci_stack.segment_current_length);
+        hci_stack.segment_received_length += hci_stack.segment_current_length;
+
+        if (hci_stack.segment_received_length == hci_stack.segment_total_length + L2CAP_LENGTH_HEADER) {
+            l2cap_recv(hci_stack.segment_buffer, hci_stack.segment_received_length);
+            free(hci_stack.segment_buffer);
+            hci_stack.segment_buffer = nullptr;
+        }
     } else {
         LOG_ERROR("hci_recv_acl invalid, pb_flag:0x%02x", pb_flag);
-        return;
-    }
-
-    if (segment_l2cap_received_length == segment_l2cap_total_length + L2CAP_LENGTH_HEADER) {
-        l2cap_recv(segment_l2cap_buffer, L2CAP_LENGTH_HEADER + segment_l2cap_total_length);
-        free(segment_l2cap_buffer);
-        segment_l2cap_buffer = nullptr;
     }
 }
 
@@ -578,7 +601,7 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     buffer[0] = HCI_PACKET_TYPE_ACL;
     buffer[1] = connect_handle;
     buffer[2] = (connect_handle >> 8) & 0x0f;
-    buffer[2] |= HCI_ACL_SEGMENTATION_PACKET_FIRST;  // TODO: support segmentation
+    buffer[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;  // TODO: support segmentation
     buffer[3] = length;
     buffer[4] = length >> 8;
     memcpy_s(&buffer[5], length, data, length);
