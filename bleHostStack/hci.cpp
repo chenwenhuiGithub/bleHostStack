@@ -590,26 +590,16 @@ void hci_recv_sco(uint8_t *data, uint32_t length) {
 }
 
 void hci_send_acl(uint8_t *data, uint32_t length) {
-    uint8_t *buffer = nullptr;
-    uint32_t buffer_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
+    uint32_t data_length = length + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER;
 
-    buffer = (uint8_t *)malloc(buffer_length);
-    if (nullptr == buffer) {
-        LOG_ERROR("hci_send_acl malloc error");
-        return;
-    }
-    buffer[0] = HCI_PACKET_TYPE_ACL;
-    buffer[1] = connect_handle;
-    buffer[2] = (connect_handle >> 8) & 0x0f;
-    buffer[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;  // TODO: support segmentation
-    buffer[3] = length;
-    buffer[4] = length >> 8;
-    memcpy_s(&buffer[5], length, data, length);
-    serial_write(buffer, buffer_length);
-    btsnoop_wirte(buffer, buffer_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
-
-    free(buffer);
-    buffer = nullptr;
+    data[0] = HCI_PACKET_TYPE_ACL;
+    data[1] = connect_handle;
+    data[2] = (connect_handle >> 8) & 0x0f;
+    data[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;  // TODO: support segmentation
+    data[3] = length;
+    data[4] = length >> 8;
+    serial_write(data, data_length);
+    btsnoop_wirte(data, data_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
 
 static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {

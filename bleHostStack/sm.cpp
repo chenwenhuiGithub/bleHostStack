@@ -57,7 +57,8 @@
 #define SM_LENGTH_ADDR                                      6
 #define SM_LENGTH_CSRK                                      16
 
-#define SM_DEVICE_INFO_FILE_NAME                            "device_info.dat"
+#define SM_LENGTH_PACKET_HEADER                             (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
+
 
 typedef enum {
     JUST_WORKS,
@@ -576,91 +577,124 @@ static void __sm_recv_pairing_dhkey_check(uint8_t *data, uint32_t length) {
 }
 
 void sm_send_pairing_resp(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_PAIRING_RESP;
-    memcpy_s(&buf[1], SM_LENGTH_PAIRING_RESP, data, SM_LENGTH_PAIRING_RESP);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP);
+    buffer[offset] = SM_OPERATE_PAIRING_RESP;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_RESP, data, SM_LENGTH_PAIRING_RESP);
+    offset += SM_LENGTH_PAIRING_RESP;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_pairing_public_key(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_PAIRING_PUBLIC_KEY;
-    memcpy_s(&buf[1], SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY);
+    buffer[offset] = SM_OPERATE_PAIRING_PUBLIC_KEY;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
+    offset += SM_LENGTH_PAIRING_PUBLIC_KEY;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_pairing_confirm(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_PAIRING_CONFIRM;
-    memcpy_s(&buf[1], SM_LENGTH_PAIRING_CONFIRM, data, SM_LENGTH_PAIRING_CONFIRM);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM);
+    buffer[offset] = SM_OPERATE_PAIRING_CONFIRM;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_CONFIRM, data, SM_LENGTH_PAIRING_CONFIRM);
+    offset += SM_LENGTH_PAIRING_CONFIRM;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_pairing_random(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_PAIRING_RANDOM;
-    memcpy_s(&buf[1], SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM);
+    buffer[offset] = SM_OPERATE_PAIRING_RANDOM;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
+    offset += SM_LENGTH_PAIRING_RANDOM;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_pairing_dhkey_check(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_PAIRING_DHKEY_CHECK;
-    memcpy_s(&buf[1], SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK);
+    buffer[offset] = SM_OPERATE_PAIRING_DHKEY_CHECK;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
+    offset += SM_LENGTH_DHKEY_CHECK;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_pairing_failed(uint8_t reason) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_FAILED] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_FAILED] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_PAIRING_FAILED;
-    buf[1] = reason;
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_PAIRING_FAILED);
+    buffer[offset] = SM_OPERATE_PAIRING_FAILED;
+    offset++;
+    buffer[offset] = reason;
+    offset++;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_encryption_information(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_LTK] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_LTK] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_ENCRYPTION_INFO;
-    memcpy_s(&buf[1], SM_LENGTH_LTK, data, SM_LENGTH_LTK);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_LTK);
+    buffer[offset] = SM_OPERATE_ENCRYPTION_INFO;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_LTK, data, SM_LENGTH_LTK);
+    offset += SM_LENGTH_LTK;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_central_identification(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_CENTRAL_IDENTIFICATION;
-    memcpy_s(&buf[1], SM_LENGTH_EDIV + SM_LENGTH_RAND, data, SM_LENGTH_EDIV + SM_LENGTH_RAND);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND);
+    buffer[offset] = SM_OPERATE_CENTRAL_IDENTIFICATION;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_EDIV + SM_LENGTH_RAND, data, SM_LENGTH_EDIV + SM_LENGTH_RAND);
+    offset += SM_LENGTH_EDIV + SM_LENGTH_RAND;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_identity_information(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_IRK] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_IRK] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_IDENTITY_INFO;
-    memcpy_s(&buf[1], SM_LENGTH_IRK, data, SM_LENGTH_IRK);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_IRK);
+    buffer[offset] = SM_OPERATE_IDENTITY_INFO;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_IRK, data, SM_LENGTH_IRK);
+    offset += SM_LENGTH_IRK;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_identity_address_information(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_IDENTITY_ADDRESS_INFO;
-    memcpy_s(&buf[1], SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR, data, SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
+    buffer[offset] = SM_OPERATE_IDENTITY_ADDRESS_INFO;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR, data, SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
+    offset += SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_send_signing_information(uint8_t *data) {
-    uint8_t buf[SM_LENGTH_HEADER + SM_LENGTH_CSRK] = {0};
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_CSRK] = {0};
+    uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
-    buf[0] = SM_OPERATE_SIGNING_INFO;
-    memcpy_s(&buf[1], SM_LENGTH_CSRK, data, SM_LENGTH_CSRK);
-    sm_send(buf, SM_LENGTH_HEADER + SM_LENGTH_CSRK);
+    buffer[offset] = SM_OPERATE_SIGNING_INFO;
+    offset++;
+    memcpy_s(&buffer[offset], SM_LENGTH_CSRK, data, SM_LENGTH_CSRK);
+    offset += SM_LENGTH_CSRK;
+    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
 void sm_key_distribution() {

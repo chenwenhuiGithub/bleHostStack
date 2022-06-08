@@ -166,12 +166,16 @@ static void __att_recv_exchange_mtu_req(uint8_t *data, uint32_t length) {
 }
 
 static void __att_send_exchange_mtu_resp(uint16_t mtu) {
-    uint8_t data[ATT_LENGTH_EXCHANGE_MTU_RESP] = { 0x00 };
+    uint8_t buffer[ATT_LENGTH_PACKET_HEADER + ATT_LENGTH_HEADER + ATT_LENGTH_EXCHANGE_MTU_RESP] = { 0x00 };
+    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
 
-    data[0] = ATT_OPERATE_EXCHANGE_MTU_RESP;
-    data[1] = mtu;
-    data[2] = mtu >> 8;
-    att_send(data, ATT_LENGTH_EXCHANGE_MTU_RESP);
+    buffer[offset] = ATT_OPERATE_EXCHANGE_MTU_RESP;
+    offset++;
+    buffer[offset] = mtu;
+    offset++;
+    buffer[offset] = mtu >> 8;
+    offset++;
+    att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
 }
 
 uint16_t att_get_mtu() {

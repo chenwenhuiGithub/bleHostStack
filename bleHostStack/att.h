@@ -2,6 +2,8 @@
 #define ATT_H
 
 #include <stdint.h>
+#include "hci.h"
+#include "l2cap.h"
 
 #define ATT_OPERATE_ERROR_RESP                          0x01
 #define ATT_OPERATE_EXCHANGE_MTU_REQ                    0x02
@@ -58,8 +60,9 @@
 #define ATT_LENGTH_HEADER                               1
 #define ATT_LENGTH_UUID16                               2
 #define ATT_LENGTH_UUID128                              16
-#define ATT_LENGTH_ERROR_RESP                           5
-#define ATT_LENGTH_EXCHANGE_MTU_RESP                    3
+#define ATT_LENGTH_ERROR_RESP                           4
+#define ATT_LENGTH_EXCHANGE_MTU_RESP                    2
+#define ATT_LENGTH_PACKET_HEADER                        (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
 
 #define ATT_UUID_TYPE_BITS_16                           1
 #define ATT_UUID_TYPE_BITS_128                          2

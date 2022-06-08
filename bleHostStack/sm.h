@@ -35,6 +35,8 @@
 #define SM_INITIATOR_KEY_DISTRIBUTION                       SM_KEY_DISTRIBUTION_ID | SM_KEY_DISTRIBUTION_SIGN
 #define SM_RESPONDER_KEY_DISTRIBUTION                       SM_KEY_DISTRIBUTION_ID | SM_KEY_DISTRIBUTION_SIGN
 
+#define SM_DEVICE_INFO_FILE_NAME                            "device_info.dat"
+
 
 void sm_recv(uint8_t *data, uint32_t length);
 void sm_send_pairing_resp(uint8_t *data);
