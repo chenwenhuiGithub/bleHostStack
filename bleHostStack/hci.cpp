@@ -272,7 +272,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length);
 static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length);
-static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf);
+static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length);
 
 
 typedef struct {
@@ -612,17 +612,18 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     buffer = nullptr;
 }
 
-static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf) {
+static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
     buffer[0] = HCI_PACKET_TYPE_CMD;
     buffer[1] = ocf;
     buffer[2] = (ocf >> 8) | (ogf << 2);
+    buffer[3] = param_length;
 }
 
 void hci_send_cmd_reset() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_RESET;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_RESET] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET);
+    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET, HCI_LENGTH_CMD_PARAM_RESET);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -631,7 +632,7 @@ void hci_send_cmd_read_local_version_info() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO);
+    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO, HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -640,7 +641,8 @@ void hci_send_cmd_read_local_supported_commands() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS);
+    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS,
+                     HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -649,8 +651,7 @@ void hci_send_cmd_set_event_mask(uint8_t *event_mask) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK;
+    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK);
     memcpy_s(&buffer[4], HCI_LENGTH_EVENT_MASK, event_mask, HCI_LENGTH_EVENT_MASK);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
@@ -660,8 +661,7 @@ void hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT enable) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LE_HOST_SUPPORT);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT;
+    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LE_HOST_SUPPORT, HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT);
     buffer[4] = enable;
     buffer[5] = 0x00;
     serial_write(buffer, cmd_length);
@@ -672,7 +672,7 @@ void hci_send_cmd_le_read_buffer_size() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_BUFFER_SIZE);
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_BUFFER_SIZE, HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -681,7 +681,7 @@ void hci_send_cmd_read_bd_addr() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_BD_ADDR;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_BD_ADDR] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR);
+    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR, HCI_LENGTH_CMD_PARAM_READ_BD_ADDR);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -690,8 +690,7 @@ void hci_send_cmd_write_class_of_device(uint8_t *class_of_device) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE;
+    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE, HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE);
     memcpy_s(&buffer[4], HCI_LENGTH_CLASS_OF_DEVICE, class_of_device, HCI_LENGTH_CLASS_OF_DEVICE);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
@@ -701,8 +700,8 @@ void hci_send_cmd_le_remote_conn_param_req_reply(HCI_LE_REMOTE_CONN_PARAM_REQ_RE
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY,
+                     HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY);
     buffer[4] = param->connect_handle;
     buffer[5] = (param->connect_handle >> 8) & 0x0f;
     buffer[6] = param->interval_min;
@@ -725,8 +724,8 @@ void hci_send_cmd_le_remote_conn_param_req_neg_reply(HCI_LE_REMOTE_CONN_PARAM_RE
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY,
+                     HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY);
     buffer[4] = param->connect_handle;
     buffer[5] = (param->connect_handle >> 8) & 0x0f;
     buffer[6] = param->reason;
@@ -738,8 +737,7 @@ void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_EVENT_MASK);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK);
     memcpy_s(&buffer[4], HCI_LENGTH_LE_EVENT_MASK, le_event_mask, HCI_LENGTH_LE_EVENT_MASK);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
@@ -749,8 +747,7 @@ void hci_send_cmd_le_set_adv_param(HCI_LE_ADV_PARAM *param){
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM);
     buffer[4] = param->adv_interval_min;
     buffer[5] = param->adv_interval_min >> 8;
     buffer[6] = param->adv_interval_max;
@@ -768,8 +765,7 @@ void hci_send_cmd_le_set_adv_data(HCI_LE_ADV_DATA *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_DATA);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_DATA, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA);
     buffer[4] = param->adv_data_length;
     memcpy_s(&buffer[5], HCI_LENGTH_ADV_DATA, param->adv_data, HCI_LENGTH_ADV_DATA);
     serial_write(buffer, cmd_length);
@@ -780,8 +776,7 @@ void hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE enable) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_ENABLE);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_ENABLE, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE);
     buffer[4] = enable;
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
@@ -791,8 +786,7 @@ void hci_send_cmd_le_set_data_length(HCI_LE_DATA_LENGTH *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_DATA_LENGTH);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_DATA_LENGTH, HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH);
     buffer[4] = param->connect_handle;
     buffer[5] = (param->connect_handle >> 8) & 0x0f;
     buffer[6] = param->tx_octets;
@@ -807,7 +801,8 @@ void hci_send_cmd_le_read_suggested_default_data_length() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH);
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH,
+                     HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -816,8 +811,8 @@ void hci_send_cmd_le_write_suggested_default_data_length(HCI_LE_SUGGESTED_DATA_L
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH,
+                     HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH);
     buffer[4] = param->suggested_max_tx_octets;
     buffer[5] = param->suggested_max_tx_octets >> 8;
     buffer[6] = param->suggested_max_tx_time;
@@ -830,7 +825,8 @@ void hci_send_cmd_le_read_local_P256_public_key() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY);
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY,
+                     HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY);
     serial_write(buffer, cmd_length);
     btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
 }
@@ -839,8 +835,7 @@ void hci_send_cmd_le_generate_dhkey(HCI_LE_GENERATE_DHKEY *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY, HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY);
     memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
     memcpy_s(&buffer[36], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
     serial_write(buffer, cmd_length);
@@ -851,8 +846,7 @@ void hci_send_cmd_le_ltk_req_reply(HCI_LE_LTK_REQ_REPLY *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQ_REPLY);
-    buffer[3] = HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY;
+    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQ_REPLY, HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY);
     buffer[4] = param->connect_handle;
     buffer[5] = (param->connect_handle >> 8) & 0x0f;
     memcpy_s(&buffer[6], HCI_LENGTH_LTK, param->ltk, HCI_LENGTH_LTK);
