@@ -3,15 +3,15 @@
 
 #include <QMainWindow>
 
+#define READ_BUFFER_SIZE                            1024
+
 typedef enum {
     STATUS_PACKET_TYPE,
     STATUS_HEADRER_EVT,
     STATUS_HEADRER_ACL,
-    STATUS_HEADRER_SCO,
     STATUS_DATA_EVT,
     STATUS_DATA_ACL,
-    STATUS_DATA_SCO
-} RINGBUFFER_READ_STATUS;
+} read_status_t;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -34,7 +34,8 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    RINGBUFFER_READ_STATUS ringbuffer_read_status;
-    QByteArray ringbuffer_read_data;
+    read_status_t read_status;
+    uint8_t read_buffer[READ_BUFFER_SIZE];
+    uint32_t read_buffer_length;
 };
 #endif // MAINWINDOW_H

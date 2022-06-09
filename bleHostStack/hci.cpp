@@ -583,12 +583,6 @@ void hci_recv_acl(uint8_t *data, uint32_t length) {
     }
 }
 
-void hci_recv_sco(uint8_t *data, uint32_t length) {
-    (void)data;
-    (void)length;
-    LOG_WARNING("hci_recv_sco not supported");
-}
-
 void hci_send_acl(uint8_t *data, uint32_t length) {
     uint32_t data_length = length + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER;
 

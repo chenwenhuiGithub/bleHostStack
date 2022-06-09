@@ -114,7 +114,6 @@ typedef struct {
 
 void hci_recv_evt(uint8_t *data, uint32_t length);
 void hci_recv_acl(uint8_t *data, uint32_t length);
-void hci_recv_sco(uint8_t *data, uint32_t length);
 void hci_send_acl(uint8_t *data, uint32_t length);
 void hci_send_cmd_reset();
 void hci_send_cmd_read_local_version_info();
