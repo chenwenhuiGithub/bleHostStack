@@ -1,61 +1,59 @@
 #include "btsnoop.h"
 #include <QFile>
 #include <QDateTime>
+#include "hci.h"
 
-QFile file;
+#define BTSNOOP_BASE_TIMESTAMP                  0x00dcddb30f2f8000ULL  // 1970-01-01 00:00:00
+
+typedef struct {
+    uint8_t length_original[4];
+    uint8_t length_included[4];
+    uint8_t packet_flag[4];
+    uint8_t cumulative_drops[4];
+    uint8_t timestamp_μs[8];
+} btsnoop_packet_header_t;
+
+QFile file_btsnoop;
 
 void btsnoop_open() {
-    if (file.isOpen()) {
-        file.close();
+    if (file_btsnoop.isOpen()) {
+        file_btsnoop.close();
     }
 
     QDateTime curDateTime = QDateTime::currentDateTime();
     QString fileName = curDateTime.toString("yyyy_MM_dd_hh_mm_ss") + ".dat";
-    file.setFileName(fileName);
-    file.open(QIODevice::WriteOnly);
+    file_btsnoop.setFileName(fileName);
+    file_btsnoop.open(QIODevice::WriteOnly);
 
-    // HCI type: H4
-    uint8_t header[16] = {'b', 't', 's', 'n', 'o', 'o', 'p', 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xea};
-    file.write((char*)header, sizeof(header));
+    uint8_t file_header[16] = {
+        'b', 't', 's', 'n', 'o', 'o', 'p', 0x00, // identification pattern:"btsnoop"
+        0x00, 0x00, 0x00, 0x01, // version number:1
+        0x00, 0x00, 0x03, 0xea  // datalink type:1002(HCI UART - H4)
+    };
+    file_btsnoop.write((char*)file_header, sizeof(file_header));
 }
 
-void btsnoop_wirte(uint8_t *data, uint32_t length, BTSNOOP_DIRECT direct) {
-    uint8_t type = data[0];
-    // bit0: 0 - Host to Controller, 1 - Controller to Host
-    // bit1: 0 - ACL/SCO, 1 - CMD/EVT
-    uint32_t flags = 0x00;
+void btsnoop_wirte(uint8_t *data, uint32_t length, btsnoop_packet_flag_t flag) {
     uint64_t timestamp = QDateTime::currentMSecsSinceEpoch() * 1000ULL + BTSNOOP_BASE_TIMESTAMP;
 
-    if (BTSNOOP_HCI_PACKET_TYPE_CMD == type) {
-        flags = 0x02;
-    } else if (BTSNOOP_HCI_PACKET_TYPE_EVT == type) {
-        flags = 0x03;
-    } else if ((BTSNOOP_HCI_PACKET_TYPE_ACL == type) || (BTSNOOP_HCI_PACKET_TYPE_SCO == type)) {
-        if (BTSNOOP_DIRECT_HOST_TO_CONTROLLER == direct) {
-            flags = 0x00;
-        } else {
-            flags = 0x01;
-        }
-    } else {
+    btsnoop_packet_header_t packet_header {
+        .length_original = {(uint8_t)(length >> 24), (uint8_t)(length >> 16), (uint8_t)(length >> 8), (uint8_t)length},
+        .length_included = {(uint8_t)(length >> 24), (uint8_t)(length >> 16), (uint8_t)(length >> 8), (uint8_t)length},
+        .packet_flag = {0x00, 0x00, 0x00, (uint8_t)flag},
+        .cumulative_drops = {0x00, 0x00, 0x00, 0x00},
+        .timestamp_μs = {(uint8_t)(timestamp >> 56), (uint8_t)(timestamp >> 48), (uint8_t)(timestamp >> 40), (uint8_t)(timestamp >> 32),
+                         (uint8_t)(timestamp >> 24), (uint8_t)(timestamp >> 16), (uint8_t)(timestamp >> 8), (uint8_t)timestamp}
+    };
 
-    }
-
-    struct btsnoop_header header;
-    header.length_original = BTSNOOP_HTONL(length);
-    header.length_captured = BTSNOOP_HTONL(length);
-    header.flags = flags;
-    header.dropped_packets = 0;
-    header.timestamp = BTSNOOP_HTONLL(timestamp);
-
-    if (file.isOpen()) {
-        file.write((char*)&header, sizeof(header));
-        file.write((char*)data, length);
+    if (file_btsnoop.isOpen()) {
+        file_btsnoop.write((char*)&packet_header, sizeof(packet_header));
+        file_btsnoop.write((char*)data, length);
     }
 }
 
 void btsnoop_close(void) {
-    if (file.isOpen()) {
-        file.close();
+    if (file_btsnoop.isOpen()) {
+        file_btsnoop.close();
     }
 }
 

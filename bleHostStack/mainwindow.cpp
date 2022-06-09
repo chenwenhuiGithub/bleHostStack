@@ -138,7 +138,7 @@ void MainWindow::serialPort_readyRead()
             ringbuffer_read_data.resize(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_EVT_HEADER + data_length_evt);
             result = ringbuffer_read((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_EVT_HEADER, data_length_evt);
             if (result) {
-                btsnoop_wirte((uint8_t*)ringbuffer_read_data.data(), ringbuffer_read_data.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
+                btsnoop_wirte((uint8_t*)ringbuffer_read_data.data(), ringbuffer_read_data.length(), BTSNOOP_PACKET_FLAG_EVT_RECV);
                 hci_recv_evt((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE, ringbuffer_read_data.length() - HCI_LENGTH_PACKET_TYPE);
                 ringbuffer_read_status = STATUS_PACKET_TYPE;
             } else {
@@ -151,7 +151,7 @@ void MainWindow::serialPort_readyRead()
             ringbuffer_read_data.resize(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + data_length_acl);
             result = ringbuffer_read((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER, data_length_acl);
             if (result) {
-                btsnoop_wirte((uint8_t*)ringbuffer_read_data.data(), ringbuffer_read_data.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
+                btsnoop_wirte((uint8_t*)ringbuffer_read_data.data(), ringbuffer_read_data.length(), BTSNOOP_PACKET_FLAG_ACL_SCO_RECV);
                 hci_recv_acl((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE, ringbuffer_read_data.length() - HCI_LENGTH_PACKET_TYPE);
                 ringbuffer_read_status = STATUS_PACKET_TYPE;
             } else {
@@ -164,7 +164,7 @@ void MainWindow::serialPort_readyRead()
             ringbuffer_read_data.resize(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_SCO_HEADER + data_length_sco);
             result = ringbuffer_read((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_SCO_HEADER, data_length_sco);
             if (result) {
-                btsnoop_wirte((uint8_t*)ringbuffer_read_data.data(), ringbuffer_read_data.length(), BTSNOOP_DIRECT_CONTROLLER_TO_HOST);
+                btsnoop_wirte((uint8_t*)ringbuffer_read_data.data(), ringbuffer_read_data.length(), BTSNOOP_PACKET_FLAG_ACL_SCO_RECV);
                 hci_recv_sco((uint8_t*)ringbuffer_read_data.data() + HCI_LENGTH_PACKET_TYPE, ringbuffer_read_data.length() - HCI_LENGTH_PACKET_TYPE);
                 ringbuffer_read_status = STATUS_PACKET_TYPE;
             } else {

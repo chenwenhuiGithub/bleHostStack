@@ -599,7 +599,7 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     data[3] = length;
     data[4] = length >> 8;
     serial_write(data, data_length);
-    btsnoop_wirte(data, data_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(data, data_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
 }
 
 static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
@@ -615,7 +615,7 @@ void hci_send_cmd_reset() {
 
     __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET, HCI_LENGTH_CMD_PARAM_RESET);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_read_local_version_info() {
@@ -624,7 +624,7 @@ void hci_send_cmd_read_local_version_info() {
 
     __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO, HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_read_local_supported_commands() {
@@ -634,7 +634,7 @@ void hci_send_cmd_read_local_supported_commands() {
     __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS,
                      HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_set_event_mask(uint8_t *event_mask) {
@@ -644,7 +644,7 @@ void hci_send_cmd_set_event_mask(uint8_t *event_mask) {
     __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK);
     memcpy_s(&buffer[4], HCI_LENGTH_EVENT_MASK, event_mask, HCI_LENGTH_EVENT_MASK);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT enable) {
@@ -655,7 +655,7 @@ void hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT enable) {
     buffer[4] = enable;
     buffer[5] = 0x00;
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_read_buffer_size() {
@@ -664,7 +664,7 @@ void hci_send_cmd_le_read_buffer_size() {
 
     __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_BUFFER_SIZE, HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_read_bd_addr() {
@@ -673,7 +673,7 @@ void hci_send_cmd_read_bd_addr() {
 
     __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR, HCI_LENGTH_CMD_PARAM_READ_BD_ADDR);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_write_class_of_device(uint8_t *class_of_device) {
@@ -683,7 +683,7 @@ void hci_send_cmd_write_class_of_device(uint8_t *class_of_device) {
     __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE, HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE);
     memcpy_s(&buffer[4], HCI_LENGTH_CLASS_OF_DEVICE, class_of_device, HCI_LENGTH_CLASS_OF_DEVICE);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_remote_conn_param_req_reply(HCI_LE_REMOTE_CONN_PARAM_REQ_REPLY *param) {
@@ -707,7 +707,7 @@ void hci_send_cmd_le_remote_conn_param_req_reply(HCI_LE_REMOTE_CONN_PARAM_REQ_RE
     buffer[16] = param->max_ce_length;
     buffer[17] = param->max_ce_length >> 8;
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_remote_conn_param_req_neg_reply(HCI_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY *param) {
@@ -720,7 +720,7 @@ void hci_send_cmd_le_remote_conn_param_req_neg_reply(HCI_LE_REMOTE_CONN_PARAM_RE
     buffer[5] = (param->connect_handle >> 8) & 0x0f;
     buffer[6] = param->reason;
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask) {
@@ -730,7 +730,7 @@ void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask) {
     __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK);
     memcpy_s(&buffer[4], HCI_LENGTH_LE_EVENT_MASK, le_event_mask, HCI_LENGTH_LE_EVENT_MASK);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_set_adv_param(HCI_LE_ADV_PARAM *param){
@@ -748,7 +748,7 @@ void hci_send_cmd_le_set_adv_param(HCI_LE_ADV_PARAM *param){
     memcpy_s(&buffer[11], HCI_LENGTH_ADDR, param->peer_addr, HCI_LENGTH_ADDR);
     buffer[17] = param->adv_channel_map;
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_set_adv_data(HCI_LE_ADV_DATA *param) {
@@ -759,7 +759,7 @@ void hci_send_cmd_le_set_adv_data(HCI_LE_ADV_DATA *param) {
     buffer[4] = param->adv_data_length;
     memcpy_s(&buffer[5], HCI_LENGTH_ADV_DATA, param->adv_data, HCI_LENGTH_ADV_DATA);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE enable) {
@@ -769,7 +769,7 @@ void hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE enable) {
     __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_ENABLE, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE);
     buffer[4] = enable;
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_set_data_length(HCI_LE_DATA_LENGTH *param) {
@@ -784,7 +784,7 @@ void hci_send_cmd_le_set_data_length(HCI_LE_DATA_LENGTH *param) {
     buffer[8] = param->tx_time;
     buffer[9] = param->tx_time >> 8;
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_read_suggested_default_data_length() {
@@ -794,7 +794,7 @@ void hci_send_cmd_le_read_suggested_default_data_length() {
     __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH,
                      HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_write_suggested_default_data_length(HCI_LE_SUGGESTED_DATA_LENGTH *param) {
@@ -808,7 +808,7 @@ void hci_send_cmd_le_write_suggested_default_data_length(HCI_LE_SUGGESTED_DATA_L
     buffer[6] = param->suggested_max_tx_time;
     buffer[7] = param->suggested_max_tx_time >> 8;
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_read_local_P256_public_key() {
@@ -818,7 +818,7 @@ void hci_send_cmd_le_read_local_P256_public_key() {
     __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY,
                      HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_generate_dhkey(HCI_LE_GENERATE_DHKEY *param) {
@@ -829,7 +829,7 @@ void hci_send_cmd_le_generate_dhkey(HCI_LE_GENERATE_DHKEY *param) {
     memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
     memcpy_s(&buffer[36], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
 
 void hci_send_cmd_le_ltk_req_reply(HCI_LE_LTK_REQ_REPLY *param) {
@@ -841,5 +841,5 @@ void hci_send_cmd_le_ltk_req_reply(HCI_LE_LTK_REQ_REPLY *param) {
     buffer[5] = (param->connect_handle >> 8) & 0x0f;
     memcpy_s(&buffer[6], HCI_LENGTH_LTK, param->ltk, HCI_LENGTH_LTK);
     serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_DIRECT_HOST_TO_CONTROLLER);
+    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
 }
