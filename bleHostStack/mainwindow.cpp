@@ -51,21 +51,16 @@ void MainWindow::on_pushButtonOpen_clicked()
 }
 
 
-void MainWindow::on_pushButtonTest_clicked()
+void MainWindow::on_pushButtonStart_clicked()
 {
     gatt_init();
     hci_send_cmd_reset();
 }
 
 
-void MainWindow::on_pushButtonNotify_clicked()
+void MainWindow::on_pushButtonTest_clicked()
 {
     gatt_send_handle_value_notify(0x1003);
-}
-
-
-void MainWindow::on_pushButtonIndication_clicked()
-{
     gatt_send_handle_value_indication(0x1003);
 }
 

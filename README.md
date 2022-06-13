@@ -49,12 +49,10 @@ using ringbuffer to save hci data received from controller
 
 ## TODO
 
-1. support other cmd and event for hci
-2. support permission check for gatt
-3. support sm other pairing method
-4. optimize send procedure from host to controller, alloc send buffer by hci level to avoid memory copy
-5. support multi connections
-6. support flow control
-7. support 16 Bytes UUID at att/gatt protocol
-8. code format based on clang-format
+1. support permission check for gatt
+2. support sm other pairing method
+3. support multi connections
+4. support flow control
+5. support 16 Bytes UUID at att/gatt protocol
+6. code format based on clang-format
 

@@ -27,7 +27,7 @@
    <widget class="QPushButton" name="pushButtonOpen">
     <property name="geometry">
      <rect>
-      <x>160</x>
+      <x>130</x>
       <y>10</y>
       <width>93</width>
       <height>29</height>
@@ -37,17 +37,17 @@
      <string>Open</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButtonTest">
+   <widget class="QPushButton" name="pushButtonStart">
     <property name="geometry">
      <rect>
-      <x>290</x>
+      <x>230</x>
       <y>10</y>
       <width>93</width>
       <height>29</height>
      </rect>
     </property>
     <property name="text">
-     <string>Test</string>
+     <string>Start</string>
     </property>
    </widget>
    <widget class="QTextEdit" name="textEdit">
@@ -218,30 +218,17 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;0x01&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButtonNotify">
+   <widget class="QPushButton" name="pushButtonTest">
     <property name="geometry">
      <rect>
-      <x>410</x>
+      <x>350</x>
       <y>10</y>
       <width>93</width>
       <height>29</height>
      </rect>
     </property>
     <property name="text">
-     <string>Notify</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="pushButtonIndication">
-    <property name="geometry">
-     <rect>
-      <x>530</x>
-      <y>10</y>
-      <width>93</width>
-      <height>29</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Indication</string>
+     <string>Test</string>
     </property>
    </widget>
   </widget>
