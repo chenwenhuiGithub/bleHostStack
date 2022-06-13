@@ -10,9 +10,9 @@ typedef enum {
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
     LOG_LEVEL_ERROR
-} LOG_LEVEL;
+} log_level_t;
 
-#define CONFIG_LOG_LEVEL            LOG_LEVEL_INFO
+#define LOG_LEVEL                   LOG_LEVEL_INFO
 
 #define LOG_TRACE(format, ...)      log(LOG_LEVEL_TRACE, __FILE__, __LINE__, format, ##__VA_ARGS__);
 #define LOG_DEBUG(format, ...)      log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__);
@@ -20,6 +20,6 @@ typedef enum {
 #define LOG_WARNING(format, ...)    log(LOG_LEVEL_WARNING, __FILE__, __LINE__, format, ##__VA_ARGS__);
 #define LOG_ERROR(format, ...)      log(LOG_LEVEL_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__);
 
-void log(LOG_LEVEL log_level, const char* file_name, uint32_t file_line, const char* format, ...);
+void log(log_level_t level, const char* file_name, uint32_t file_line, const char* format, ...);
 
 #endif // LOG_H

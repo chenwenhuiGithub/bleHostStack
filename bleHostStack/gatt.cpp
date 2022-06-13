@@ -71,7 +71,7 @@
 
 
 typedef struct {
-    ATT_ITEM *items;
+    att_item_t *items;
     uint16_t items_cnt;
     uint16_t start_handle;
     uint16_t end_handle;
@@ -145,26 +145,26 @@ uint8_t test_buffer[GATT_MAXSIZE_TEST_BUFFER] = {
 uint8_t test_ccc[] = {0x00, 0x00};
 
 
-ATT_ITEM items_gacc[] = {
+att_item_t items_gacc[] = {
     {0x0001, GATT_DECLARATION_PRIMARY_SERVICE, gacc_uuid, sizeof(gacc_uuid), GATT_PERMISSION_READ},
     {0x0002, GATT_DECLARATION_CHARACTERISTIC, gacc_characteristic, sizeof(gacc_characteristic), GATT_PERMISSION_READ},
     {0x0003, GATT_OBJECT_TYPE_DEVICE_NAME, gacc_device_name, sizeof(gacc_device_name), GATT_PERMISSION_READ}
 };
 
-ATT_ITEM items_gatt[] = {
+att_item_t items_gatt[] = {
     {0x0011, GATT_DECLARATION_PRIMARY_SERVICE, gatt_uuid, sizeof(gatt_uuid), GATT_PERMISSION_READ},
     {0x0012, GATT_DECLARATION_CHARACTERISTIC, gatt_characteristic, sizeof(gatt_characteristic), GATT_PERMISSION_READ},
     {0x0013, GATT_OBJECT_TYPE_SERVICE_CHANGED, gatt_service_changed, sizeof(gatt_service_changed), GATT_PERMISSION_READ}
 };
 
-ATT_ITEM items_battery[] = {
+att_item_t items_battery[] = {
     {0x0101, GATT_DECLARATION_PRIMARY_SERVICE, battery_uuid, sizeof(battery_uuid), GATT_PERMISSION_READ},
     {0x0102, GATT_DECLARATION_CHARACTERISTIC, battery_characteristic, sizeof(battery_characteristic), GATT_PERMISSION_READ},
     {0x0103, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ},
     {0x0104, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, battery_ccc, sizeof(battery_ccc), GATT_PERMISSION_READ}
 };
 
-ATT_ITEM items_test[] = {
+att_item_t items_test[] = {
     {0x1001, GATT_DECLARATION_PRIMARY_SERVICE, test_uuid, sizeof(test_uuid), GATT_PERMISSION_READ},
     {0x1002, GATT_DECLARATION_CHARACTERISTIC, test_characteristic, sizeof(test_characteristic), GATT_PERMISSION_READ},
     {0x1003, GATT_OBJECT_TYPE_TEST, test_buffer, sizeof(test_buffer), GATT_PERMISSION_READ},
@@ -182,7 +182,7 @@ void gatt_init() {
     gatt_add_service(items_test, 4, 0x1001, 0x1004, GATT_SERVICE_TEST);
 }
 
-void gatt_add_service(ATT_ITEM *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service_id) {
+void gatt_add_service(att_item_t *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service_id) {
     if (service_count < GATT_SERVICE_MAX_COUNT) {
         services[service_count].items = items;
         services[service_count].items_cnt = items_cnt;
@@ -195,7 +195,7 @@ void gatt_add_service(ATT_ITEM *items, uint16_t items_cnt, uint16_t start_handle
 
 // read part value of one characteristic
 void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
@@ -257,7 +257,7 @@ RET:
 
 // read value of one characteristic
 void gatt_recv_read_req(uint16_t handle) {
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
@@ -310,7 +310,7 @@ RET:
 
 // discover descriptors in one characteristic
 void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) {
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
@@ -370,7 +370,7 @@ RET:
 // discover the handle and group end handle of one att value
 void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle,
                                       uint16_t att_type, uint8_t *att_value, uint32_t att_value_length) {
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
@@ -429,7 +429,7 @@ RET:
 
 // discover include and characteristics in one service
 void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type) {
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
@@ -455,7 +455,7 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
 
             if (item->type == att_type) {
                 if (found == 0) { // the first item matched
-                    pair_value_length = item->value_length; // TODO: handle large than 1Byte?
+                    pair_value_length = (uint8_t)(item->value_length); // TODO: handle large than 1Byte?
                     buffer[offset] = 2 + pair_value_length;
                     offset++;
                 } else { // subsequent items not matched
@@ -496,7 +496,7 @@ RET:
 
 // discover all services and it's start and end handle, just used for primary and second service
 void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type) {
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu();
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
@@ -551,7 +551,7 @@ RET:
 
 void gatt_recv_write_req(uint16_t handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t buffer[ATT_LENGTH_PACKET_HEADER + ATT_LENGTH_HEADER] = {0};
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
     uint8_t error_code = 0;
@@ -594,7 +594,7 @@ RET:
 
 void gatt_recv_write_cmd(uint16_t handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
@@ -622,7 +622,7 @@ void gatt_recv_handle_value_cfm() {
 
 void gatt_send_handle_value_notify(uint16_t handle) {
     // TODO: check permission
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;
@@ -658,7 +658,7 @@ void gatt_send_handle_value_notify(uint16_t handle) {
 
 void gatt_send_handle_value_indication(uint16_t handle) {
     // TODO: check permission and previous cfm is received
-    ATT_ITEM *item = nullptr;
+    att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
     uint32_t offset = ATT_LENGTH_PACKET_HEADER;

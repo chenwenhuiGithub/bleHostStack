@@ -9,11 +9,11 @@ typedef struct {
     uint8_t *value;
     uint16_t value_length;
     uint8_t permission;
-} ATT_ITEM;
+} att_item_t;
 
 
 void gatt_init();
-void gatt_add_service(ATT_ITEM *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service_id);
+void gatt_add_service(att_item_t *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service_id);
 void gatt_recv_read_req(uint16_t handle);
 void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle);
 void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle,

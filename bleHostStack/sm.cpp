@@ -524,12 +524,13 @@ static void __sm_save_device_info() {
 
 static void __sm_recv_pairing_public_key(uint8_t *data, uint32_t length) {
     (void)length;
-    HCI_LE_GENERATE_DHKEY generate_dhkey;
+    hci_le_generate_dhkey_t generate_dhkey;
 
     memcpy_s(remote_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
 
-    memcpy_s(generate_dhkey.key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
-    memcpy_s(generate_dhkey.key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key + HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
+    memcpy_s(generate_dhkey.key_x, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
+    memcpy_s(generate_dhkey.key_y, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, remote_pairing_public_key + HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE,
+             HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
     hci_send_cmd_le_generate_dhkey(&generate_dhkey);
 
     sm_send_pairing_public_key(local_pairing_public_key);
