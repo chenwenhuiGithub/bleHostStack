@@ -52,7 +52,6 @@ using ringbuffer to save hci data received from controller
 1. support permission check for gatt
 2. support sm other pairing method
 3. support multi connections
-4. support flow control
-5. support 16 Bytes UUID at att/gatt protocol
-6. code format based on clang-format
+4. support 16 Bytes UUID at att/gatt protocol
+5. code format based on clang-format
 

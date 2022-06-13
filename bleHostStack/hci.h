@@ -92,17 +92,6 @@ typedef enum {
 } HCI_LE_ADV_ENABLE;
 
 typedef struct {
-    uint16_t connect_handle;
-    uint16_t tx_octets;
-    uint16_t tx_time;
-} HCI_LE_DATA_LENGTH;
-
-typedef struct {
-    uint16_t suggested_max_tx_octets;
-    uint16_t suggested_max_tx_time;
-} HCI_LE_SUGGESTED_DATA_LENGTH;
-
-typedef struct {
     uint8_t key_x_coordinate[HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE];
     uint8_t key_y_coordinate[HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE];
 } HCI_LE_GENERATE_DHKEY;
@@ -129,9 +118,6 @@ void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask);
 void hci_send_cmd_le_set_adv_param(HCI_LE_ADV_PARAM *param);
 void hci_send_cmd_le_set_adv_data(HCI_LE_ADV_DATA *param);
 void hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE enable);
-void hci_send_cmd_le_set_data_length(HCI_LE_DATA_LENGTH *param);
-void hci_send_cmd_le_read_suggested_default_data_length();
-void hci_send_cmd_le_write_suggested_default_data_length(HCI_LE_SUGGESTED_DATA_LENGTH *param);
 void hci_send_cmd_le_read_local_P256_public_key();
 void hci_send_cmd_le_generate_dhkey(HCI_LE_GENERATE_DHKEY *param);
 void hci_send_cmd_le_ltk_req_reply(HCI_LE_LTK_REQ_REPLY *param);

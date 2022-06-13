@@ -272,7 +272,9 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length);
 static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length);
-static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length);
+static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length);
+static bool __hci_send_cmd_allowed();
+static bool __hci_send_acl_allowed();
 
 
 typedef struct {
@@ -288,8 +290,9 @@ typedef struct {
     uint16_t segment_length_total;
     uint16_t segment_length_received;
 
-    uint16_t le_acl_data_packet_length;
-    uint8_t le_acl_data_packet_total_num;
+    uint16_t le_acl_packet_length;
+    uint8_t num_of_allowed_le_acl_packets;
+    uint8_t num_of_allowed_cmd_packets;
 } hci_stack_t;
 
 
@@ -322,8 +325,9 @@ hci_stack_t hci_stack = {
     .segment_length_total = 0,
     .segment_length_received = 0,
 
-    .le_acl_data_packet_length = 0,
-    .le_acl_data_packet_total_num = 0
+    .le_acl_packet_length = 0,
+    .num_of_allowed_le_acl_packets = 0,
+    .num_of_allowed_cmd_packets = 1
 };
 uint16_t connect_handle = 0; // TODO: support multiple connections
 
@@ -351,10 +355,10 @@ void hci_recv_evt(uint8_t *data, uint32_t length) {
 
 static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
     (void)length;
-    // uint8_t num_packet = data[0]; // TODO: support flow control based on le_acl_data_packet_total_num
     uint8_t ogf = data[2] >> 2;
     uint16_t ocf = ((data[2] & 0x03) << 8) | data[1];
 
+    hci_stack.num_of_allowed_cmd_packets = data[0];
     switch (ogf) {
     case HCI_OGF_CONTROLLER_BASEBAND:
         switch (ocf) {
@@ -404,11 +408,11 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
     case HCI_OGF_LE_CONTROLLER:
         switch (ocf) {
         case HCI_OCF_LE_READ_BUFFER_SIZE:
-            LOG_INFO("le_read_buffer_size status:%u, le_acl_data_packet_length:%u, le_acl_data_packet_total_num:%u",
+            LOG_INFO("le_read_buffer_size status:%u, le_acl_packet_length:%u, total_num_le_acl_packets:%u",
                      data[3], (data[4] | (data[5] << 8)), data[6]);
-            hci_stack.le_acl_data_packet_length = data[4] | (data[5] << 8);
-            hci_stack.le_acl_data_packet_total_num = data[6];
-            att_set_max_mtu(hci_stack.le_acl_data_packet_length - L2CAP_LENGTH_HEADER);
+            hci_stack.le_acl_packet_length = data[4] | (data[5] << 8);
+            hci_stack.num_of_allowed_le_acl_packets = data[6];
+            att_set_max_mtu(hci_stack.le_acl_packet_length - L2CAP_LENGTH_HEADER);
             hci_send_cmd_le_set_event_mask(hci_stack.le_event_mask);
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
@@ -454,6 +458,7 @@ static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length) {
     uint8_t ogf = data[3] >> 2;
     uint16_t ocf = ((data[3] & 0x03) << 8) | data[2];
 
+    hci_stack.num_of_allowed_cmd_packets = data[1];
     switch (ogf) {
     case HCI_OGF_LE_CONTROLLER:
         switch (ocf) {
@@ -549,6 +554,7 @@ static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t l
     (void)length;
     LOG_INFO("number_of_completed_packets number_handles:%u, connect_handle[0]:0x%02x%02x, num_completed_packets[0]:%u",
              data[0], data[1], (data[2] & 0x0f), data[3] | (data[4] << 8));
+    hci_stack.num_of_allowed_le_acl_packets += (uint8_t)(data[3] | (data[4] << 8));
 }
 
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length) {
@@ -596,51 +602,62 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     uint32_t offset = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER;
     bool first_segment_sent = false;
 
-    if (length <= hci_stack.le_acl_data_packet_length) { // no need segments
-        data[0] = HCI_PACKET_TYPE_ACL;
-        data[1] = connect_handle;
-        data[2] = (connect_handle >> 8) & 0x0f;
-        data[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;
-        data[3] = length;
-        data[4] = length >> 8;
+    if (length <= hci_stack.le_acl_packet_length) { // no need segments
+        if (__hci_send_acl_allowed()) {
+            data[0] = HCI_PACKET_TYPE_ACL;
+            data[1] = connect_handle;
+            data[2] = (connect_handle >> 8) & 0x0f;
+            data[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;
+            data[3] = length;
+            data[4] = length >> 8;
 
-        packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
-        serial_write(data, packet_length);
-        btsnoop_wirte(data, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
+            packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
+            serial_write(data, packet_length);
+            btsnoop_wirte(data, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
+            hci_stack.num_of_allowed_le_acl_packets--;
+        } else {
+            LOG_ERROR("hci_send_acl error, send acl not allowed");
+        }
     } else {
-        hci_stack.segment_buffer_send = (uint8_t *)malloc(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_data_packet_length);
+        hci_stack.segment_buffer_send = (uint8_t *)malloc(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length);
         while (true) {
-            hci_stack.segment_buffer_send[0] = HCI_PACKET_TYPE_ACL;
-            hci_stack.segment_buffer_send[1] = connect_handle;
-            hci_stack.segment_buffer_send[2] = (connect_handle >> 8) & 0x0f;
-            if (false == first_segment_sent) {
-                hci_stack.segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;
-                first_segment_sent = true;
-            } else {
-                hci_stack.segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_CONTINUE;
-            }
+            if (__hci_send_acl_allowed()) {
+                hci_stack.segment_buffer_send[0] = HCI_PACKET_TYPE_ACL;
+                hci_stack.segment_buffer_send[1] = connect_handle;
+                hci_stack.segment_buffer_send[2] = (connect_handle >> 8) & 0x0f;
+                if (false == first_segment_sent) {
+                    hci_stack.segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;
+                    first_segment_sent = true;
+                } else {
+                    hci_stack.segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_CONTINUE;
+                }
 
-            if (length > hci_stack.le_acl_data_packet_length) {
-                hci_stack.segment_buffer_send[3] = hci_stack.le_acl_data_packet_length;
-                hci_stack.segment_buffer_send[4] = hci_stack.le_acl_data_packet_length >> 8;
-                memcpy_s(&hci_stack.segment_buffer_send[5], hci_stack.le_acl_data_packet_length,
-                         data + offset, hci_stack.le_acl_data_packet_length);
+                if (length > hci_stack.le_acl_packet_length) {
+                    hci_stack.segment_buffer_send[3] = hci_stack.le_acl_packet_length;
+                    hci_stack.segment_buffer_send[4] = hci_stack.le_acl_packet_length >> 8;
+                    memcpy_s(&hci_stack.segment_buffer_send[5], hci_stack.le_acl_packet_length, data + offset, hci_stack.le_acl_packet_length);
 
-                packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_data_packet_length;
-                serial_write(hci_stack.segment_buffer_send, packet_length);
-                btsnoop_wirte(hci_stack.segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
-                length -= hci_stack.le_acl_data_packet_length;
-                offset += hci_stack.le_acl_data_packet_length;
-            } else {
-                if (length > 0) { // the last segment packet
-                    hci_stack.segment_buffer_send[3] = length;
-                    hci_stack.segment_buffer_send[4] = length >> 8;
-                    memcpy_s(&hci_stack.segment_buffer_send[5], length, data + offset, length);
-
-                    packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
+                    packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length;
                     serial_write(hci_stack.segment_buffer_send, packet_length);
                     btsnoop_wirte(hci_stack.segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
+                    length -= hci_stack.le_acl_packet_length;
+                    offset += hci_stack.le_acl_packet_length;
+                    hci_stack.num_of_allowed_le_acl_packets--;
+                } else {
+                    if (length > 0) { // the last segment packet
+                        hci_stack.segment_buffer_send[3] = length;
+                        hci_stack.segment_buffer_send[4] = length >> 8;
+                        memcpy_s(&hci_stack.segment_buffer_send[5], length, data + offset, length);
+
+                        packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
+                        serial_write(hci_stack.segment_buffer_send, packet_length);
+                        btsnoop_wirte(hci_stack.segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
+                        hci_stack.num_of_allowed_le_acl_packets--;
+                    }
+                    break;
                 }
+            } else {
+                LOG_ERROR("hci_send_acl error, send acl not allowed");
                 break;
             }
         }
@@ -649,7 +666,15 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     }
 }
 
-static void __hci_assign_cmd(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
+static bool __hci_send_cmd_allowed() {
+    return hci_stack.num_of_allowed_cmd_packets > 0;
+}
+
+static bool __hci_send_acl_allowed() {
+    return hci_stack.num_of_allowed_le_acl_packets > 0;
+}
+
+static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
     buffer[0] = HCI_PACKET_TYPE_CMD;
     buffer[1] = ocf;
     buffer[2] = (ocf >> 8) | (ogf << 2);
@@ -660,233 +685,280 @@ void hci_send_cmd_reset() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_RESET;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_RESET] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET, HCI_LENGTH_CMD_PARAM_RESET);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET, HCI_LENGTH_CMD_PARAM_RESET);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_reset error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_read_local_version_info() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO, HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO,
+                                HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_read_local_version_info error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_read_local_supported_commands() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS,
-                     HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS,
+                                HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_read_local_supported_commands error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_set_event_mask(uint8_t *event_mask) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK);
-    memcpy_s(&buffer[4], HCI_LENGTH_EVENT_MASK, event_mask, HCI_LENGTH_EVENT_MASK);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK);
+        memcpy_s(&buffer[4], HCI_LENGTH_EVENT_MASK, event_mask, HCI_LENGTH_EVENT_MASK);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_set_event_mask error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT enable) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LE_HOST_SUPPORT, HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT);
-    buffer[4] = enable;
-    buffer[5] = 0x00;
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LE_HOST_SUPPORT, HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT);
+        buffer[4] = enable;
+        buffer[5] = 0x00;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_write_le_host_support error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_read_buffer_size() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_BUFFER_SIZE, HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_BUFFER_SIZE, HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_read_buffer_size error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_read_bd_addr() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_BD_ADDR;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_BD_ADDR] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR, HCI_LENGTH_CMD_PARAM_READ_BD_ADDR);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR, HCI_LENGTH_CMD_PARAM_READ_BD_ADDR);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_read_bd_addr error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_write_class_of_device(uint8_t *class_of_device) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE, HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE);
-    memcpy_s(&buffer[4], HCI_LENGTH_CLASS_OF_DEVICE, class_of_device, HCI_LENGTH_CLASS_OF_DEVICE);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE, HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE);
+        memcpy_s(&buffer[4], HCI_LENGTH_CLASS_OF_DEVICE, class_of_device, HCI_LENGTH_CLASS_OF_DEVICE);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_write_class_of_device error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_remote_conn_param_req_reply(HCI_LE_REMOTE_CONN_PARAM_REQ_REPLY *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY,
-                     HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY);
-    buffer[4] = param->connect_handle;
-    buffer[5] = (param->connect_handle >> 8) & 0x0f;
-    buffer[6] = param->interval_min;
-    buffer[7] = param->interval_min >> 8;
-    buffer[8] = param->interval_max;
-    buffer[9] = param->interval_max >> 8;
-    buffer[10] = param->max_latency;
-    buffer[11] = param->max_latency >> 8;
-    buffer[12] = param->timeout;
-    buffer[13] = param->timeout >> 8;
-    buffer[14] = param->min_ce_length;
-    buffer[15] = param->min_ce_length >> 8;
-    buffer[16] = param->max_ce_length;
-    buffer[17] = param->max_ce_length >> 8;
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY,
+                                HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY);
+        buffer[4] = param->connect_handle;
+        buffer[5] = (param->connect_handle >> 8) & 0x0f;
+        buffer[6] = param->interval_min;
+        buffer[7] = param->interval_min >> 8;
+        buffer[8] = param->interval_max;
+        buffer[9] = param->interval_max >> 8;
+        buffer[10] = param->max_latency;
+        buffer[11] = param->max_latency >> 8;
+        buffer[12] = param->timeout;
+        buffer[13] = param->timeout >> 8;
+        buffer[14] = param->min_ce_length;
+        buffer[15] = param->min_ce_length >> 8;
+        buffer[16] = param->max_ce_length;
+        buffer[17] = param->max_ce_length >> 8;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_remote_conn_param_req_reply error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_remote_conn_param_req_neg_reply(HCI_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY,
-                     HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY);
-    buffer[4] = param->connect_handle;
-    buffer[5] = (param->connect_handle >> 8) & 0x0f;
-    buffer[6] = param->reason;
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY,
+                                HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY);
+        buffer[4] = param->connect_handle;
+        buffer[5] = (param->connect_handle >> 8) & 0x0f;
+        buffer[6] = param->reason;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_remote_conn_param_req_neg_reply error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK);
-    memcpy_s(&buffer[4], HCI_LENGTH_LE_EVENT_MASK, le_event_mask, HCI_LENGTH_LE_EVENT_MASK);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK);
+        memcpy_s(&buffer[4], HCI_LENGTH_LE_EVENT_MASK, le_event_mask, HCI_LENGTH_LE_EVENT_MASK);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_set_event_mask error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_set_adv_param(HCI_LE_ADV_PARAM *param){
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM);
-    buffer[4] = param->adv_interval_min;
-    buffer[5] = param->adv_interval_min >> 8;
-    buffer[6] = param->adv_interval_max;
-    buffer[7] = param->adv_interval_max >> 8;
-    buffer[8] = param->adv_type;
-    buffer[9] = param->own_addr_type;
-    buffer[10] = param->peer_addr_type;
-    memcpy_s(&buffer[11], HCI_LENGTH_ADDR, param->peer_addr, HCI_LENGTH_ADDR);
-    buffer[17] = param->adv_channel_map;
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM);
+        buffer[4] = param->adv_interval_min;
+        buffer[5] = param->adv_interval_min >> 8;
+        buffer[6] = param->adv_interval_max;
+        buffer[7] = param->adv_interval_max >> 8;
+        buffer[8] = param->adv_type;
+        buffer[9] = param->own_addr_type;
+        buffer[10] = param->peer_addr_type;
+        memcpy_s(&buffer[11], HCI_LENGTH_ADDR, param->peer_addr, HCI_LENGTH_ADDR);
+        buffer[17] = param->adv_channel_map;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_set_adv_param error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_set_adv_data(HCI_LE_ADV_DATA *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_DATA, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA);
-    buffer[4] = param->adv_data_length;
-    memcpy_s(&buffer[5], HCI_LENGTH_ADV_DATA, param->adv_data, HCI_LENGTH_ADV_DATA);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_DATA, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA);
+        buffer[4] = param->adv_data_length;
+        memcpy_s(&buffer[5], HCI_LENGTH_ADV_DATA, param->adv_data, HCI_LENGTH_ADV_DATA);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_set_adv_data error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE enable) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_ENABLE, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE);
-    buffer[4] = enable;
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
-}
-
-void hci_send_cmd_le_set_data_length(HCI_LE_DATA_LENGTH *param) {
-    uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH;
-    uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH] = { 0x00 };
-
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_DATA_LENGTH, HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH);
-    buffer[4] = param->connect_handle;
-    buffer[5] = (param->connect_handle >> 8) & 0x0f;
-    buffer[6] = param->tx_octets;
-    buffer[7] = param->tx_octets >> 8;
-    buffer[8] = param->tx_time;
-    buffer[9] = param->tx_time >> 8;
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
-}
-
-void hci_send_cmd_le_read_suggested_default_data_length() {
-    uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH;
-    uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH] = { 0x00 };
-
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH,
-                     HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
-}
-
-void hci_send_cmd_le_write_suggested_default_data_length(HCI_LE_SUGGESTED_DATA_LENGTH *param) {
-    uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH;
-    uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH] = { 0x00 };
-
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH,
-                     HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH);
-    buffer[4] = param->suggested_max_tx_octets;
-    buffer[5] = param->suggested_max_tx_octets >> 8;
-    buffer[6] = param->suggested_max_tx_time;
-    buffer[7] = param->suggested_max_tx_time >> 8;
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_ENABLE, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE);
+        buffer[4] = enable;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_set_adv_enable error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_read_local_P256_public_key() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY,
-                     HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY,
+                                HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_read_local_P256_public_key error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_generate_dhkey(HCI_LE_GENERATE_DHKEY *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY, HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY);
-    memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
-    memcpy_s(&buffer[36], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY, HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY);
+        memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_x_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
+        memcpy_s(&buffer[36], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_y_coordinate, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_generate_dhkey error, send cmd not allowed");
+    }
 }
 
 void hci_send_cmd_le_ltk_req_reply(HCI_LE_LTK_REQ_REPLY *param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY] = { 0x00 };
 
-    __hci_assign_cmd(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQ_REPLY, HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY);
-    buffer[4] = param->connect_handle;
-    buffer[5] = (param->connect_handle >> 8) & 0x0f;
-    memcpy_s(&buffer[6], HCI_LENGTH_LTK, param->ltk, HCI_LENGTH_LTK);
-    serial_write(buffer, cmd_length);
-    btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+    if (__hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQ_REPLY, HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY);
+        buffer[4] = param->connect_handle;
+        buffer[5] = (param->connect_handle >> 8) & 0x0f;
+        memcpy_s(&buffer[6], HCI_LENGTH_LTK, param->ltk, HCI_LENGTH_LTK);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_ltk_req_reply error, send cmd not allowed");
+    }
 }
