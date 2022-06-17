@@ -552,9 +552,17 @@ static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length) {
 
 static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t length) {
     (void)length;
-    LOG_INFO("number_of_completed_packets number_handles:%u, connect_handle[0]:0x%02x%02x, num_completed_packets[0]:%u",
-             data[0], data[1], (data[2] & 0x0f), data[3] | (data[4] << 8));
-    hci_stack.num_of_allowed_le_acl_packets += (uint8_t)(data[3] | (data[4] << 8));
+    uint8_t index = 0;
+    uint8_t number_handles = data[0];
+    uint8_t all_completed_packets_number = 0;
+
+    LOG_INFO("number_of_completed_packets number_handles:%u", number_handles);
+    for (index = 0; index < number_handles; index++) {
+        LOG_INFO("connect_handle[%u]:0x%02x%02x, num_completed_packets:%u",
+                 index, data[2 * index + 1], (data[2 * index + 2] & 0x0f), data[2 * (number_handles + index) + 1]);
+        all_completed_packets_number += data[2 * (number_handles + index) + 1];
+    }
+    hci_stack.num_of_allowed_le_acl_packets += all_completed_packets_number;
 }
 
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length) {
