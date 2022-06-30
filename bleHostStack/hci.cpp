@@ -7,14 +7,14 @@
 #include "att.h"
 
 // Opcode Group Field (OGF) values
-#define HCI_OGF_LINK_CONTROL                                            0x01   /* Link Control Commands */
-#define HCI_OGF_LINK_POLICY                                             0x02   /* Link Policy Commands */
-#define HCI_OGF_CONTROLLER_BASEBAND                                     0x03   /* Controller & Baseband Commands */
-#define HCI_OGF_INFORMATIONAL_PARAM                                     0x04   /* Informational Parameters */
-#define HCI_OGF_STATUS_PARAM                                            0x05   /* Status Parameters */
-#define HCI_OGF_TESTING                                                 0x06   /* Testing Commands */
-#define HCI_OGF_LE_CONTROLLER                                           0x08   /* LE Controller Commands */
-#define HCI_OGF_VENDOR                                                  0x3f   /* vendor Commands */
+#define HCI_OGF_LINK_CONTROL                                            0x01
+#define HCI_OGF_LINK_POLICY                                             0x02
+#define HCI_OGF_CONTROLLER_BASEBAND                                     0x03
+#define HCI_OGF_INFORMATIONAL_PARAM                                     0x04
+#define HCI_OGF_STATUS_PARAM                                            0x05
+#define HCI_OGF_TESTING                                                 0x06
+#define HCI_OGF_LE_CONTROLLER                                           0x08
+#define HCI_OGF_VENDOR                                                  0x3f
 
 // Opcode Command Field (OCF) values
 // Link Control Commands
@@ -284,6 +284,7 @@ typedef struct {
 
     hci_le_adv_param_t le_adv_param;
     hci_le_adv_data_t le_adv_data;
+    hci_le_conn_param_t le_conn_param;
 
     uint8_t *segment_buffer_send;
     uint8_t *segment_buffer_recv;
@@ -302,8 +303,8 @@ hci_stack_t hci_stack = {
     .le_event_mask = {0xff, 0xff, 0xff, 0xff, 0x07, 0x00, 0x00, 0x00},
 
     .le_adv_param = {
-        .adv_interval_min = 0x0800,
-        .adv_interval_max = 0x0800,
+        .adv_interval_min = 0x0800, // 1.28s(N*0.625ms)
+        .adv_interval_max = 0x0800, // 1.28s(N*0.625ms)
         .adv_type = HCI_ADV_TYPE_ADV_IND,
         .own_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
         .peer_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
@@ -311,6 +312,7 @@ hci_stack_t hci_stack = {
         .adv_channel_map = HCI_ADV_CHANNEL_MAP_37 | HCI_ADV_CHANNEL_MAP_38 | HCI_ADV_CHANNEL_MAP_39,
         .adv_filter_policy = HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_ALL
     },
+
     .le_adv_data = {
         .adv_data_length = 0x0d,
         .adv_data = {
@@ -318,6 +320,15 @@ hci_stack_t hci_stack = {
             0x09, 0x09, 0x62, 0x6c, 0x65, 0x5f, 0x64, 0x65, 0x6d, 0x6f, // device_name:ble_demo
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         }
+    },
+
+    .le_conn_param = {
+        .conn_interval_min = 0x0018, // 30ms(N*1.25ms)
+        .conn_interval_max = 0x0018, // 30ms(N*1.25ms)
+        .max_latency = 10,
+        .timeout = 0x0080, // 1.28s(N*10ms)
+        .min_ce_length = 0x0028, // 25ms(N*0.625ms)
+        .max_ce_length = 0x0028  // 25ms(N*0.625ms)
     },
 
     .segment_buffer_send = nullptr,
@@ -482,13 +493,13 @@ static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length) {
 static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
     (void)length;
     uint8_t sub_event = data[0];
-    hci_le_ltk_req_reply_t ltk_req_reply;
-    hci_le_remote_conn_param_req_reply_t remote_conn_param_req_reply;
+    uint8_t ltk[HCI_LENGTH_LTK] = {0};
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONN_COMPLETE:
         LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
+        connect_handle = data[2] | ((data[3] & 0x0f) << 8);
         sm_set_remote_address(data + 6);
         sm_set_remote_address_type(data[5]);
         LOG_INFO("/***** peer device connects success *****/");
@@ -500,26 +511,19 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
     case HCI_EVENT_LE_LTK_REQ:
         LOG_INFO("le_ltk_req connect_handle:0x%02x%02x, random_number:0x%02x%02x%02x%02x%02x%02x%02x%02x, encrypted_diversifier:0x%02x%02x",
                  data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
-        ltk_req_reply.connect_handle = connect_handle;
-        sm_get_local_ltk(ltk_req_reply.ltk);
-        hci_send_cmd_le_ltk_req_reply(&ltk_req_reply);
+        sm_get_local_ltk(ltk);
+        hci_send_cmd_le_ltk_req_reply(connect_handle, ltk);
         break;
     case HCI_EVENT_LE_REMOTE_CONN_PARAM_REQ:
         LOG_INFO("le_remote_conn_param_req connect_handle:0x%02x%02x, interval_min:%0.2fms, interval_max:%0.2fms, max_latency:%u, timeout:%ums",
                  data[1], (data[2] & 0x0f), (data[3] | (data[4] << 8)) * 1.25, (data[5] | (data[6] << 8)) * 1.25,
                  data[7] | (data[8] << 8), (data[9] | (data[10] << 8)) * 10);
-        remote_conn_param_req_reply.connect_handle = connect_handle;
-        remote_conn_param_req_reply.interval_min = data[3] | (data[4] << 8);
-        remote_conn_param_req_reply.interval_max = data[5] | (data[6] << 8);
-        remote_conn_param_req_reply.max_latency = data[7] | (data[8] << 8);
-        remote_conn_param_req_reply.timeout = data[9] | (data[10] << 8);
-        remote_conn_param_req_reply.min_ce_length = 0;
-        remote_conn_param_req_reply.max_ce_length = 0xffff;
-        hci_send_cmd_le_remote_conn_param_req_reply(&remote_conn_param_req_reply);
+        hci_send_cmd_le_remote_conn_param_req_reply(connect_handle, &hci_stack.le_conn_param);
         break;
     case HCI_EVENT_LE_ENHANCED_CONN_COMPLETE:
         LOG_INFO("le_enhanced_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
+        connect_handle = data[2] | ((data[3] & 0x0f) << 8);
         sm_set_remote_address(data + 6);
         sm_set_remote_address_type(data[5]);
         LOG_INFO("/***** peer device connects success *****/");
@@ -556,10 +560,9 @@ static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t l
     uint8_t number_handles = data[0];
     uint8_t all_completed_packets_number = 0;
 
-    LOG_INFO("number_of_completed_packets number_handles:%u", number_handles);
     for (index = 0; index < number_handles; index++) {
-        LOG_INFO("connect_handle[%u]:0x%02x%02x, num_completed_packets:%u",
-                 index, data[2 * index + 1], (data[2 * index + 2] & 0x0f), data[2 * (number_handles + index) + 1]);
+        LOG_INFO("number_of_completed_packets number_handles:%u, connect_handle[%u]:0x%02x%02x, num_completed_packets:%u",
+                 number_handles, index, data[2 * index + 1], (data[2 * index + 2] & 0x0f), data[2 * (number_handles + index) + 1]);
         all_completed_packets_number += data[2 * (number_handles + index) + 1];
     }
     hci_stack.num_of_allowed_le_acl_packets += all_completed_packets_number;
@@ -574,7 +577,6 @@ static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length) {
 }
 
 void hci_recv_acl(uint8_t *data, uint32_t length) {
-    connect_handle = data[0] | ((data[1] & 0x0f) << 8);
     uint8_t pb_flag = data[1] & 0x30;
     uint16_t segment_length_current = 0;
 
@@ -807,27 +809,27 @@ void hci_send_cmd_write_class_of_device(uint8_t *class_of_device) {
     }
 }
 
-void hci_send_cmd_le_remote_conn_param_req_reply(hci_le_remote_conn_param_req_reply_t *param) {
+void hci_send_cmd_le_remote_conn_param_req_reply(uint16_t connect_handle, hci_le_conn_param_t *conn_param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY] = { 0x00 };
 
     if (__hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY,
                                 HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY);
-        buffer[4] = param->connect_handle;
-        buffer[5] = (param->connect_handle >> 8) & 0x0f;
-        buffer[6] = param->interval_min;
-        buffer[7] = param->interval_min >> 8;
-        buffer[8] = param->interval_max;
-        buffer[9] = param->interval_max >> 8;
-        buffer[10] = param->max_latency;
-        buffer[11] = param->max_latency >> 8;
-        buffer[12] = param->timeout;
-        buffer[13] = param->timeout >> 8;
-        buffer[14] = param->min_ce_length;
-        buffer[15] = param->min_ce_length >> 8;
-        buffer[16] = param->max_ce_length;
-        buffer[17] = param->max_ce_length >> 8;
+        buffer[4] = connect_handle;
+        buffer[5] = (connect_handle >> 8) & 0x0f;
+        buffer[6] = conn_param->conn_interval_min;
+        buffer[7] = conn_param->conn_interval_min >> 8;
+        buffer[8] = conn_param->conn_interval_max;
+        buffer[9] = conn_param->conn_interval_max >> 8;
+        buffer[10] = conn_param->max_latency;
+        buffer[11] = conn_param->max_latency >> 8;
+        buffer[12] = conn_param->timeout;
+        buffer[13] = conn_param->timeout >> 8;
+        buffer[14] = conn_param->min_ce_length;
+        buffer[15] = conn_param->min_ce_length >> 8;
+        buffer[16] = conn_param->max_ce_length;
+        buffer[17] = conn_param->max_ce_length >> 8;
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
         hci_stack.num_of_allowed_cmd_packets--;
@@ -836,16 +838,16 @@ void hci_send_cmd_le_remote_conn_param_req_reply(hci_le_remote_conn_param_req_re
     }
 }
 
-void hci_send_cmd_le_remote_conn_param_req_neg_reply(hci_le_remote_conn_param_req_neg_reply_t *param) {
+void hci_send_cmd_le_remote_conn_param_req_neg_reply(uint16_t connect_handle, uint8_t reason) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY] = { 0x00 };
 
     if (__hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY,
                                 HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY);
-        buffer[4] = param->connect_handle;
-        buffer[5] = (param->connect_handle >> 8) & 0x0f;
-        buffer[6] = param->reason;
+        buffer[4] = connect_handle;
+        buffer[5] = (connect_handle >> 8) & 0x0f;
+        buffer[6] = reason;
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
         hci_stack.num_of_allowed_cmd_packets--;
@@ -869,21 +871,21 @@ void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask) {
     }
 }
 
-void hci_send_cmd_le_set_adv_param(hci_le_adv_param_t *param){
+void hci_send_cmd_le_set_adv_param(hci_le_adv_param_t *adv_param){
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM] = { 0x00 };
 
     if (__hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM);
-        buffer[4] = param->adv_interval_min;
-        buffer[5] = param->adv_interval_min >> 8;
-        buffer[6] = param->adv_interval_max;
-        buffer[7] = param->adv_interval_max >> 8;
-        buffer[8] = param->adv_type;
-        buffer[9] = param->own_addr_type;
-        buffer[10] = param->peer_addr_type;
-        memcpy_s(&buffer[11], HCI_LENGTH_ADDR, param->peer_addr, HCI_LENGTH_ADDR);
-        buffer[17] = param->adv_channel_map;
+        buffer[4] = adv_param->adv_interval_min;
+        buffer[5] = adv_param->adv_interval_min >> 8;
+        buffer[6] = adv_param->adv_interval_max;
+        buffer[7] = adv_param->adv_interval_max >> 8;
+        buffer[8] = adv_param->adv_type;
+        buffer[9] = adv_param->own_addr_type;
+        buffer[10] = adv_param->peer_addr_type;
+        memcpy_s(&buffer[11], HCI_LENGTH_ADDR, adv_param->peer_addr, HCI_LENGTH_ADDR);
+        buffer[17] = adv_param->adv_channel_map;
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
         hci_stack.num_of_allowed_cmd_packets--;
@@ -892,14 +894,14 @@ void hci_send_cmd_le_set_adv_param(hci_le_adv_param_t *param){
     }
 }
 
-void hci_send_cmd_le_set_adv_data(hci_le_adv_data_t *param) {
+void hci_send_cmd_le_set_adv_data(hci_le_adv_data_t *adv_data) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA] = { 0x00 };
 
     if (__hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_DATA, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA);
-        buffer[4] = param->adv_data_length;
-        memcpy_s(&buffer[5], HCI_LENGTH_ADV_DATA, param->adv_data, HCI_LENGTH_ADV_DATA);
+        buffer[4] = adv_data->adv_data_length;
+        memcpy_s(&buffer[5], HCI_LENGTH_ADV_DATA, adv_data->adv_data, HCI_LENGTH_ADV_DATA);
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
         hci_stack.num_of_allowed_cmd_packets--;
@@ -938,14 +940,13 @@ void hci_send_cmd_le_read_local_P256_public_key() {
     }
 }
 
-void hci_send_cmd_le_generate_dhkey(hci_le_generate_dhkey_t *param) {
+void hci_send_cmd_le_generate_dhkey(uint8_t *pub_key) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY] = { 0x00 };
 
     if (__hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY, HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY);
-        memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_x, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
-        memcpy_s(&buffer[36], HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE, param->key_y, HCI_LENGTH_P256_PUBLIC_KEY_COORDINATE);
+        memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY, pub_key, HCI_LENGTH_P256_PUBLIC_KEY);
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
         hci_stack.num_of_allowed_cmd_packets--;
@@ -954,15 +955,15 @@ void hci_send_cmd_le_generate_dhkey(hci_le_generate_dhkey_t *param) {
     }
 }
 
-void hci_send_cmd_le_ltk_req_reply(hci_le_ltk_req_reply_t *param) {
+void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY] = { 0x00 };
 
     if (__hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQ_REPLY, HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY);
-        buffer[4] = param->connect_handle;
-        buffer[5] = (param->connect_handle >> 8) & 0x0f;
-        memcpy_s(&buffer[6], HCI_LENGTH_LTK, param->ltk, HCI_LENGTH_LTK);
+        buffer[4] = connect_handle;
+        buffer[5] = (connect_handle >> 8) & 0x0f;
+        memcpy_s(&buffer[6], HCI_LENGTH_LTK, ltk, HCI_LENGTH_LTK);
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
         hci_stack.num_of_allowed_cmd_packets--;
