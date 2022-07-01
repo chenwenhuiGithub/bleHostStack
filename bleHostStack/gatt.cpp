@@ -1,7 +1,9 @@
 #include "gatt.h"
 #include "att.h"
+#include "log.h"
 #include <malloc.h>
 #include <string.h>
+#include <stdio.h>
 
 #define GATT_SERVICE_GENERIC_ACCESS                         0x1800
 #define GATT_SERVICE_GENERIC_ATTRIBUTE                      0x1801
@@ -41,7 +43,8 @@
 #define GATT_OBJECT_TYPE_APPEARANCE                         0x2a01
 #define GATT_OBJECT_TYPE_SERVICE_CHANGED                    0x2a05
 #define GATT_OBJECT_TYPE_BATTERY_LEVEL                      0x2a19
-#define GATT_OBJECT_TYPE_TEST                               0x2aff
+#define GATT_OBJECT_TYPE_TEST_RX                            0x2afe
+#define GATT_OBJECT_TYPE_TEST_TX                            0x2aff
 
 
 #define GATT_PERMISSION_READ                                0x01
@@ -64,60 +67,53 @@
 #define GATT_CHARACTERISTIC_PROPERITY_EXTENDED_PROPERTY     0x80
 
 
-#define GATT_SERVICE_MAX_COUNT                              10
-
-#define GATT_MAXSIZE_DEVICE_NAME                            16
-#define GATT_MAXSIZE_TEST_BUFFER                            128
-
-
-typedef struct {
-    att_item_t *items;
-    uint16_t items_cnt;
-    uint16_t start_handle;
-    uint16_t end_handle;
-    uint16_t service_id;
-} GATT_SERVICE;
+#define GATT_MAX_COUNT_SERVICE                              10
+#define GATT_MAX_SIZE_DEVICE_NAME                           32
 
 
 /*
-att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B)                               att_permission(1B)
+att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B)                                 att_permission(1B)
 
 // GAP service
-0x0001          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x1800(GATT_SERVICE_GENERIC_ACCESS)             0x01(GATT_PERMISSION_READ)
-0x0002          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x02(GATT_CHARACTERISTIC_PROPERITY_READ)        0x01(GATT_PERMISSION_READ)
+0x0001          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x1800(GATT_SERVICE_GENERIC_ACCESS)               0x01(GATT_PERMISSION_READ)
+0x0002          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x02(GATT_CHARACTERISTIC_PROPERITY_READ)          0x01(GATT_PERMISSION_READ)
                                                                 0x0003(handle)
                                                                 0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)
-0x0003          0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)            [16 Bytes]                                      0x01(GATT_PERMISSION_READ)
+0x0003          0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)            [32B]"ble_demo"                                   0x01(GATT_PERMISSION_READ)
 
 // GATT service
-0x0011          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x1801(GATT_SERVICE_GATT)                       0x01(GATT_PERMISSION_READ)
-0x0012          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x20(GATT_CHARACTERISTIC_PROPERITY_INDICATE)    0x01(GATT_PERMISSION_READ)
+0x0011          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x1801(GATT_SERVICE_GATT)                         0x01(GATT_PERMISSION_READ)
+0x0012          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x20(GATT_CHARACTERISTIC_PROPERITY_INDICATE)      0x01(GATT_PERMISSION_READ)
                                                                 0x0013(handle)
                                                                 0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)
-0x0013          0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)        0x0000, 0x0000                                  0x01(GATT_PERMISSION_READ)
+0x0013          0x2a05(GATT_OBJECT_TYPE_SERVICE_CHANGED)        [4B]0x000000000                                   0x01(GATT_PERMISSION_READ)
 
 // BATTERY service
-0x0101          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x180f(GATT_SERVICE_BATTERY)                    0x01(GATT_PERMISSION_READ)
-0x0102          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x12(GATT_CHARACTERISTIC_PROPERITY_READ/NOTIFY) 0x01(GATT_PERMISSION_READ)
+0x0101          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x180f(GATT_SERVICE_BATTERY)                      0x01(GATT_PERMISSION_READ)
+0x0102          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x12(GATT_CHARACTERISTIC_PROPERITY_READ/NOTIFY)   0x01(GATT_PERMISSION_READ)
                                                                 0x0103(handle)
                                                                 0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)
-0x0103          0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)          0x62(98%)                                       0x01(GATT_PERMISSION_READ)
-0x0104          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
+0x0103          0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)          [1B]0x62(98%)                                     0x01(GATT_PERMISSION_READ)
+0x0104          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x01(GATT_PERMISSION_READ)
 
 // TEST service
-0x1001          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x18ff(GATT_SERVICE_TEST)                       0x01(GATT_PERMISSION_READ)
-0x1002          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x16(GATT_CHARACTERISTIC_PROPERITY_READ/WRITE_NORESP/NOTIFY)  0x01(GATT_PERMISSION_READ)
+0x1001          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x18ff(GATT_SERVICE_TEST)                         0x01(GATT_PERMISSION_READ)
+0x1002          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x04(GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP)  0x01(GATT_PERMISSION_READ)
                                                                 0x1003(handle)
-                                                                0x2aff(GATT_OBJECT_TYPE_TEST)
-0x1003          0x2aff(GATT_OBJECT_TYPE_TEST)                   [128 Bytes]                                     0x01(GATT_PERMISSION_READ)
-0x1004          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            0x0000                                          0x01(GATT_PERMISSION_READ)
+                                                                0x2afe(GATT_OBJECT_TYPE_TEST_RX)
+0x1003          0x2afe(GATT_OBJECT_TYPE_TEST_RX)                nullptr                                           0x01(GATT_PERMISSION_READ)
+0x1011          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x10(GATT_CHARACTERISTIC_PROPERITY_NOTIFY)        0x01(GATT_PERMISSION_READ)
+                                                                0x1012(handle)
+                                                                0x2aff(GATT_OBJECT_TYPE_TEST_TX)
+0x1012          0x2aff(GATT_OBJECT_TYPE_TEST_TX)                nullptr                                           0x01(GATT_PERMISSION_READ)
+0x1013          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x01(GATT_PERMISSION_READ)
 */
 
 uint8_t gacc_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
 uint8_t gacc_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ,
                                  0x03, 0x00,
                                  (uint8_t)GATT_OBJECT_TYPE_DEVICE_NAME, GATT_OBJECT_TYPE_DEVICE_NAME >> 8};
-uint8_t gacc_device_name[GATT_MAXSIZE_DEVICE_NAME] = {'b', 'l', 'e', '_', 'd', 'e', 'm', 'o'};
+uint8_t gacc_device_name[GATT_MAX_SIZE_DEVICE_NAME] = {'b', 'l', 'e', '_', 'd', 'e', 'm', 'o'};
 
 
 uint8_t gatt_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ATTRIBUTE, GATT_SERVICE_GENERIC_ATTRIBUTE >> 8};
@@ -136,12 +132,12 @@ uint8_t battery_ccc[] = {0x00, 0x00};
 
 
 uint8_t test_uuid[] = {(uint8_t)GATT_SERVICE_TEST, GATT_SERVICE_TEST >> 8};
-uint8_t test_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP| GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
-                                 0x03, 0x10,
-                                 (uint8_t)GATT_OBJECT_TYPE_TEST, GATT_OBJECT_TYPE_TEST >> 8};
-uint8_t test_buffer[GATT_MAXSIZE_TEST_BUFFER] = {
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
-    's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+uint8_t test_characteristic_rx[] = {GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP,
+                                    0x03, 0x10,
+                                    (uint8_t)GATT_OBJECT_TYPE_TEST_RX, GATT_OBJECT_TYPE_TEST_RX >> 8};
+uint8_t test_characteristic_tx[] = {GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
+                                    0x12, 0x10,
+                                    (uint8_t)GATT_OBJECT_TYPE_TEST_TX, GATT_OBJECT_TYPE_TEST_TX >> 8};
 uint8_t test_ccc[] = {0x00, 0x00};
 
 
@@ -166,30 +162,51 @@ att_item_t items_battery[] = {
 
 att_item_t items_test[] = {
     {0x1001, GATT_DECLARATION_PRIMARY_SERVICE, test_uuid, sizeof(test_uuid), GATT_PERMISSION_READ},
-    {0x1002, GATT_DECLARATION_CHARACTERISTIC, test_characteristic, sizeof(test_characteristic), GATT_PERMISSION_READ},
-    {0x1003, GATT_OBJECT_TYPE_TEST, test_buffer, sizeof(test_buffer), GATT_PERMISSION_READ},
-    {0x1004, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, test_ccc, sizeof(test_ccc), GATT_PERMISSION_READ}
+    {0x1002, GATT_DECLARATION_CHARACTERISTIC, test_characteristic_rx, sizeof(test_characteristic_rx), GATT_PERMISSION_READ},
+    {0x1003, GATT_OBJECT_TYPE_TEST_RX, nullptr, 0, GATT_PERMISSION_READ},
+    {0x1011, GATT_DECLARATION_CHARACTERISTIC, test_characteristic_tx, sizeof(test_characteristic_tx), GATT_PERMISSION_READ},
+    {0x1012, GATT_OBJECT_TYPE_TEST_TX, nullptr, 0, GATT_PERMISSION_READ},
+    {0x1013, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, test_ccc, sizeof(test_ccc), GATT_PERMISSION_READ}
 };
 
 
-GATT_SERVICE services[GATT_SERVICE_MAX_COUNT];
+gatt_service_t services[GATT_MAX_COUNT_SERVICE];
 uint8_t service_count = 0;
 
 void gatt_init() {
     gatt_add_service(items_gacc, 3, 0x0001, 0x0003, GATT_SERVICE_GENERIC_ACCESS);
     gatt_add_service(items_gatt, 3, 0x0011, 0x0013, GATT_SERVICE_GENERIC_ATTRIBUTE);
     gatt_add_service(items_battery, 4, 0x0101, 0x0104, GATT_SERVICE_BATTERY);
-    gatt_add_service(items_test, 4, 0x1001, 0x1004, GATT_SERVICE_TEST);
+    gatt_add_service(items_test, 6, 0x1001, 0x1013, GATT_SERVICE_TEST);
 }
 
 void gatt_add_service(att_item_t *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service_id) {
-    if (service_count < GATT_SERVICE_MAX_COUNT) {
+    if (service_count < GATT_MAX_COUNT_SERVICE) {
         services[service_count].items = items;
         services[service_count].items_cnt = items_cnt;
         services[service_count].start_handle = start_handle;
         services[service_count].end_handle = end_handle;
         services[service_count].service_id = service_id;
         service_count++;
+    }
+}
+
+void __print_hex(uint8_t *data, uint32_t length) {
+    uint8_t buffer[128] = {0};
+    uint32_t i = 0, j = 0;
+
+    for (i = 0; i < length; i++) {
+        sprintf_s((char*)(buffer + j*3), sizeof(buffer) - j*3, "%02x ", data[i]);
+        j++;
+        if ((i % 32) == 31) {
+            LOG_INFO("%s", buffer);
+            memset(buffer, 0, sizeof(buffer));
+            j = 0;
+        }
+    }
+
+    if (j != 0) {
+        LOG_INFO("%s", buffer);
     }
 }
 
@@ -607,11 +624,15 @@ void gatt_recv_write_cmd(uint16_t handle, uint8_t *value, uint32_t value_length)
             if (item->handle > handle) {
                 return;
             }
-
+#if 0
             if (value_length <= item->value_length) {
                 memcpy_s(item->value, value_length, value, value_length);
-                return;
             }
+#else
+            LOG_INFO("gatt_recv_write_cmd value_length:%u", value_length);
+            __print_hex(value, value_length);
+#endif
+            return;
         }
     }
 }
@@ -620,7 +641,7 @@ void gatt_recv_handle_value_cfm() {
     // set flag to enable send next indication
 }
 
-void gatt_send_handle_value_notify(uint16_t handle) {
+void gatt_send_handle_value_notify(uint16_t handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
@@ -643,11 +664,19 @@ void gatt_send_handle_value_notify(uint16_t handle) {
             offset++;
             buffer[offset] = item->handle >> 8;
             offset++;
+#if 0
             copy_length = item->value_length;
             if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
                 copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, item->value, copy_length);
+#else
+            copy_length = value_length;
+            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            }
+            memcpy_s(&buffer[offset], copy_length, value, copy_length);
+#endif
             offset += copy_length;
             att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
             free(buffer);
@@ -656,7 +685,7 @@ void gatt_send_handle_value_notify(uint16_t handle) {
     }
 }
 
-void gatt_send_handle_value_indication(uint16_t handle) {
+void gatt_send_handle_value_indication(uint16_t handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission and previous cfm is received
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
@@ -679,11 +708,19 @@ void gatt_send_handle_value_indication(uint16_t handle) {
             offset++;
             buffer[offset] = item->handle >> 8;
             offset++;
+#if 0
             copy_length = item->value_length;
             if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
                 copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, item->value, copy_length);
+#else
+            copy_length = value_length;
+            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            }
+            memcpy_s(&buffer[offset], copy_length, value, copy_length);
+#endif
             offset += copy_length;
             att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
             free(buffer);
@@ -708,3 +745,10 @@ void gatt_send_error_resp(uint8_t op_code, uint16_t handle, uint8_t error_code) 
     offset++;
     att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
 }
+
+
+
+
+
+
+

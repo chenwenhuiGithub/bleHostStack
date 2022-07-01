@@ -5,6 +5,7 @@
 #include "serial.h"
 #include "hci.h"
 #include "btsnoop.h"
+#include "att.h"
 #include "gatt.h"
 #include "log.h"
 #include "sm.h"
@@ -60,8 +61,22 @@ void MainWindow::on_pushButtonStart_clicked()
 
 void MainWindow::on_pushButtonTest_clicked()
 {
-    gatt_send_handle_value_notify(0x1003);
-    gatt_send_handle_value_indication(0x1003);
+    const uint32_t data_length = 2048;
+    uint32_t i = 0;
+    uint8_t data[data_length] = {0};
+    uint16_t att_mtu = att_get_mtu();
+    uint16_t maxPacketSize = att_mtu - 3;
+
+    for (i = 0; i < data_length; i++) {
+        data[i] = i;
+    }
+
+    for (i = 0; i < data_length/maxPacketSize; i++) {
+        gatt_send_handle_value_notify(0x1012, data + i*maxPacketSize, maxPacketSize);
+    }
+    if (data_length % maxPacketSize) {
+        gatt_send_handle_value_notify(0x1012, data + i*maxPacketSize, data_length % maxPacketSize);
+    }
 }
 
 
