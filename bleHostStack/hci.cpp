@@ -273,8 +273,6 @@ static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length);
 static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length);
-static bool __hci_send_cmd_allowed();
-static bool __hci_send_acl_allowed();
 
 
 typedef struct {
@@ -613,7 +611,7 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     bool first_segment_sent = false;
 
     if (length <= hci_stack.le_acl_packet_length) { // no need segments
-        if (__hci_send_acl_allowed()) {
+        if (hci_send_acl_allowed()) {
             data[0] = HCI_PACKET_TYPE_ACL;
             data[1] = connect_handle;
             data[2] = (connect_handle >> 8) & 0x0f;
@@ -631,7 +629,7 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     } else {
         hci_stack.segment_buffer_send = (uint8_t *)malloc(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length);
         while (true) {
-            if (__hci_send_acl_allowed()) {
+            if (hci_send_acl_allowed()) {
                 hci_stack.segment_buffer_send[0] = HCI_PACKET_TYPE_ACL;
                 hci_stack.segment_buffer_send[1] = connect_handle;
                 hci_stack.segment_buffer_send[2] = (connect_handle >> 8) & 0x0f;
@@ -676,11 +674,11 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
     }
 }
 
-static bool __hci_send_cmd_allowed() {
+bool hci_send_cmd_allowed() {
     return hci_stack.num_of_allowed_cmd_packets > 0;
 }
 
-static bool __hci_send_acl_allowed() {
+bool hci_send_acl_allowed() {
     return hci_stack.num_of_allowed_le_acl_packets > 0;
 }
 
@@ -695,7 +693,7 @@ void hci_send_cmd_reset() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_RESET;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_RESET] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_RESET, HCI_LENGTH_CMD_PARAM_RESET);
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
@@ -709,7 +707,7 @@ void hci_send_cmd_read_local_version_info() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_VERSION_INFO,
                                 HCI_LENGTH_CMD_PARAM_READ_LOCAL_VERSION_INFO);
         serial_write(buffer, cmd_length);
@@ -724,7 +722,7 @@ void hci_send_cmd_read_local_supported_commands() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS,
                                 HCI_LENGTH_CMD_PARAM_READ_LOCAL_SUPPORTED_COMMANDS);
         serial_write(buffer, cmd_length);
@@ -739,7 +737,7 @@ void hci_send_cmd_set_event_mask(uint8_t *event_mask) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK);
         memcpy_s(&buffer[4], HCI_LENGTH_EVENT_MASK, event_mask, HCI_LENGTH_EVENT_MASK);
         serial_write(buffer, cmd_length);
@@ -754,7 +752,7 @@ void hci_send_cmd_write_le_host_support(hci_le_host_support_t enable) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_LE_HOST_SUPPORT, HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT);
         buffer[4] = enable;
         buffer[5] = 0x00;
@@ -770,7 +768,7 @@ void hci_send_cmd_le_read_buffer_size() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_BUFFER_SIZE, HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE);
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
@@ -784,7 +782,7 @@ void hci_send_cmd_read_bd_addr() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_BD_ADDR;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_READ_BD_ADDR] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_INFORMATIONAL_PARAM, HCI_OCF_READ_BD_ADDR, HCI_LENGTH_CMD_PARAM_READ_BD_ADDR);
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
@@ -798,7 +796,7 @@ void hci_send_cmd_write_class_of_device(uint8_t *class_of_device) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_CONTROLLER_BASEBAND, HCI_OCF_WRITE_CLASS_OF_DEVICE, HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE);
         memcpy_s(&buffer[4], HCI_LENGTH_CLASS_OF_DEVICE, class_of_device, HCI_LENGTH_CLASS_OF_DEVICE);
         serial_write(buffer, cmd_length);
@@ -813,7 +811,7 @@ void hci_send_cmd_le_remote_conn_param_req_reply(uint16_t connect_handle, hci_le
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY,
                                 HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY);
         buffer[4] = connect_handle;
@@ -842,7 +840,7 @@ void hci_send_cmd_le_remote_conn_param_req_neg_reply(uint16_t connect_handle, ui
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY,
                                 HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY);
         buffer[4] = connect_handle;
@@ -860,7 +858,7 @@ void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_EVENT_MASK, HCI_LENGTH_CMD_PARAM_LE_SET_EVENT_MASK);
         memcpy_s(&buffer[4], HCI_LENGTH_LE_EVENT_MASK, le_event_mask, HCI_LENGTH_LE_EVENT_MASK);
         serial_write(buffer, cmd_length);
@@ -875,7 +873,7 @@ void hci_send_cmd_le_set_adv_param(hci_le_adv_param_t *adv_param){
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_PARAM, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM);
         buffer[4] = adv_param->adv_interval_min;
         buffer[5] = adv_param->adv_interval_min >> 8;
@@ -898,7 +896,7 @@ void hci_send_cmd_le_set_adv_data(hci_le_adv_data_t *adv_data) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_DATA, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA);
         buffer[4] = adv_data->adv_data_length;
         memcpy_s(&buffer[5], HCI_LENGTH_ADV_DATA, adv_data->adv_data, HCI_LENGTH_ADV_DATA);
@@ -914,7 +912,7 @@ void hci_send_cmd_le_set_adv_enable(hci_le_adv_enable_t enable) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_ADV_ENABLE, HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE);
         buffer[4] = enable;
         serial_write(buffer, cmd_length);
@@ -929,7 +927,7 @@ void hci_send_cmd_le_read_local_P256_public_key() {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY,
                                 HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY);
         serial_write(buffer, cmd_length);
@@ -944,7 +942,7 @@ void hci_send_cmd_le_generate_dhkey(uint8_t *pub_key) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY, HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY);
         memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY, pub_key, HCI_LENGTH_P256_PUBLIC_KEY);
         serial_write(buffer, cmd_length);
@@ -959,7 +957,7 @@ void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY] = { 0x00 };
 
-    if (__hci_send_cmd_allowed()) {
+    if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQ_REPLY, HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY);
         buffer[4] = connect_handle;
         buffer[5] = (connect_handle >> 8) & 0x0f;

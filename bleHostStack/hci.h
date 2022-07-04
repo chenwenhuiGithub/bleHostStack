@@ -104,5 +104,7 @@ void hci_send_cmd_le_set_adv_enable(hci_le_adv_enable_t enable);
 void hci_send_cmd_le_read_local_P256_public_key();
 void hci_send_cmd_le_generate_dhkey(uint8_t *pub_key);
 void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk);
+bool hci_send_cmd_allowed();
+bool hci_send_acl_allowed();
 
 #endif // HCI_H
