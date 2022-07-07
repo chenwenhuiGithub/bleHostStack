@@ -274,7 +274,6 @@ static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t l
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length);
 static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length);
 
-
 typedef struct {
     uint8_t class_of_device[HCI_LENGTH_CLASS_OF_DEVICE];
     uint8_t event_mask[HCI_LENGTH_EVENT_MASK];
@@ -284,18 +283,18 @@ typedef struct {
     hci_le_adv_data_t le_adv_data;
     hci_le_conn_param_t le_conn_param;
 
-    uint8_t *segment_buffer_send;
-    uint8_t *segment_buffer_recv;
-    uint16_t segment_length_total;
-    uint16_t segment_length_received;
-
     uint16_t le_acl_packet_length;
     uint8_t num_of_allowed_le_acl_packets;
     uint8_t num_of_allowed_cmd_packets;
+
+    uint8_t local_addr[HCI_LENGTH_ADDR];
+    uint8_t local_addr_type;
+    uint8_t local_p256_public_key[HCI_LENGTH_P256_PUBLIC_KEY];
+
+    hci_connection_t *hci_connections;
 } hci_stack_t;
 
-
-hci_stack_t hci_stack = {
+static hci_stack_t hci_stack = {
     .class_of_device = {0x0c, 0x02, 0x7a},
     .event_mask = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f},
     .le_event_mask = {0xff, 0xff, 0xff, 0xff, 0x07, 0x00, 0x00, 0x00},
@@ -329,37 +328,18 @@ hci_stack_t hci_stack = {
         .max_ce_length = 0x0028  // 25ms(N*0.625ms)
     },
 
-    .segment_buffer_send = nullptr,
-    .segment_buffer_recv = nullptr,
-    .segment_length_total = 0,
-    .segment_length_received = 0,
-
     .le_acl_packet_length = 0,
     .num_of_allowed_le_acl_packets = 0,
-    .num_of_allowed_cmd_packets = 1
+    .num_of_allowed_cmd_packets = 1,
+
+    .hci_connections = nullptr // TODO: add hci_init interface
 };
-uint16_t connect_handle = 0; // TODO: support multiple connections
 
-
-void hci_recv_evt(uint8_t *data, uint32_t length) {
-    uint8_t event_code = data[0];
-
-    switch (event_code) {
-    case HCI_EVENT_DISCONN_COMPLETE:
-        __hci_recv_evt_disconn_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    case HCI_EVENT_ENCRYPTION_CHANGE:
-        __hci_recv_evt_encryption_change(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    case HCI_EVENT_COMMAND_COMPLETE:
-        __hci_recv_evt_command_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    case HCI_EVENT_COMMAND_STATUS:
-        __hci_recv_evt_command_status(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    case HCI_EVENT_LE_META:
-        __hci_recv_evt_le_meta(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    case HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS:
-        __hci_recv_evt_number_of_completed_packets(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
-    default:
-        LOG_WARNING("hci_recv_evt invalid, event_code:0x%02x", event_code); break;
-    }
+static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
+    buffer[0] = HCI_PACKET_TYPE_CMD;
+    buffer[1] = ocf;
+    buffer[2] = (ocf >> 8) | (ogf << 2);
+    buffer[3] = param_length;
 }
 
 static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
@@ -405,8 +385,8 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
         case HCI_OCF_READ_BD_ADDR:
             LOG_INFO("read_bd_addr status:%u, bd_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                      data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
-            sm_set_local_address(data + 4);
-            sm_set_local_address_type(HCI_ADDR_TYPE_PUBLIC_DEVICE); // TODO: how to get local address type?
+            memcpy_s(hci_stack.local_addr, HCI_LENGTH_ADDR, data + 4, HCI_LENGTH_ADDR);
+            hci_stack.local_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE;  // TODO: how to get local address type?
             hci_send_cmd_write_class_of_device(hci_stack.class_of_device);
             break;
         default:
@@ -421,7 +401,6 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
                      data[3], (data[4] | (data[5] << 8)), data[6]);
             hci_stack.le_acl_packet_length = data[4] | (data[5] << 8);
             hci_stack.num_of_allowed_le_acl_packets = data[6];
-            att_set_max_mtu(hci_stack.le_acl_packet_length - L2CAP_LENGTH_HEADER);
             hci_send_cmd_le_set_event_mask(hci_stack.le_event_mask);
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
@@ -489,17 +468,15 @@ static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length) {
 }
 
 static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
-    (void)length;
     uint8_t sub_event = data[0];
-    uint8_t ltk[HCI_LENGTH_LTK] = {0};
+    uint16_t connect_handle = 0x0000;
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONN_COMPLETE:
         LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         connect_handle = data[2] | ((data[3] & 0x0f) << 8);
-        sm_set_remote_address(data + 6);
-        sm_set_remote_address_type(data[5]);
+        hci_add_connection(connect_handle, data + 6, data[5]);
         LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_CONN_UPDATE_COMPLETE:
@@ -508,22 +485,22 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         break;
     case HCI_EVENT_LE_LTK_REQ:
         LOG_INFO("le_ltk_req connect_handle:0x%02x%02x, random_number:0x%02x%02x%02x%02x%02x%02x%02x%02x, encrypted_diversifier:0x%02x%02x",
-                 data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
-        sm_get_local_ltk(ltk);
-        hci_send_cmd_le_ltk_req_reply(connect_handle, ltk);
+                 data[1], (data[2] & 0x0f), data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
+        connect_handle = data[1] | ((data[2] & 0x0f) << 8);
+        sm_recv_evt_le_ltk_req(connect_handle, data + 3, data + 11);
         break;
     case HCI_EVENT_LE_REMOTE_CONN_PARAM_REQ:
         LOG_INFO("le_remote_conn_param_req connect_handle:0x%02x%02x, interval_min:%0.2fms, interval_max:%0.2fms, max_latency:%u, timeout:%ums",
                  data[1], (data[2] & 0x0f), (data[3] | (data[4] << 8)) * 1.25, (data[5] | (data[6] << 8)) * 1.25,
                  data[7] | (data[8] << 8), (data[9] | (data[10] << 8)) * 10);
+        connect_handle = data[1] | ((data[2] & 0x0f) << 8);
         hci_send_cmd_le_remote_conn_param_req_reply(connect_handle, &hci_stack.le_conn_param);
         break;
     case HCI_EVENT_LE_ENHANCED_CONN_COMPLETE:
         LOG_INFO("le_enhanced_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         connect_handle = data[2] | ((data[3] & 0x0f) << 8);
-        sm_set_remote_address(data + 6);
-        sm_set_remote_address_type(data[5]);
+        hci_add_connection(connect_handle, data + 6, data[5]);
         LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_DATA_LENGTH_CHANGE:
@@ -533,12 +510,12 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         break;
     case HCI_EVENT_LE_READ_LOCAL_P256_PUBLIC_KEY_COMPLETE:
         LOG_INFO("le_read_local_p256_public_key_complete status:%u", data[1]);
-        sm_set_local_pairing_public_key(&data[2]);
+        memcpy_s(hci_stack.local_p256_public_key, HCI_LENGTH_P256_PUBLIC_KEY, data + 2, HCI_LENGTH_P256_PUBLIC_KEY);
         hci_send_cmd_le_set_adv_param(&hci_stack.le_adv_param);
         break;
     case HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE:
         LOG_INFO("le_generate_dhkey_complete status:%u", data[1]);
-        sm_set_local_dhkey(&data[2]);
+        sm_recv_evt_le_generate_dhkey_complete(data + 2); // all connections re-used one local pub-priv key pair?
         break;
     default:
         LOG_WARNING("__hci_recv_evt_le_meta invalid, sub_event:0x%02x", sub_event);
@@ -548,6 +525,14 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
 
 static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length) {
     (void)length;
+    uint16_t connect_handle = data[1] | ((data[2] & 0x0f) << 8);
+    hci_connection_t *deleted_connection = hci_delete_connection_by_handle(connect_handle);
+
+    if (deleted_connection->segment_buffer_recv) {
+        free(deleted_connection->segment_buffer_recv);
+        deleted_connection->segment_buffer_recv = nullptr;
+    }
+    // TODO: free other resource
     LOG_INFO("disconn_complete status:%u, connect_handle:0x%02x%02x, reason:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
     LOG_INFO("/***** peer device disconnect *****/");
 }
@@ -568,49 +553,72 @@ static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t l
 
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length) {
     (void)length;
-    LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:0x%02x",
-             data[0], data[1], data[2], data[3]);
-    LOG_INFO("/***** encryption enabled *****/");
-    sm_key_distribution();
+    uint16_t connect_handle = data[1] | ((data[2] & 0x0f) << 8);
+
+    LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
+    sm_recv_evt_encryption_change(connect_handle, data[3]);
+}
+
+void hci_recv_evt(uint8_t *data, uint32_t length) {
+    uint8_t event_code = data[0];
+
+    switch (event_code) {
+    case HCI_EVENT_DISCONN_COMPLETE:
+        __hci_recv_evt_disconn_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_ENCRYPTION_CHANGE:
+        __hci_recv_evt_encryption_change(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_COMMAND_COMPLETE:
+        __hci_recv_evt_command_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_COMMAND_STATUS:
+        __hci_recv_evt_command_status(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_LE_META:
+        __hci_recv_evt_le_meta(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    case HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS:
+        __hci_recv_evt_number_of_completed_packets(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+    default:
+        LOG_WARNING("hci_recv_evt invalid, event_code:0x%02x", event_code); break;
+    }
 }
 
 void hci_recv_acl(uint8_t *data, uint32_t length) {
+    uint16_t connect_handle = data[0] | ((data[1] & 0x0f) << 8);
+    hci_connection_t *conn = hci_find_connection_by_handle(connect_handle);
     uint8_t pb_flag = data[1] & 0x30;
     uint16_t segment_length_current = 0;
 
     if (HCI_ACL_SEGMENT_PACKET_FIRST == pb_flag) {
-        hci_stack.segment_length_total = data[4] | (data[5] << 8);
+        conn->segment_length_total = data[4] | (data[5] << 8); // TODO: based on connect_handle
         segment_length_current = length - HCI_LENGTH_ACL_HEADER;
-        hci_stack.segment_length_received = length - HCI_LENGTH_ACL_HEADER;
+        conn->segment_length_received = length - HCI_LENGTH_ACL_HEADER;
 
-        if (hci_stack.segment_length_received == hci_stack.segment_length_total + L2CAP_LENGTH_HEADER) { // no need segment
-            l2cap_recv(data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER);
+        if (conn->segment_length_received == conn->segment_length_total + L2CAP_LENGTH_HEADER) {
+            l2cap_recv(connect_handle, data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER);
             return;
         }
-        hci_stack.segment_buffer_recv = (uint8_t *)malloc(L2CAP_LENGTH_HEADER + hci_stack.segment_length_total);
-        memcpy_s(hci_stack.segment_buffer_recv, segment_length_current, data + HCI_LENGTH_ACL_HEADER, segment_length_current);
+        conn->segment_buffer_recv = (uint8_t *)malloc(L2CAP_LENGTH_HEADER + conn->segment_length_total);
+        memcpy_s(conn->segment_buffer_recv, segment_length_current, data + HCI_LENGTH_ACL_HEADER, segment_length_current);
     } else if (HCI_ACL_SEGMENT_PACKET_CONTINUE == pb_flag) {
         segment_length_current = length - HCI_LENGTH_ACL_HEADER;
-        memcpy_s(&hci_stack.segment_buffer_recv[hci_stack.segment_length_received], segment_length_current,
-                 data + HCI_LENGTH_ACL_HEADER, segment_length_current);
-        hci_stack.segment_length_received += segment_length_current;
+        memcpy_s(conn->segment_buffer_recv + conn->segment_length_received, segment_length_current, data + HCI_LENGTH_ACL_HEADER, segment_length_current);
+        conn->segment_length_received += segment_length_current;
 
-        if (hci_stack.segment_length_received == hci_stack.segment_length_total + L2CAP_LENGTH_HEADER) {
-            l2cap_recv(hci_stack.segment_buffer_recv, hci_stack.segment_length_received);
-            free(hci_stack.segment_buffer_recv);
-            hci_stack.segment_buffer_recv = nullptr;
+        if (conn->segment_length_received == conn->segment_length_total + L2CAP_LENGTH_HEADER) {
+            l2cap_recv(connect_handle, conn->segment_buffer_recv, conn->segment_length_received);
+            free(conn->segment_buffer_recv);
+            conn->segment_buffer_recv = nullptr;
         }
     } else {
         LOG_ERROR("hci_recv_acl invalid, pb_flag:0x%02x", pb_flag);
     }
 }
 
-void hci_send_acl(uint8_t *data, uint32_t length) {
+void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     uint32_t packet_length = 0;
     uint32_t offset = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER;
     bool first_segment_sent = false;
+    uint8_t *segment_buffer_send = nullptr;
 
-    if (length <= hci_stack.le_acl_packet_length) { // no need segments
+    if (length <= hci_stack.le_acl_packet_length) {
         if (hci_send_acl_allowed()) {
             data[0] = HCI_PACKET_TYPE_ACL;
             data[1] = connect_handle;
@@ -627,50 +635,54 @@ void hci_send_acl(uint8_t *data, uint32_t length) {
             LOG_ERROR("hci_send_acl error, send acl not allowed");
         }
     } else {
-        hci_stack.segment_buffer_send = (uint8_t *)malloc(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length);
+        segment_buffer_send = (uint8_t *)malloc(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length);
         while (true) {
             if (hci_send_acl_allowed()) {
-                hci_stack.segment_buffer_send[0] = HCI_PACKET_TYPE_ACL;
-                hci_stack.segment_buffer_send[1] = connect_handle;
-                hci_stack.segment_buffer_send[2] = (connect_handle >> 8) & 0x0f;
+                segment_buffer_send[0] = HCI_PACKET_TYPE_ACL;
+                segment_buffer_send[1] = connect_handle;
+                segment_buffer_send[2] = (connect_handle >> 8) & 0x0f;
                 if (false == first_segment_sent) {
-                    hci_stack.segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;
+                    segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_FIRST;
                     first_segment_sent = true;
                 } else {
-                    hci_stack.segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_CONTINUE;
+                    segment_buffer_send[2] |= HCI_ACL_SEGMENT_PACKET_CONTINUE;
                 }
 
                 if (length > hci_stack.le_acl_packet_length) {
-                    hci_stack.segment_buffer_send[3] = hci_stack.le_acl_packet_length;
-                    hci_stack.segment_buffer_send[4] = hci_stack.le_acl_packet_length >> 8;
-                    memcpy_s(&hci_stack.segment_buffer_send[5], hci_stack.le_acl_packet_length, data + offset, hci_stack.le_acl_packet_length);
+                    segment_buffer_send[3] = hci_stack.le_acl_packet_length;
+                    segment_buffer_send[4] = hci_stack.le_acl_packet_length >> 8;
+                    memcpy_s(segment_buffer_send + 5, hci_stack.le_acl_packet_length, data + offset, hci_stack.le_acl_packet_length);
 
                     packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length;
-                    serial_write(hci_stack.segment_buffer_send, packet_length);
-                    btsnoop_wirte(hci_stack.segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
+                    serial_write(segment_buffer_send, packet_length);
+                    btsnoop_wirte(segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
                     length -= hci_stack.le_acl_packet_length;
                     offset += hci_stack.le_acl_packet_length;
                     hci_stack.num_of_allowed_le_acl_packets--;
                 } else {
                     if (length > 0) { // the last segment packet
-                        hci_stack.segment_buffer_send[3] = length;
-                        hci_stack.segment_buffer_send[4] = length >> 8;
-                        memcpy_s(&hci_stack.segment_buffer_send[5], length, data + offset, length);
+                        segment_buffer_send[3] = length;
+                        segment_buffer_send[4] = length >> 8;
+                        memcpy_s(segment_buffer_send + 5, length, data + offset, length);
 
                         packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
-                        serial_write(hci_stack.segment_buffer_send, packet_length);
-                        btsnoop_wirte(hci_stack.segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
+                        serial_write(segment_buffer_send, packet_length);
+                        btsnoop_wirte(segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
                         hci_stack.num_of_allowed_le_acl_packets--;
                     }
-                    break;
+                    goto RET;
                 }
             } else {
                 LOG_ERROR("hci_send_acl error, send acl not allowed");
-                break;
+                goto RET;
             }
         }
-        free(hci_stack.segment_buffer_send);
-        hci_stack.segment_buffer_send = nullptr;
+    }
+
+RET:
+    if (segment_buffer_send) {
+        free(segment_buffer_send);
+        segment_buffer_send = nullptr;
     }
 }
 
@@ -680,13 +692,6 @@ bool hci_send_cmd_allowed() {
 
 bool hci_send_acl_allowed() {
     return hci_stack.num_of_allowed_le_acl_packets > 0;
-}
-
-static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
-    buffer[0] = HCI_PACKET_TYPE_CMD;
-    buffer[1] = ocf;
-    buffer[2] = (ocf >> 8) | (ogf << 2);
-    buffer[3] = param_length;
 }
 
 void hci_send_cmd_reset() {
@@ -968,4 +973,64 @@ void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk) {
     } else {
         LOG_ERROR("hci_send_cmd_le_ltk_req_reply error, send cmd not allowed");
     }
+}
+
+void hci_get_local_addr_info(uint8_t *addr, uint8_t *addr_type) {
+    memcpy_s(addr, HCI_LENGTH_ADDR, hci_stack.local_addr, HCI_LENGTH_ADDR);
+    *addr_type = hci_stack.local_addr_type;
+}
+
+uint16_t hci_get_le_acl_packet_length() {
+    return hci_stack.le_acl_packet_length;
+}
+
+uint8_t* hci_get_local_p256_public_key() {
+    return hci_stack.local_p256_public_key;
+}
+
+hci_connection_t* hci_add_connection(uint16_t connect_handle, uint8_t *peer_addr, uint8_t peer_addr_type) {
+    hci_connection_t *conn = (hci_connection_t *)malloc(sizeof(hci_connection_t));
+    memset(conn, 0, sizeof(hci_connection_t));
+    conn->connect_handle = connect_handle;
+    memcpy_s(conn->peer_addr, HCI_LENGTH_ADDR, peer_addr, HCI_LENGTH_ADDR);
+    conn->peer_addr_type = peer_addr_type;
+    conn->att_mtu = ATT_MTU_DEFAULT;
+
+    conn->next = hci_stack.hci_connections;
+    hci_stack.hci_connections = conn; // insert to list head
+
+    return conn;
+}
+
+hci_connection_t* hci_find_connection_by_handle(uint16_t connect_handle) {
+    hci_connection_t *temp = hci_stack.hci_connections;
+
+    while (temp) {
+        if (temp->connect_handle == connect_handle) {
+            return temp;
+        }
+        temp = temp->next;
+    }
+
+    return nullptr;
+}
+
+hci_connection_t* hci_delete_connection_by_handle(uint16_t connect_handle) {
+    hci_connection_t *temp_node = hci_stack.hci_connections;
+    hci_connection_t *deleted_node = nullptr;
+
+    if (temp_node->connect_handle == connect_handle) { // delete head node
+        hci_stack.hci_connections = hci_stack.hci_connections->next;
+        deleted_node = temp_node;
+    } else {
+        while (temp_node->next) {
+            if (temp_node->next->connect_handle == connect_handle) {
+                deleted_node = temp_node->next;
+                temp_node->next = temp_node->next->next;
+            }
+            temp_node = temp_node->next;
+        }
+    }
+
+    return deleted_node;
 }

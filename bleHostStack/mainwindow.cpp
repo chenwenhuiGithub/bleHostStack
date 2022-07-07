@@ -64,7 +64,8 @@ void MainWindow::on_pushButtonTest_clicked()
     const uint32_t data_length = 2048;
     uint32_t i = 0;
     uint8_t data[data_length] = {0};
-    uint16_t att_mtu = att_get_mtu();
+    uint16_t connect_handle = 0x0000;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
     uint16_t maxPacketSize = att_mtu - 3;
 
     for (i = 0; i < data_length; i++) {
@@ -72,10 +73,10 @@ void MainWindow::on_pushButtonTest_clicked()
     }
 
     for (i = 0; i < data_length/maxPacketSize; i++) {
-        gatt_send_handle_value_notify(0x1012, data + i*maxPacketSize, maxPacketSize);
+        gatt_send_handle_value_notify(connect_handle, 0x1012, data + i*maxPacketSize, maxPacketSize);
     }
     if (data_length % maxPacketSize) {
-        gatt_send_handle_value_notify(0x1012, data + i*maxPacketSize, data_length % maxPacketSize);
+        gatt_send_handle_value_notify(connect_handle, 0x1012, data + i*maxPacketSize, data_length % maxPacketSize);
     }
 }
 

@@ -13,7 +13,7 @@ typedef enum {
     L2CAP_CID_SM            = 6
 } l2cap_cid_t;
 
-void l2cap_recv(uint8_t *data, uint32_t length);
-void l2cap_send(l2cap_cid_t cid, uint8_t *data, uint32_t length);
+void l2cap_recv(uint16_t connect_handle, uint8_t *data, uint32_t length);
+void l2cap_send(uint16_t connect_handle, l2cap_cid_t cid, uint8_t *data, uint32_t length);
 
 #endif // L2CAP_H

@@ -2,6 +2,7 @@
 #define HCI_H
 
 #include <stdint.h>
+#include "sm.h"
 
 #define HCI_PACKET_TYPE_CMD                                             1
 #define HCI_PACKET_TYPE_ACL                                             2
@@ -12,12 +13,18 @@
 #define HCI_ADV_CHANNEL_MAP_38                                          0x02
 #define HCI_ADV_CHANNEL_MAP_39                                          0x04
 
+#define HCI_ADDR_TYPE_PUBLIC_DEVICE                                     0x00
+#define HCI_ADDR_TYPE_RANDOM_DEVICE                                     0x01
+#define HCI_ADDR_TYPE_PUBLIC_IDENTITY                                   0x02
+#define HCI_ADDR_TYPE_RANDOM_IDENTITY                                   0x03
+
 #define HCI_LENGTH_PACKET_TYPE                                          1
 #define HCI_LENGTH_EVT_HEADER                                           2
 #define HCI_LENGTH_SCO_HEADER                                           3
 #define HCI_LENGTH_ACL_HEADER                                           4
 
 #define HCI_LENGTH_ADDR                                                 6
+#define HCI_LENGTH_ADDR_TYPE                                            1
 #define HCI_LENGTH_ADV_DATA                                             31
 #define HCI_LENGTH_LTK                                                  16
 #define HCI_LENGTH_P256_PUBLIC_KEY                                      64
@@ -49,13 +56,6 @@ typedef enum {
 } hci_adv_type_t;
 
 typedef enum {
-    HCI_ADDR_TYPE_PUBLIC_DEVICE,
-    HCI_ADDR_TYPE_RANDOM_DEVICE,
-    HCI_ADDR_TYPE_PUBLIC_IDENTITY,
-    HCI_ADDR_TYPE_RANDOM_IDENTITY
-} hci_addr_type_t;
-
-typedef enum {
     HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_ALL,
     HCI_ADV_FILTER_POLICY_SCAN_FILTER_CONN_ALL,
     HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_FILETER,
@@ -66,8 +66,8 @@ typedef struct {
     uint16_t adv_interval_min;
     uint16_t adv_interval_max;
     hci_adv_type_t adv_type;
-    hci_addr_type_t own_addr_type;
-    hci_addr_type_t peer_addr_type;
+    uint8_t own_addr_type;
+    uint8_t peer_addr_type;
     uint8_t peer_addr[HCI_LENGTH_ADDR];
     uint8_t adv_channel_map;
     hci_adv_filter_policy_t adv_filter_policy;
@@ -83,10 +83,22 @@ typedef enum {
     HCI_LE_ADV_ENABLE
 } hci_le_adv_enable_t;
 
+typedef struct hci_connection {
+    uint16_t connect_handle;
+    uint8_t peer_addr[HCI_LENGTH_ADDR];
+    uint8_t peer_addr_type;
+    uint8_t *segment_buffer_recv;
+    uint16_t segment_length_total;
+    uint16_t segment_length_received;
+    uint16_t att_mtu;
+    sm_connection_t sm_connection;
+    struct hci_connection *next;
+} hci_connection_t;
+
 
 void hci_recv_evt(uint8_t *data, uint32_t length);
 void hci_recv_acl(uint8_t *data, uint32_t length);
-void hci_send_acl(uint8_t *data, uint32_t length);
+void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length);
 void hci_send_cmd_reset();
 void hci_send_cmd_read_local_version_info();
 void hci_send_cmd_read_local_supported_commands();
@@ -106,5 +118,11 @@ void hci_send_cmd_le_generate_dhkey(uint8_t *pub_key);
 void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk);
 bool hci_send_cmd_allowed();
 bool hci_send_acl_allowed();
+void hci_get_local_addr_info(uint8_t *addr, uint8_t *addr_type);
+uint16_t hci_get_le_acl_packet_length();
+hci_connection_t* hci_add_connection(uint16_t connect_handle, uint8_t *peer_addr, uint8_t peer_addr_type);
+hci_connection_t* hci_find_connection_by_handle(uint16_t connect_handle);
+hci_connection_t* hci_delete_connection_by_handle(uint16_t connect_handle);
+uint8_t* hci_get_local_p256_public_key();
 
 #endif // HCI_H

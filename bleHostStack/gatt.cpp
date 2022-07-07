@@ -1,9 +1,11 @@
-#include "gatt.h"
-#include "att.h"
-#include "log.h"
 #include <malloc.h>
 #include <string.h>
 #include <stdio.h>
+#include "hci.h"
+#include "l2cap.h"
+#include "gatt.h"
+#include "att.h"
+#include "log.h"
 
 #define GATT_SERVICE_GENERIC_ACCESS                         0x1800
 #define GATT_SERVICE_GENERIC_ATTRIBUTE                      0x1801
@@ -48,13 +50,13 @@
 
 
 #define GATT_PERMISSION_READ                                0x01
-#define GATT_PERMISSION_READ_ENCRYPTED                      0x02
-#define GATT_PERMISSION_READ_ENCRYPTED_MITM                 0x04
-#define GATT_PERMISSION_WRITE                               0x08
-#define GATT_PERMISSION_WRITE_ENCRYPTED                     0x10
-#define GATT_PERMISSION_WRITE_ENCRYPTED_MITM                0x20
-#define GATT_PERMISSION_WRITE_SIGNED                        0x40
-#define GATT_PERMISSION_WRITE_SIGNED_MITM                   0x80
+#define GATT_PERMISSION_READ_ENCRYPT                        0x02
+#define GATT_PERMISSION_READ_AUTHENTICATE                   0x04
+#define GATT_PERMISSION_READ_AUTHORIZATE                    0x08
+#define GATT_PERMISSION_WRITE                               0x10
+#define GATT_PERMISSION_WRITE_ENCRYPT                       0x20
+#define GATT_PERMISSION_WRITE_AUTHENTICATE                  0x40
+#define GATT_PERMISSION_WRITE_AUTHORIZATE                   0x80
 
 
 #define GATT_CHARACTERISTIC_PROPERITY_BROADCAST             0x01
@@ -70,6 +72,9 @@
 #define GATT_MAX_COUNT_SERVICE                              10
 #define GATT_MAX_SIZE_DEVICE_NAME                           32
 
+#define GATT_LENGTH_PACKET_HEADER                           (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
+
+static void __gatt_print_hex(uint8_t *data, uint32_t length);
 
 /*
 att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B)                                 att_permission(1B)
@@ -93,20 +98,20 @@ att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B
 0x0102          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x12(GATT_CHARACTERISTIC_PROPERITY_READ/NOTIFY)   0x01(GATT_PERMISSION_READ)
                                                                 0x0103(handle)
                                                                 0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)
-0x0103          0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)          [1B]0x62(98%)                                     0x01(GATT_PERMISSION_READ)
-0x0104          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x01(GATT_PERMISSION_READ)
+0x0103          0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)          [1B]0x62(98%)                                     0x02(GATT_PERMISSION_READ_ENCRYPT)
+0x0104          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x21(GATT_PERMISSION_READ|WRITE_ENCRYPT)
 
 // TEST service
 0x1001          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x18ff(GATT_SERVICE_TEST)                         0x01(GATT_PERMISSION_READ)
 0x1002          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x04(GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP)  0x01(GATT_PERMISSION_READ)
                                                                 0x1003(handle)
                                                                 0x2afe(GATT_OBJECT_TYPE_TEST_RX)
-0x1003          0x2afe(GATT_OBJECT_TYPE_TEST_RX)                nullptr                                           0x01(GATT_PERMISSION_READ)
+0x1003          0x2afe(GATT_OBJECT_TYPE_TEST_RX)                nullptr                                           0x10(GATT_PERMISSION_WRITE)
 0x1011          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x10(GATT_CHARACTERISTIC_PROPERITY_NOTIFY)        0x01(GATT_PERMISSION_READ)
                                                                 0x1012(handle)
                                                                 0x2aff(GATT_OBJECT_TYPE_TEST_TX)
 0x1012          0x2aff(GATT_OBJECT_TYPE_TEST_TX)                nullptr                                           0x01(GATT_PERMISSION_READ)
-0x1013          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x01(GATT_PERMISSION_READ)
+0x1013          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x11(GATT_PERMISSION_READ|WRITE)
 */
 
 uint8_t gacc_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
@@ -156,17 +161,17 @@ att_item_t items_gatt[] = {
 att_item_t items_battery[] = {
     {0x0101, GATT_DECLARATION_PRIMARY_SERVICE, battery_uuid, sizeof(battery_uuid), GATT_PERMISSION_READ},
     {0x0102, GATT_DECLARATION_CHARACTERISTIC, battery_characteristic, sizeof(battery_characteristic), GATT_PERMISSION_READ},
-    {0x0103, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ},
-    {0x0104, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, battery_ccc, sizeof(battery_ccc), GATT_PERMISSION_READ}
+    {0x0103, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ_ENCRYPT},
+    {0x0104, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, battery_ccc, sizeof(battery_ccc), GATT_PERMISSION_READ | GATT_PERMISSION_WRITE_ENCRYPT}
 };
 
 att_item_t items_test[] = {
     {0x1001, GATT_DECLARATION_PRIMARY_SERVICE, test_uuid, sizeof(test_uuid), GATT_PERMISSION_READ},
     {0x1002, GATT_DECLARATION_CHARACTERISTIC, test_characteristic_rx, sizeof(test_characteristic_rx), GATT_PERMISSION_READ},
-    {0x1003, GATT_OBJECT_TYPE_TEST_RX, nullptr, 0, GATT_PERMISSION_READ},
+    {0x1003, GATT_OBJECT_TYPE_TEST_RX, nullptr, 0, GATT_PERMISSION_WRITE},
     {0x1011, GATT_DECLARATION_CHARACTERISTIC, test_characteristic_tx, sizeof(test_characteristic_tx), GATT_PERMISSION_READ},
     {0x1012, GATT_OBJECT_TYPE_TEST_TX, nullptr, 0, GATT_PERMISSION_READ},
-    {0x1013, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, test_ccc, sizeof(test_ccc), GATT_PERMISSION_READ}
+    {0x1013, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, test_ccc, sizeof(test_ccc), GATT_PERMISSION_READ | GATT_PERMISSION_WRITE}
 };
 
 
@@ -191,7 +196,7 @@ void gatt_add_service(att_item_t *items, uint16_t items_cnt, uint16_t start_hand
     }
 }
 
-void __print_hex(uint8_t *data, uint32_t length) {
+static void __gatt_print_hex(uint8_t *data, uint32_t length) {
     uint8_t buffer[128] = {0};
     uint32_t i = 0, j = 0;
 
@@ -211,12 +216,12 @@ void __print_hex(uint8_t *data, uint32_t length) {
 }
 
 // read part value of one characteristic
-void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
+void gatt_recv_read_blob_req(uint16_t connect_handle, uint16_t att_handle, uint16_t value_offset) {
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
-    uint16_t att_mtu = att_get_mtu();
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
     uint8_t error_code = 0;
     uint8_t found = 0;
 
@@ -224,11 +229,11 @@ void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < handle) {
+            if (item->handle < att_handle) {
                 continue;
             }
 
-            if (item->handle > handle) {
+            if (item->handle > att_handle) {
                 goto RET;
             }
 
@@ -243,12 +248,12 @@ void gatt_recv_read_blob_req(uint16_t handle, uint16_t value_offset) {
             }
 
             found = 1;
-            buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+            buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
             buffer[offset] = ATT_OPERATE_READ_BLOB_RESP;
             offset++;
             copy_length = item->value_length - value_offset;
-            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, item->value + value_offset, copy_length);
             offset += copy_length;
@@ -261,9 +266,9 @@ RET:
         if (!error_code) { // no match handle
             error_code = ATT_ERROR_INVALID_HANDLE;
         }
-        gatt_send_error_resp(ATT_OPERATE_READ_BLOB_REQ, handle, error_code);
+        gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_BLOB_REQ, att_handle, error_code);
     } else {
-        att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+        att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
     }
 
     if (buffer) {
@@ -273,12 +278,12 @@ RET:
 }
 
 // read value of one characteristic
-void gatt_recv_read_req(uint16_t handle) {
+void gatt_recv_read_req(uint16_t connect_handle, uint16_t att_handle) {
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
-    uint16_t att_mtu = att_get_mtu();
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
     uint8_t error_code = 0;
     uint8_t found = 0;
 
@@ -286,22 +291,22 @@ void gatt_recv_read_req(uint16_t handle) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < handle) {
+            if (item->handle < att_handle) {
                 continue;
             }
 
-            if (item->handle > handle) {
+            if (item->handle > att_handle) {
                 error_code = ATT_ERROR_INVALID_HANDLE;
                 goto RET;
             }
 
             found = 1;
-            buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+            buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
             buffer[offset] = ATT_OPERATE_READ_RESP;
             offset++;
             copy_length = item->value_length;
-            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, item->value, copy_length);
             offset += copy_length;
@@ -314,9 +319,9 @@ RET:
         if (!error_code) { // no match handle
             error_code = ATT_ERROR_INVALID_HANDLE;
         }
-        gatt_send_error_resp(ATT_OPERATE_READ_REQ, handle, error_code);
+        gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_REQ, att_handle, error_code);
     } else {
-        att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+        att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
     }
 
     if (buffer) {
@@ -326,16 +331,16 @@ RET:
 }
 
 // discover descriptors in one characteristic
-void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) {
+void gatt_recv_find_information_req(uint16_t connect_handle, uint16_t att_handle_start, uint16_t att_handle_end) {
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
-    uint16_t att_mtu = att_get_mtu();
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
     uint8_t pair_value_length = 4;
     uint8_t error_code = 0;
     uint8_t found = 0;
 
-    buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+    buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
     buffer[offset] = ATT_OPERATE_FIND_INFO_RESP;
     offset++;
     buffer[offset] = ATT_UUID_TYPE_BITS_16; // TODO: 128 bits uuid
@@ -345,11 +350,11 @@ void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) 
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < start_handle) {
+            if (item->handle < att_handle_start) {
                 continue;
             }
 
-            if (item->handle > end_handle) {
+            if (item->handle > att_handle_end) {
                 goto RET;
             }
 
@@ -362,7 +367,7 @@ void gatt_recv_find_information_req(uint16_t start_handle, uint16_t end_handle) 
             offset++;
             buffer[offset] = item->type >> 8;
             offset++;
-            if ((offset - ATT_LENGTH_PACKET_HEADER + pair_value_length) > att_mtu) {
+            if ((offset - GATT_LENGTH_PACKET_HEADER + pair_value_length) > att_mtu) {
                 goto RET;
             }
         }
@@ -373,9 +378,9 @@ RET:
         if (!error_code) { // no match handle
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
-        gatt_send_error_resp(ATT_OPERATE_FIND_INFO_REQ, start_handle, error_code);
+        gatt_send_error_resp(connect_handle, ATT_OPERATE_FIND_INFO_REQ, att_handle_start, error_code);
     } else {
-        att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+        att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
     }
 
     if (buffer) {
@@ -385,17 +390,17 @@ RET:
 }
 
 // discover the handle and group end handle of one att value
-void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle,
+void gatt_recv_find_by_type_value_req(uint16_t connect_handle, uint16_t att_handle_start, uint16_t att_handle_end,
                                       uint16_t att_type, uint8_t *att_value, uint32_t att_value_length) {
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
-    uint16_t att_mtu = att_get_mtu();
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
     uint8_t pair_value_length = 4;
     uint8_t error_code = 0;
     uint8_t found = 0;
 
-    buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+    buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
     buffer[offset] = ATT_OPERATE_FIND_BY_TYPE_VALUE_RESP;
     offset++;
 
@@ -403,11 +408,11 @@ void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < start_handle) {
+            if (item->handle < att_handle_start) {
                 continue;
             }
 
-            if (item->handle > end_handle) {
+            if (item->handle > att_handle_end) {
                 goto RET;
             }
 
@@ -421,7 +426,7 @@ void gatt_recv_find_by_type_value_req(uint16_t start_handle, uint16_t end_handle
                 offset++;
                 buffer[offset] = services[index_service].end_handle >> 8;
                 offset++;
-                if ((offset - ATT_LENGTH_PACKET_HEADER + pair_value_length) > att_mtu) {
+                if ((offset - GATT_LENGTH_PACKET_HEADER + pair_value_length) > att_mtu) {
                     goto RET;
                 }
             }
@@ -433,9 +438,9 @@ RET:
         if (!error_code) { // no match handle
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
-        gatt_send_error_resp(ATT_OPERATE_FIND_BY_TYPE_VALUE_REQ, start_handle, error_code);
+        gatt_send_error_resp(connect_handle, ATT_OPERATE_FIND_BY_TYPE_VALUE_REQ, att_handle_start, error_code);
     } else {
-        att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+        att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
     }
 
     if (buffer) {
@@ -445,16 +450,16 @@ RET:
 }
 
 // discover include and characteristics in one service
-void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t att_type) {
+void gatt_recv_read_by_type_req(uint16_t connect_handle, uint16_t att_handle_start, uint16_t att_handle_end, uint16_t att_type) {
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
-    uint16_t att_mtu = att_get_mtu();
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
     uint8_t pair_value_length = 0;
     uint8_t error_code = 0;
     uint8_t found = 0;
 
-    buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+    buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
     buffer[offset] = ATT_OPERATE_READ_BY_TYPE_RESP;
     offset++;
 
@@ -462,11 +467,11 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < start_handle) {
+            if (item->handle < att_handle_start) {
                 continue;
             }
 
-            if (item->handle > end_handle) {
+            if (item->handle > att_handle_end) {
                 goto RET;
             }
 
@@ -488,7 +493,7 @@ void gatt_recv_read_by_type_req(uint16_t start_handle, uint16_t end_handle, uint
                 offset++;
                 memcpy_s(&buffer[offset], pair_value_length, item->value, pair_value_length);
                 offset += pair_value_length;
-                if ((offset - ATT_LENGTH_PACKET_HEADER + 2 + pair_value_length) > att_mtu) {
+                if ((offset - GATT_LENGTH_PACKET_HEADER + 2 + pair_value_length) > att_mtu) {
                     goto RET;
                 }
             }
@@ -500,9 +505,9 @@ RET:
         if (!error_code) { // no match handle
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
-        gatt_send_error_resp(ATT_OPERATE_READ_BY_TYPE_REQ, start_handle, error_code);
+        gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_BY_TYPE_REQ, att_handle_start, error_code);
     } else {
-        att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+        att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
     }
 
     if (buffer) {
@@ -512,23 +517,23 @@ RET:
 }
 
 // discover all services and it's start and end handle, just used for primary and second service
-void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle, uint16_t group_type) {
+void gatt_recv_read_by_group_type_req(uint16_t connect_handle, uint16_t att_handle_start, uint16_t att_handle_end, uint16_t group_type) {
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
-    uint16_t att_mtu = att_get_mtu();
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
     uint8_t pair_value_length = 6; // start_handle, end_handle, uuid, TODO: 128 bits uuid
     uint8_t error_code = 0;
     uint8_t found = 0;
 
-    buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+    buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
     buffer[offset] = ATT_OPERATE_READ_BY_GROUP_TYPE_RESP;
     offset++;
     buffer[offset] = pair_value_length;
     offset++;
 
     for (uint8_t index = 0; index < service_count; index++) {
-        if ((start_handle <= services[index].start_handle) && (services[index].end_handle <= end_handle)) {
+        if ((att_handle_start <= services[index].start_handle) && (services[index].end_handle <= att_handle_end)) {
             item = &services[index].items[0];
             if (item->type == group_type) {
 
@@ -543,7 +548,7 @@ void gatt_recv_read_by_group_type_req(uint16_t start_handle, uint16_t end_handle
                 offset++;
                 memcpy_s(&buffer[offset], item->value_length, item->value, item->value_length);
                 offset += item->value_length;
-                if ((offset - ATT_LENGTH_PACKET_HEADER + pair_value_length) > att_mtu) {
+                if ((offset - GATT_LENGTH_PACKET_HEADER + pair_value_length) > att_mtu) {
                     goto RET;
                 }
             }
@@ -555,9 +560,9 @@ RET:
         if (!error_code) { // no match handle
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
-        gatt_send_error_resp(ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, start_handle, error_code);
+        gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, att_handle_start, error_code);
     } else {
-        att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+        att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
     }
 
     if (buffer) {
@@ -566,11 +571,12 @@ RET:
     }
 }
 
-void gatt_recv_write_req(uint16_t handle, uint8_t *value, uint32_t value_length) {
+// write value of one characteristics
+void gatt_recv_write_req(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission
     att_item_t *item = nullptr;
-    uint8_t buffer[ATT_LENGTH_PACKET_HEADER + ATT_LENGTH_HEADER] = {0};
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
+    uint8_t buffer[GATT_LENGTH_PACKET_HEADER + ATT_LENGTH_HEADER] = {0};
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
     uint8_t error_code = 0;
     uint8_t found = 0;
 
@@ -578,11 +584,11 @@ void gatt_recv_write_req(uint16_t handle, uint8_t *value, uint32_t value_length)
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < handle) {
+            if (item->handle < att_handle) {
                 continue;
             }
 
-            if (item->handle > handle) {
+            if (item->handle > att_handle) {
                 goto RET;
             }
 
@@ -603,13 +609,13 @@ RET:
         if (!error_code) {
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
-        gatt_send_error_resp(ATT_OPERATE_WRITE_REQ, handle, error_code);
+        gatt_send_error_resp(connect_handle, ATT_OPERATE_WRITE_REQ, att_handle, error_code);
     } else {
-        att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+        att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
     }
 }
 
-void gatt_recv_write_cmd(uint16_t handle, uint8_t *value, uint32_t value_length) {
+void gatt_recv_write_cmd(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission
     att_item_t *item = nullptr;
 
@@ -617,11 +623,11 @@ void gatt_recv_write_cmd(uint16_t handle, uint8_t *value, uint32_t value_length)
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < handle) {
+            if (item->handle < att_handle) {
                 continue;
             }
 
-            if (item->handle > handle) {
+            if (item->handle > att_handle) {
                 return;
             }
 #if 0
@@ -630,34 +636,34 @@ void gatt_recv_write_cmd(uint16_t handle, uint8_t *value, uint32_t value_length)
             }
 #else
             LOG_INFO("gatt_recv_write_cmd value_length:%u", value_length);
-            __print_hex(value, value_length);
+            __gatt_print_hex(value, value_length);
 #endif
             return;
         }
     }
 }
 
-void gatt_recv_handle_value_cfm() {
+void gatt_recv_handle_value_cfm(uint16_t connect_handle) {
     // set flag to enable send next indication
 }
 
-void gatt_send_handle_value_notify(uint16_t handle, uint8_t *value, uint32_t value_length) {
+void gatt_send_handle_value_notify(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
-    uint16_t att_mtu = att_get_mtu();
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < handle) {
+            if (item->handle < att_handle) {
                 continue;
             }
 
-            buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+            buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
             buffer[offset] = ATT_OPERATE_HANDLE_VALUE_NTF;
             offset++;
             buffer[offset] = (uint8_t)item->handle;
@@ -666,42 +672,42 @@ void gatt_send_handle_value_notify(uint16_t handle, uint8_t *value, uint32_t val
             offset++;
 #if 0
             copy_length = item->value_length;
-            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, item->value, copy_length);
 #else
             copy_length = value_length;
-            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, value, copy_length);
 #endif
             offset += copy_length;
-            att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+            att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
             free(buffer);
             return;
         }
     }
 }
 
-void gatt_send_handle_value_indication(uint16_t handle, uint8_t *value, uint32_t value_length) {
+void gatt_send_handle_value_indication(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
     // TODO: check permission and previous cfm is received
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
-    uint16_t att_mtu = att_get_mtu();
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
+    uint16_t att_mtu = att_get_mtu(connect_handle);
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
             item = &(services[index_service].items[index_item]);
 
-            if (item->handle < handle) {
+            if (item->handle < att_handle) {
                 continue;
             }
 
-            buffer = (uint8_t *)malloc(ATT_LENGTH_PACKET_HEADER + att_mtu);
+            buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
             buffer[offset] = ATT_OPERATE_HANDLE_VALUE_IND;
             offset++;
             buffer[offset] = (uint8_t)item->handle;
@@ -710,28 +716,28 @@ void gatt_send_handle_value_indication(uint16_t handle, uint8_t *value, uint32_t
             offset++;
 #if 0
             copy_length = item->value_length;
-            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, item->value, copy_length);
 #else
             copy_length = value_length;
-            if (copy_length > att_mtu - (offset - ATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - ATT_LENGTH_PACKET_HEADER);
+            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
             }
             memcpy_s(&buffer[offset], copy_length, value, copy_length);
 #endif
             offset += copy_length;
-            att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+            att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
             free(buffer);
             return;
         }
     }
 }
 
-void gatt_send_error_resp(uint8_t op_code, uint16_t handle, uint8_t error_code) {
-    uint8_t buffer[ATT_LENGTH_PACKET_HEADER + ATT_LENGTH_HEADER + ATT_LENGTH_ERROR_RESP] = {0};
-    uint32_t offset = ATT_LENGTH_PACKET_HEADER;
+void gatt_send_error_resp(uint16_t connect_handle, uint8_t op_code, uint16_t handle, uint8_t error_code) {
+    uint8_t buffer[GATT_LENGTH_PACKET_HEADER + ATT_LENGTH_HEADER + ATT_LENGTH_ERROR_RESP] = {0};
+    uint32_t offset = GATT_LENGTH_PACKET_HEADER;
 
     buffer[offset] = ATT_OPERATE_ERROR_RESP;
     offset++;
@@ -743,12 +749,6 @@ void gatt_send_error_resp(uint8_t op_code, uint16_t handle, uint8_t error_code) 
     offset++;
     buffer[offset] = error_code;
     offset++;
-    att_send(buffer, offset - ATT_LENGTH_PACKET_HEADER);
+    att_send(connect_handle, buffer, offset - GATT_LENGTH_PACKET_HEADER);
 }
-
-
-
-
-
-
 

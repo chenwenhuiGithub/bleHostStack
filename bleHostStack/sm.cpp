@@ -38,51 +38,26 @@
 #define SM_ERROR_TRANSPORT_DERIVATION_NOT_ALLOWED           0x0e
 #define SM_ERROR_KEY_REJECTED                               0x0f
 
-#define SM_LENGTH_HEADER                                    1
-#define SM_LENGTH_PAIRING_REQ                               6
-#define SM_LENGTH_PAIRING_RESP                              6
-#define SM_LENGTH_PAIRING_PUBLIC_KEY                        64
-#define SM_LENGTH_PAIRING_CONFIRM                           16
-#define SM_LENGTH_PAIRING_RANDOM                            16
-#define SM_LENGTH_PAIRING_FAILED                            1
-#define SM_LENGTH_DHKEY                                     32
-#define SM_LENGTH_DHKEY_CHECK                               16
-#define SM_LENGTH_MACKEY                                    16
-#define SM_LENGTH_IOCAP                                     3
-#define SM_LENGTH_LTK                                       16
-#define SM_LENGTH_EDIV                                      2
-#define SM_LENGTH_RAND                                      8
-#define SM_LENGTH_IRK                                       16
-#define SM_LENGTH_ADDR_TYPE                                 1
-#define SM_LENGTH_ADDR                                      6
-#define SM_LENGTH_CSRK                                      16
+#define SM_ENCRYPTION_ENABLED_OFF                           0x00
+#define SM_ENCRYPTION_ENABLED_ON                            0x01
 
 #define SM_LENGTH_PACKET_HEADER                             (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
 
 
-typedef enum {
-    JUST_WORKS,
-    PASSKEY_I_INPUT_R_DISPLAY,
-    PASSKEY_I_DISPLAY_R_INPUT,
-    PASSKEY_I_INPUT_R_INPUT,
-    NUMERIC_COMPARISON,
-    OOB
-} SM_PAIRING_METHOD;
-
 typedef struct {
-    uint8_t local_ltk[SM_LENGTH_LTK];
+    uint8_t local_ltk[HCI_LENGTH_LTK];
     uint8_t local_ediv[SM_LENGTH_EDIV];
     uint8_t local_rand[SM_LENGTH_RAND];
     uint8_t local_irk[SM_LENGTH_IRK];
     uint8_t local_addr_type;
-    uint8_t local_addr[SM_LENGTH_ADDR];
+    uint8_t local_addr[HCI_LENGTH_ADDR];
     uint8_t local_csrk[SM_LENGTH_CSRK];
-    uint8_t remote_ltk[SM_LENGTH_LTK];
+    uint8_t remote_ltk[HCI_LENGTH_LTK];
     uint8_t remote_ediv[SM_LENGTH_EDIV];
     uint8_t remote_rand[SM_LENGTH_RAND];
     uint8_t remote_irk[SM_LENGTH_IRK];
     uint8_t remote_addr_type;
-    uint8_t remote_addr[SM_LENGTH_ADDR];
+    uint8_t remote_addr[HCI_LENGTH_ADDR];
     uint8_t remote_csrk[SM_LENGTH_CSRK];
     uint8_t key_size;
     uint8_t is_authenticated;
@@ -103,55 +78,20 @@ static void __sm_f5(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t at1, uint8_t* 
 static void __sm_f6(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t* r, uint8_t* iocap, uint8_t at1, uint8_t* a1, uint8_t at2, uint8_t* a2, uint8_t* out_dhkey_check);
 static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* out_passkey);
 
-static void __sm_recv_pairing_req(uint8_t *data, uint32_t length);
-static void __sm_recv_encryption_info(uint8_t *data, uint32_t length);
-static void __sm_recv_central_identification(uint8_t *data, uint32_t length);
-static void __sm_recv_identity_info(uint8_t *data, uint32_t length);
-static void __sm_recv_identity_address_info(uint8_t *data, uint32_t length);
-static void __sm_recv_signing_info(uint8_t *data, uint32_t length);
-static void __sm_recv_pairing_public_key(uint8_t *data, uint32_t length);
-static void __sm_recv_pairing_random(uint8_t *data, uint32_t length);
-static void __sm_recv_pairing_dhkey_check(uint8_t *data, uint32_t length);
-static void __sm_save_device_info();
-static void __sm_get_pairing_method();
+static void __sm_recv_pairing_req(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_encryption_info(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_central_identification(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_identity_info(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_identity_address_info(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_signing_info(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_pairing_public_key(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_pairing_random(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_save_device_info(uint16_t connect_handle);
+static void __sm_get_pairing_method(uint16_t connect_handle);
 
-uint8_t pairing_req[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_REQ] = {0};
-uint8_t pairing_resp[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP] = {0};
-uint8_t local_pairing_public_key[SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
-uint8_t remote_pairing_public_key[SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
-uint8_t local_dhkey[SM_LENGTH_DHKEY] = {0};
-uint8_t local_random[SM_LENGTH_PAIRING_RANDOM] = {0};
-uint8_t remote_random[SM_LENGTH_PAIRING_RANDOM] = {0};
-uint8_t local_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
-uint8_t remote_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
-uint8_t local_mackey[SM_LENGTH_MACKEY] = {0};
-uint8_t local_iocap[SM_LENGTH_IOCAP] = {0};
-uint8_t remote_iocap[SM_LENGTH_IOCAP] = {0};
-uint8_t local_ltk[SM_LENGTH_LTK] = {0};
-uint8_t remote_ltk[SM_LENGTH_LTK] = {0};
-uint8_t local_ediv[SM_LENGTH_EDIV] = {0};
-uint8_t remote_ediv[SM_LENGTH_EDIV] = {0};
-uint8_t local_rand[SM_LENGTH_RAND] = {0};
-uint8_t remote_rand[SM_LENGTH_RAND] = {0};
-uint8_t local_irk[SM_LENGTH_IRK] = {0};
-uint8_t remote_irk[SM_LENGTH_IRK] = {0};
-uint8_t local_addr_type = 0;
-uint8_t local_addr[SM_LENGTH_ADDR] = {0};
-uint8_t remote_addr_type = 0;
-uint8_t remote_addr[SM_LENGTH_ADDR] = {0};
-uint8_t local_csrk[SM_LENGTH_CSRK] = {0};
-uint8_t remote_csrk[SM_LENGTH_CSRK] = {0};
-
-SM_PAIRING_METHOD pairing_method = JUST_WORKS;
-uint8_t is_local_ltk_generated = 0;
-uint8_t is_secure_connection = 0;
-uint8_t is_received_key_distribution_ltk = 0;
-uint8_t is_received_key_distribution_id = 0;
-uint8_t is_received_key_distribution_irk = 0;
-uint8_t is_received_key_distribution_addr = 0;
-uint8_t is_received_key_distribution_csrk = 0;
-SM_DEVICE_INFO device_info;
-QFile device_info_file;
+static SM_DEVICE_INFO device_info;
+static QFile device_info_file;
 
 static uint32_t __get_be32(uint8_t* data) {
     uint32_t x = 0;
@@ -326,7 +266,7 @@ static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* ou
 
 
 
-static void __sm_get_pairing_method() {
+static void __sm_get_pairing_method(uint16_t connect_handle) {
     SM_PAIRING_METHOD legacy_pairing_method_table[5][5] = {
         {JUST_WORKS, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY},
         {JUST_WORKS, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY},
@@ -342,178 +282,271 @@ static void __sm_get_pairing_method() {
         {JUST_WORKS, JUST_WORKS, JUST_WORKS, JUST_WORKS, JUST_WORKS},
         {PASSKEY_I_DISPLAY_R_INPUT, NUMERIC_COMPARISON, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, NUMERIC_COMPARISON},
     };
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    is_secure_connection = (pairing_req[3] & SM_AUTH_SECURE_CONNECTION) && (pairing_resp[3] & SM_AUTH_SECURE_CONNECTION);
-    LOG_INFO("is_secure_connection:0x%02x", is_secure_connection);
+    sm_connection.is_secure_connection = (sm_connection.pairing_req[3] & SM_AUTH_SECURE_CONNECTION) && (sm_connection.pairing_resp[3] & SM_AUTH_SECURE_CONNECTION);
+    LOG_INFO("is_secure_connection:0x%02x", sm_connection.is_secure_connection);
 
-    if (is_secure_connection) {
-        if (pairing_req[2] || pairing_resp[2]) {
-            pairing_method = OOB;
+    if (sm_connection.is_secure_connection) {
+        if (sm_connection.pairing_req[2] || sm_connection.pairing_resp[2]) {
+            sm_connection.pairing_method = OOB;
             LOG_INFO("pairing_method:OOB");
             return;
         }
     } else {
-        if (pairing_req[2] && pairing_resp[2]) {
-            pairing_method = OOB;
+        if (sm_connection.pairing_req[2] && sm_connection.pairing_resp[2]) {
+            sm_connection.pairing_method = OOB;
             LOG_INFO("pairing_method:OOB");
             return;
         }
     }
 
-    if ((pairing_req[3] & SM_AUTH_MITM) || (pairing_resp[3] & SM_AUTH_MITM)) {
-        if (is_secure_connection) {
-            pairing_method = secure_connection_pairing_method_table[pairing_resp[1]][pairing_req[1]];
+    if ((sm_connection.pairing_req[3] & SM_AUTH_MITM) || (sm_connection.pairing_resp[3] & SM_AUTH_MITM)) {
+        if (sm_connection.is_secure_connection) {
+            sm_connection.pairing_method = secure_connection_pairing_method_table[sm_connection.pairing_resp[1]][sm_connection.pairing_req[1]];
         } else {
-            pairing_method = legacy_pairing_method_table[pairing_resp[1]][pairing_req[1]];
+            sm_connection.pairing_method = legacy_pairing_method_table[sm_connection.pairing_resp[1]][sm_connection.pairing_req[1]];
         }
 
-        if (JUST_WORKS == pairing_method) {
-            LOG_INFO("pairing_method:JUST_WORKS");
-        } else if (PASSKEY_I_INPUT_R_DISPLAY == pairing_method) {
-            LOG_INFO("pairing_method:PASSKEY_I_INPUT_R_DISPLAY");
-        } else if (PASSKEY_I_DISPLAY_R_INPUT == pairing_method) {
-            LOG_INFO("pairing_method:PASSKEY_I_DISPLAY_R_INPUT");
-        } else if (PASSKEY_I_INPUT_R_INPUT == pairing_method) {
-            LOG_INFO("pairing_method:PASSKEY_I_INPUT_R_INPUT");
-        } else if (NUMERIC_COMPARISON == pairing_method) {
-            LOG_INFO("pairing_method:NUMERIC_COMPARISON");
+        if (JUST_WORKS == sm_connection.pairing_method) {
+            LOG_INFO("pairing_method:just_works");
+        } else if (PASSKEY_I_INPUT_R_DISPLAY == sm_connection.pairing_method) {
+            LOG_INFO("pairing_method:passkey_i_input_r_display");
+        } else if (PASSKEY_I_DISPLAY_R_INPUT == sm_connection.pairing_method) {
+            LOG_INFO("pairing_method:passkey_i_display_r_input");
+        } else if (PASSKEY_I_INPUT_R_INPUT == sm_connection.pairing_method) {
+            LOG_INFO("pairing_method:passkey_i_input_r_input");
+        } else if (NUMERIC_COMPARISON == sm_connection.pairing_method) {
+            LOG_INFO("pairing_method:numeric_comparison");
         } else {
         }
     } else {
-        pairing_method = JUST_WORKS;
-        LOG_INFO("pairing_method:JUST_WORKS");
+        sm_connection.pairing_method = JUST_WORKS;
+        LOG_INFO("pairing_method:just_works");
     }
 }
 
-void sm_recv(uint8_t *data, uint32_t length) {
+void sm_recv(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     uint8_t op_code = data[0];
 
     switch (op_code) {
     case SM_OPERATE_PAIRING_REQ:
-        __sm_recv_pairing_req(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_pairing_req(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_ENCRYPTION_INFO:
-        __sm_recv_encryption_info(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_encryption_info(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_CENTRAL_IDENTIFICATION:
-        __sm_recv_central_identification(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_central_identification(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_IDENTITY_INFO:
-        __sm_recv_identity_info(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_identity_info(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_IDENTITY_ADDRESS_INFO:
-        __sm_recv_identity_address_info(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_identity_address_info(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_SIGNING_INFO:
-        __sm_recv_signing_info(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_signing_info(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_PAIRING_PUBLIC_KEY:
-        __sm_recv_pairing_public_key(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_pairing_public_key(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_PAIRING_RANDOM:
-        __sm_recv_pairing_random(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_pairing_random(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_PAIRING_DHKEY_CHECK:
-        __sm_recv_pairing_dhkey_check(data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+        __sm_recv_pairing_dhkey_check(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     default:
         LOG_WARNING("sm_recv invalid, op_code:0x%02x", op_code); break;
     }
 }
 
-static void __sm_recv_pairing_req(uint8_t *data, uint32_t length) {
-    (void)length;
-    pairing_req[0] = SM_OPERATE_PAIRING_REQ;
-    memcpy_s(&pairing_req[1], SM_LENGTH_PAIRING_REQ, data, SM_LENGTH_PAIRING_REQ);
+void sm_recv_evt_le_ltk_req(uint16_t connect_handle, uint8_t *random_number, uint8_t *encrypted_diversifier) {
+    uint8_t ltk[HCI_LENGTH_LTK] = {0};
+    char *buffer = nullptr;
+    uint32_t device_info_size = sizeof(SM_DEVICE_INFO);
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    pairing_resp[0] = SM_OPERATE_PAIRING_RESP;
-    pairing_resp[1] = SM_IOCAP;
-    pairing_resp[2] = SM_OOB_DATA_FLAG;
-    pairing_resp[3] = SM_AUTH;
-    pairing_resp[4] = SM_MAX_ENCRYPT_KEY_SIZE;
-    pairing_resp[5] = SM_INITIATOR_KEY_DISTRIBUTION;
-    pairing_resp[6] = SM_RESPONDER_KEY_DISTRIBUTION;
+    if (sm_connection.is_local_ltk_generated) { // first encrypt, get ltk from memory
+        memcpy_s(ltk, HCI_LENGTH_LTK, sm_connection.local_ltk, HCI_LENGTH_LTK);
+    } else { // already encrypted, get ltk from db
+        buffer = (char *)malloc(device_info_size);
+        device_info_file.setFileName(SM_DEVICE_INFO_FILE_NAME);
+        device_info_file.open(QIODevice::ReadOnly);
+        device_info_file.read(buffer, device_info_size); // TODO: find ltk in multy device_info
+        device_info_file.close();
+
+        memcpy_s(ltk, HCI_LENGTH_LTK, buffer, HCI_LENGTH_LTK);
+        free(buffer);
+    }
+
+    hci_send_cmd_le_ltk_req_reply(connect_handle, ltk);
+}
+
+void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
+    uint16_t connect_handle = 0x0000; // TODO: based on connect_handle
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+    uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
+
+    memcpy_s(sm_connection.local_dhkey, SM_LENGTH_DHKEY, dhkey, SM_LENGTH_DHKEY);
+
+    __sm_get_pairing_method(connect_handle);
+    if ((JUST_WORKS == sm_connection.pairing_method) || (NUMERIC_COMPARISON == sm_connection.pairing_method)) {
+        uint8_t cb[16] = {0};
+        *(uint32_t *)(sm_connection.local_random) = rand();
+        *(uint32_t *)(sm_connection.local_random + 4) = rand();
+        *(uint32_t *)(sm_connection.local_random + 8) = rand();
+        *(uint32_t *)(sm_connection.local_random + 12) = rand();
+        __sm_f4(local_pairing_public_key, sm_connection.remote_pairing_public_key, sm_connection.local_random, 0, cb);
+        sm_send_pairing_confirm(connect_handle, cb);
+    } else {
+        // TODO: other methods
+    }
+}
+
+void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_enabled) {
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+    uint8_t central_id[SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
+    uint8_t addr_info[HCI_LENGTH_ADDR_TYPE + HCI_LENGTH_ADDR] = {0};
+    uint8_t responder_key_distribution = sm_connection.pairing_req[6];
+
+    if (encryption_enabled == SM_ENCRYPTION_ENABLED_ON) {
+        if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ENC) != 0) {
+            sm_send_encryption_information(connect_handle, sm_connection.local_ltk);
+
+            // local_ediv/local_rand: for le secure connection, set to 0, TODO: for legacy pairing
+            memcpy_s(central_id, SM_LENGTH_EDIV, sm_connection.local_ediv, SM_LENGTH_EDIV);
+            memcpy_s(central_id + SM_LENGTH_EDIV, SM_LENGTH_RAND, sm_connection.local_rand, SM_LENGTH_RAND);
+            sm_send_central_identification(connect_handle, central_id);
+        }
+
+        if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ID) != 0) {
+            *(uint32_t *)(sm_connection.local_irk) = rand();
+            *(uint32_t *)(sm_connection.local_irk + 4) = rand();
+            *(uint32_t *)(sm_connection.local_irk + 8) = rand();
+            *(uint32_t *)(sm_connection.local_irk + 12) = rand();
+            sm_send_identity_information(connect_handle, sm_connection.local_irk);
+
+            hci_get_local_addr_info(addr_info + HCI_LENGTH_ADDR_TYPE, &addr_info[0]);
+            sm_send_identity_address_information(connect_handle, addr_info);
+        }
+
+        if ((responder_key_distribution & SM_KEY_DISTRIBUTION_SIGN) != 0) {
+            *(uint32_t *)(sm_connection.local_csrk) = rand();
+            *(uint32_t *)(sm_connection.local_csrk + 4) = rand();
+            *(uint32_t *)(sm_connection.local_csrk + 8) = rand();
+            *(uint32_t *)(sm_connection.local_csrk + 12) = rand();
+            sm_send_signing_information(connect_handle, sm_connection.local_csrk);
+        }
+    } else {
+        // TODO: encryption enabled off
+    }
+}
+
+static void __sm_recv_pairing_req(uint16_t connect_handle, uint8_t *data, uint32_t length) {
+    (void)length;
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+
+    sm_connection.pairing_req[0] = SM_OPERATE_PAIRING_REQ;
+    memcpy_s(sm_connection.pairing_req + 1, SM_LENGTH_PAIRING_REQ, data, SM_LENGTH_PAIRING_REQ);
+
+    sm_connection.pairing_resp[0] = SM_OPERATE_PAIRING_RESP;
+    sm_connection.pairing_resp[1] = SM_IOCAP;
+    sm_connection.pairing_resp[2] = SM_OOB_DATA_FLAG;
+    sm_connection.pairing_resp[3] = SM_AUTH;
+    sm_connection.pairing_resp[4] = SM_MAX_ENCRYPT_KEY_SIZE;
+    sm_connection.pairing_resp[5] = SM_INITIATOR_KEY_DISTRIBUTION;
+    sm_connection.pairing_resp[6] = SM_RESPONDER_KEY_DISTRIBUTION;
 
     LOG_INFO("pairing_req iocap:0x%02x, oob_flag:0x%02x, auth_req:0x%02x, max_encrypt_key_size:%u, i_key_distribution:0x%02x, r_key_distribution:0x%02x",
-             pairing_req[1], pairing_req[2], pairing_req[3], pairing_req[4], pairing_req[5], pairing_req[6]);
+             sm_connection.pairing_req[1], sm_connection.pairing_req[2], sm_connection.pairing_req[3],
+             sm_connection.pairing_req[4], sm_connection.pairing_req[5], sm_connection.pairing_req[6]);
     LOG_INFO("pairing_resp iocap:0x%02x, oob_flag:0x%02x, auth_req:0x%02x, max_encrypt_key_size:%u, i_key_distribution:0x%02x, r_key_distribution:0x%02x",
-             pairing_resp[1], pairing_resp[2], pairing_resp[3], pairing_resp[4], pairing_resp[5], pairing_resp[6]);
+             sm_connection.pairing_resp[1], sm_connection.pairing_resp[2], sm_connection.pairing_resp[3],
+             sm_connection.pairing_resp[4], sm_connection.pairing_resp[5], sm_connection.pairing_resp[6]);
 
-    sm_send_pairing_resp(pairing_resp + 1);
+    sm_send_pairing_resp(connect_handle, sm_connection.pairing_resp + 1);
 }
 
-static void __sm_recv_encryption_info(uint8_t *data, uint32_t length) {
+static void __sm_recv_encryption_info(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
-    sm_set_remote_ltk(data);
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    is_received_key_distribution_ltk = 1;
-    __sm_save_device_info();
+    memcpy_s(sm_connection.remote_ltk, HCI_LENGTH_LTK, data, HCI_LENGTH_LTK);
+    sm_connection.is_received_key_distribution_ltk = 1;
+    __sm_save_device_info(connect_handle);
 }
 
-static void __sm_recv_central_identification(uint8_t *data, uint32_t length) {
+static void __sm_recv_central_identification(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
-    sm_set_remote_ediv(data);
-    sm_set_remote_rand(data + SM_LENGTH_EDIV);
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    is_received_key_distribution_id = 1;
-    __sm_save_device_info();
+    memcpy_s(sm_connection.remote_ediv, SM_LENGTH_EDIV, data, SM_LENGTH_EDIV);
+    memcpy_s(sm_connection.remote_rand, SM_LENGTH_RAND, data + SM_LENGTH_EDIV, SM_LENGTH_RAND);
+    sm_connection.is_received_key_distribution_id = 1;
+    __sm_save_device_info(connect_handle);
 }
 
-static void __sm_recv_identity_info(uint8_t *data, uint32_t length) {
+static void __sm_recv_identity_info(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
-    sm_set_remote_irk(data);
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    is_received_key_distribution_irk = 1;
-    __sm_save_device_info();
+    memcpy_s(sm_connection.remote_irk, SM_LENGTH_IRK, data, SM_LENGTH_IRK);
+    sm_connection.is_received_key_distribution_irk = 1;
+    __sm_save_device_info(connect_handle);
 }
 
-static void __sm_recv_identity_address_info(uint8_t *data, uint32_t length) {
+static void __sm_recv_identity_address_info(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
-    sm_set_remote_address_type(data[0]); // TODO: data not same with connection event?
-    sm_set_remote_address(data + SM_LENGTH_ADDR_TYPE);
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    is_received_key_distribution_addr = 1;
-    __sm_save_device_info();
+    sm_connection.remote_addr_type = data[0]; // data not same with connection event?
+    memcpy_s(sm_connection.remote_addr, HCI_LENGTH_ADDR, data + HCI_LENGTH_ADDR_TYPE, HCI_LENGTH_ADDR);
+    sm_connection.is_received_key_distribution_addr = 1;
+    __sm_save_device_info(connect_handle);
 }
 
-static void __sm_recv_signing_info(uint8_t *data, uint32_t length) {
+static void __sm_recv_signing_info(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
-    sm_set_remote_csrk(data);
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    is_received_key_distribution_csrk = 1;
-    __sm_save_device_info();
+    memcpy_s(sm_connection.remote_csrk, SM_LENGTH_CSRK, data, SM_LENGTH_CSRK);
+    sm_connection.is_received_key_distribution_csrk = 1;
+    __sm_save_device_info(connect_handle);
 }
 
-static void __sm_save_device_info() {
-    uint8_t initiator_key_distribution = pairing_resp[5];
+static void __sm_save_device_info(uint16_t connect_handle) {
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+    uint8_t initiator_key_distribution = sm_connection.pairing_resp[5];
 
     if (initiator_key_distribution & SM_KEY_DISTRIBUTION_ENC) {
-        if ((is_received_key_distribution_ltk == 0) || (is_received_key_distribution_id == 0)) {
+        if ((sm_connection.is_received_key_distribution_ltk == 0) || (sm_connection.is_received_key_distribution_id == 0)) {
             return;
         }
     }
 
     if (initiator_key_distribution & SM_KEY_DISTRIBUTION_ID) {
-        if ((is_received_key_distribution_irk == 0) || (is_received_key_distribution_addr == 0)) {
+        if ((sm_connection.is_received_key_distribution_irk == 0) || (sm_connection.is_received_key_distribution_addr == 0)) {
             return;
         }
     }
 
     if (initiator_key_distribution & SM_KEY_DISTRIBUTION_SIGN) {
-        if (is_received_key_distribution_csrk == 0) {
+        if (sm_connection.is_received_key_distribution_csrk == 0) {
             return;
         }
     }
 
-    memcpy_s(device_info.local_ltk, SM_LENGTH_LTK, local_ltk, SM_LENGTH_LTK);
-    memcpy_s(device_info.local_ediv, SM_LENGTH_EDIV, local_ediv, SM_LENGTH_EDIV);
-    memcpy_s(device_info.local_rand, SM_LENGTH_RAND, local_rand, SM_LENGTH_RAND);
-    memcpy_s(device_info.local_irk, SM_LENGTH_IRK, local_irk, SM_LENGTH_IRK);
-    device_info.local_addr_type = local_addr_type;
-    memcpy_s(device_info.local_addr, SM_LENGTH_ADDR, local_addr, SM_LENGTH_ADDR);
-    memcpy_s(device_info.local_csrk, SM_LENGTH_CSRK, local_csrk, SM_LENGTH_CSRK);
-    memcpy_s(device_info.remote_ltk, SM_LENGTH_LTK, remote_ltk, SM_LENGTH_LTK);
-    memcpy_s(device_info.remote_ediv, SM_LENGTH_EDIV, remote_ediv, SM_LENGTH_EDIV);
-    memcpy_s(device_info.remote_rand, SM_LENGTH_RAND, remote_rand, SM_LENGTH_RAND);
-    memcpy_s(device_info.remote_irk, SM_LENGTH_IRK, remote_irk, SM_LENGTH_IRK);
-    device_info.remote_addr_type = remote_addr_type;
-    memcpy_s(device_info.remote_addr, SM_LENGTH_ADDR, remote_addr, SM_LENGTH_ADDR);
-    memcpy_s(device_info.remote_csrk, SM_LENGTH_CSRK, remote_csrk, SM_LENGTH_CSRK);
+    memcpy_s(device_info.local_ltk, HCI_LENGTH_LTK, sm_connection.local_ltk, HCI_LENGTH_LTK);
+    memcpy_s(device_info.local_ediv, SM_LENGTH_EDIV, sm_connection.local_ediv, SM_LENGTH_EDIV);
+    memcpy_s(device_info.local_rand, SM_LENGTH_RAND, sm_connection.local_rand, SM_LENGTH_RAND);
+    memcpy_s(device_info.local_irk, SM_LENGTH_IRK, sm_connection.local_irk, SM_LENGTH_IRK);
+    memcpy_s(device_info.local_csrk, SM_LENGTH_CSRK, sm_connection.local_csrk, SM_LENGTH_CSRK);
+    hci_get_local_addr_info(device_info.local_addr, &device_info.local_addr_type);
+    memcpy_s(device_info.remote_ltk, HCI_LENGTH_LTK, sm_connection.remote_ltk, HCI_LENGTH_LTK);
+    memcpy_s(device_info.remote_ediv, SM_LENGTH_EDIV, sm_connection.remote_ediv, SM_LENGTH_EDIV);
+    memcpy_s(device_info.remote_rand, SM_LENGTH_RAND, sm_connection.remote_rand, SM_LENGTH_RAND);
+    memcpy_s(device_info.remote_irk, SM_LENGTH_IRK, sm_connection.remote_irk, SM_LENGTH_IRK);
+    memcpy_s(device_info.remote_csrk, SM_LENGTH_CSRK, sm_connection.remote_csrk, SM_LENGTH_CSRK);
+    memcpy_s(device_info.remote_addr, HCI_LENGTH_ADDR, sm_connection.remote_addr, HCI_LENGTH_ADDR);
+    device_info.remote_addr_type = sm_connection.remote_addr_type;
+
     device_info.key_size = 0; // TODO
     device_info.is_authenticated = 0; // TODO
     device_info.is_authorized = 0; // TODO
-    device_info.is_secure_connection = is_secure_connection;
+    device_info.is_secure_connection = sm_connection.is_secure_connection;
 
     device_info_file.setFileName(SM_DEVICE_INFO_FILE_NAME);
     device_info_file.open(QIODevice::WriteOnly);
@@ -522,56 +555,66 @@ static void __sm_save_device_info() {
     LOG_INFO("all key distributions received, save device info to db");
 }
 
-static void __sm_recv_pairing_public_key(uint8_t *data, uint32_t length) {
+static void __sm_recv_pairing_public_key(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+    uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
 
-    memcpy_s(remote_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
-    hci_send_cmd_le_generate_dhkey(remote_pairing_public_key);
-    sm_send_pairing_public_key(local_pairing_public_key);
+    memcpy_s(sm_connection.remote_pairing_public_key, HCI_LENGTH_P256_PUBLIC_KEY, data, HCI_LENGTH_P256_PUBLIC_KEY);
+    hci_send_cmd_le_generate_dhkey(sm_connection.remote_pairing_public_key); // TODO: by api call, avoid waiting cmd complete
+    sm_send_pairing_public_key(connect_handle, local_pairing_public_key);
 }
 
-static void __sm_recv_pairing_random(uint8_t *data, uint32_t length) {
+static void __sm_recv_pairing_random(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
     uint32_t vb = 0;
+    uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
 
-    memcpy_s(remote_random, SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
-    __sm_g2(remote_pairing_public_key, local_pairing_public_key, remote_random, local_random, &vb);
+    memcpy_s(sm_connection.remote_random, SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
+    __sm_g2(sm_connection.remote_pairing_public_key, local_pairing_public_key, sm_connection.remote_random, sm_connection.local_random, &vb);
     LOG_INFO("__sm_g2:%u", vb);
 
-    sm_send_pairing_random(local_random);
+    sm_send_pairing_random(connect_handle, sm_connection.local_random);
 }
 
-static void __sm_recv_pairing_dhkey_check(uint8_t *data, uint32_t length) {
+static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
+    hci_connection_t *hci_connection = hci_find_connection_by_handle(connect_handle);
+    sm_connection_t& sm_connection = hci_connection->sm_connection;
     uint8_t ra[16] = {0};
     uint8_t rb[16] = {0};
     uint8_t calc_remote_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
+    uint8_t local_addr[HCI_LENGTH_ADDR] = {0};
+    uint8_t local_addr_type = 0;
 
-    local_iocap[0] = pairing_resp[1];
-    local_iocap[1] = pairing_resp[2];
-    local_iocap[2] = pairing_resp[3];
-    remote_iocap[0] = pairing_req[1];
-    remote_iocap[1] = pairing_req[2];
-    remote_iocap[2] = pairing_req[3];
+    hci_get_local_addr_info(local_addr, &local_addr_type);
 
-    memcpy_s(remote_dhkey_check, SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
-    __sm_f5(local_dhkey, remote_random, local_random, remote_addr_type, remote_addr,
-            local_addr_type, local_addr, local_mackey, local_ltk);
-    __sm_f6(local_mackey, remote_random, local_random, rb, remote_iocap, remote_addr_type, remote_addr,
-            local_addr_type, local_addr, calc_remote_dhkey_check);
+    sm_connection.local_iocap[0] = sm_connection.pairing_resp[1];
+    sm_connection.local_iocap[1] = sm_connection.pairing_resp[2];
+    sm_connection.local_iocap[2] = sm_connection.pairing_resp[3];
+    sm_connection.remote_iocap[0] = sm_connection.pairing_req[1];
+    sm_connection.remote_iocap[1] = sm_connection.pairing_req[2];
+    sm_connection.remote_iocap[2] = sm_connection.pairing_req[3];
 
-    if (memcmp(remote_dhkey_check, calc_remote_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
+    memcpy_s(sm_connection.remote_dhkey_check, SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
+    __sm_f5(sm_connection.local_dhkey, sm_connection.remote_random, sm_connection.local_random, hci_connection->peer_addr_type, hci_connection->peer_addr,
+            local_addr_type, local_addr, sm_connection.local_mackey, sm_connection.local_ltk);
+    __sm_f6(sm_connection.local_mackey, sm_connection.remote_random, sm_connection.local_random, rb, sm_connection.remote_iocap,
+            hci_connection->peer_addr_type, hci_connection->peer_addr, local_addr_type, local_addr, calc_remote_dhkey_check);
+
+    if (memcmp(sm_connection.remote_dhkey_check, calc_remote_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
         LOG_ERROR("remote_dhkey_check error");
-        sm_send_pairing_failed(SM_ERROR_DHKEY_CHECK_FAILED);
+        sm_send_pairing_failed(connect_handle, SM_ERROR_DHKEY_CHECK_FAILED);
     } else {
-        __sm_f6(local_mackey, local_random, remote_random, ra, local_iocap, local_addr_type, local_addr,
-                remote_addr_type, remote_addr, local_dhkey_check);
-        sm_send_pairing_dhkey_check(local_dhkey_check);
-        is_local_ltk_generated = 1;
+        __sm_f6(sm_connection.local_mackey, sm_connection.local_random, sm_connection.remote_random, ra, sm_connection.local_iocap, local_addr_type, local_addr,
+                hci_connection->peer_addr_type, hci_connection->peer_addr, sm_connection.local_dhkey_check);
+        sm_send_pairing_dhkey_check(connect_handle, sm_connection.local_dhkey_check);
+        sm_connection.is_local_ltk_generated = 1;
     }
 }
 
-void sm_send_pairing_resp(uint8_t *data) {
+void sm_send_pairing_resp(uint16_t connect_handle, uint8_t *data) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -579,21 +622,21 @@ void sm_send_pairing_resp(uint8_t *data) {
     offset++;
     memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_RESP, data, SM_LENGTH_PAIRING_RESP);
     offset += SM_LENGTH_PAIRING_RESP;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_pairing_public_key(uint8_t *data) {
-    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_PUBLIC_KEY] = {0};
+void sm_send_pairing_public_key(uint16_t connect_handle, uint8_t *data) {
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + HCI_LENGTH_P256_PUBLIC_KEY] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
     buffer[offset] = SM_OPERATE_PAIRING_PUBLIC_KEY;
     offset++;
-    memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
-    offset += SM_LENGTH_PAIRING_PUBLIC_KEY;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    memcpy_s(&buffer[offset], HCI_LENGTH_P256_PUBLIC_KEY, data, HCI_LENGTH_P256_PUBLIC_KEY);
+    offset += HCI_LENGTH_P256_PUBLIC_KEY;
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_pairing_confirm(uint8_t *data) {
+void sm_send_pairing_confirm(uint16_t connect_handle, uint8_t *data) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_CONFIRM] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -601,10 +644,10 @@ void sm_send_pairing_confirm(uint8_t *data) {
     offset++;
     memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_CONFIRM, data, SM_LENGTH_PAIRING_CONFIRM);
     offset += SM_LENGTH_PAIRING_CONFIRM;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_pairing_random(uint8_t *data) {
+void sm_send_pairing_random(uint16_t connect_handle, uint8_t *data) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RANDOM] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -612,10 +655,10 @@ void sm_send_pairing_random(uint8_t *data) {
     offset++;
     memcpy_s(&buffer[offset], SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
     offset += SM_LENGTH_PAIRING_RANDOM;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_pairing_dhkey_check(uint8_t *data) {
+void sm_send_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_DHKEY_CHECK] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -623,10 +666,10 @@ void sm_send_pairing_dhkey_check(uint8_t *data) {
     offset++;
     memcpy_s(&buffer[offset], SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
     offset += SM_LENGTH_DHKEY_CHECK;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_pairing_failed(uint8_t reason) {
+void sm_send_pairing_failed(uint16_t connect_handle, uint8_t reason) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_PAIRING_FAILED] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -634,21 +677,21 @@ void sm_send_pairing_failed(uint8_t reason) {
     offset++;
     buffer[offset] = reason;
     offset++;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_encryption_information(uint8_t *data) {
-    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_LTK] = {0};
+void sm_send_encryption_information(uint16_t connect_handle, uint8_t *data) {
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + HCI_LENGTH_LTK] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
     buffer[offset] = SM_OPERATE_ENCRYPTION_INFO;
     offset++;
-    memcpy_s(&buffer[offset], SM_LENGTH_LTK, data, SM_LENGTH_LTK);
-    offset += SM_LENGTH_LTK;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    memcpy_s(&buffer[offset], HCI_LENGTH_LTK, data, HCI_LENGTH_LTK);
+    offset += HCI_LENGTH_LTK;
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_central_identification(uint8_t *data) {
+void sm_send_central_identification(uint16_t connect_handle, uint8_t *data) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -656,10 +699,10 @@ void sm_send_central_identification(uint8_t *data) {
     offset++;
     memcpy_s(&buffer[offset], SM_LENGTH_EDIV + SM_LENGTH_RAND, data, SM_LENGTH_EDIV + SM_LENGTH_RAND);
     offset += SM_LENGTH_EDIV + SM_LENGTH_RAND;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_identity_information(uint8_t *data) {
+void sm_send_identity_information(uint16_t connect_handle, uint8_t *data) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_IRK] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -667,21 +710,21 @@ void sm_send_identity_information(uint8_t *data) {
     offset++;
     memcpy_s(&buffer[offset], SM_LENGTH_IRK, data, SM_LENGTH_IRK);
     offset += SM_LENGTH_IRK;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_identity_address_information(uint8_t *data) {
-    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR] = {0};
+void sm_send_identity_address_information(uint16_t connect_handle, uint8_t *data) {
+    uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + HCI_LENGTH_ADDR_TYPE + HCI_LENGTH_ADDR] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
     buffer[offset] = SM_OPERATE_IDENTITY_ADDRESS_INFO;
     offset++;
-    memcpy_s(&buffer[offset], SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR, data, SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR);
-    offset += SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    memcpy_s(&buffer[offset], HCI_LENGTH_ADDR_TYPE + HCI_LENGTH_ADDR, data, HCI_LENGTH_ADDR_TYPE + HCI_LENGTH_ADDR);
+    offset += HCI_LENGTH_ADDR_TYPE + HCI_LENGTH_ADDR;
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_send_signing_information(uint8_t *data) {
+void sm_send_signing_information(uint16_t connect_handle, uint8_t *data) {
     uint8_t buffer[SM_LENGTH_PACKET_HEADER + SM_LENGTH_HEADER + SM_LENGTH_CSRK] = {0};
     uint32_t offset = SM_LENGTH_PACKET_HEADER;
 
@@ -689,119 +732,9 @@ void sm_send_signing_information(uint8_t *data) {
     offset++;
     memcpy_s(&buffer[offset], SM_LENGTH_CSRK, data, SM_LENGTH_CSRK);
     offset += SM_LENGTH_CSRK;
-    sm_send(buffer, offset - SM_LENGTH_PACKET_HEADER);
+    sm_send(connect_handle, buffer, offset - SM_LENGTH_PACKET_HEADER);
 }
 
-void sm_key_distribution() {
-    uint8_t central_id[SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
-    uint8_t addr_info[SM_LENGTH_ADDR_TYPE + SM_LENGTH_ADDR] = {0};
-    uint8_t responder_key_distribution = pairing_req[6];
-
-    if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ENC) != 0) {
-        sm_send_encryption_information(local_ltk);
-
-        // local_ediv/local_rand: for le secure connection, set to 0, TODO: for legacy pairing
-        memcpy_s(central_id, SM_LENGTH_EDIV, local_ediv, SM_LENGTH_EDIV);
-        memcpy_s(&central_id[SM_LENGTH_EDIV], SM_LENGTH_RAND, local_rand, SM_LENGTH_RAND);
-        sm_send_central_identification(central_id);
-    }
-
-    if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ID) != 0) {
-        *(uint32_t *)(local_irk) = rand();
-        *(uint32_t *)(local_irk + 4) = rand();
-        *(uint32_t *)(local_irk + 8) = rand();
-        *(uint32_t *)(local_irk + 12) = rand();
-        sm_send_identity_information(local_irk);
-
-        addr_info[0] = local_addr_type;
-        memcpy_s(&addr_info[1], SM_LENGTH_ADDR, local_addr, SM_LENGTH_ADDR);
-        sm_send_identity_address_information(addr_info);
-    }
-
-    if ((responder_key_distribution & SM_KEY_DISTRIBUTION_SIGN) != 0) {
-        *(uint32_t *)(local_csrk) = rand();
-        *(uint32_t *)(local_csrk + 4) = rand();
-        *(uint32_t *)(local_csrk + 8) = rand();
-        *(uint32_t *)(local_csrk + 12) = rand();
-        sm_send_signing_information(local_csrk);
-    }
-}
-
-void sm_set_local_pairing_public_key(uint8_t *data) {
-    memcpy_s(local_pairing_public_key, SM_LENGTH_PAIRING_PUBLIC_KEY, data, SM_LENGTH_PAIRING_PUBLIC_KEY);
-}
-
-void sm_set_local_dhkey(uint8_t *data) {
-    memcpy_s(local_dhkey, SM_LENGTH_DHKEY, data, SM_LENGTH_DHKEY);
-
-    __sm_get_pairing_method();
-    if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
-        uint8_t cb[16] = {0};
-        *(uint32_t *)(local_random) = rand();
-        *(uint32_t *)(local_random + 4) = rand();
-        *(uint32_t *)(local_random + 8) = rand();
-        *(uint32_t *)(local_random + 12) = rand();
-        __sm_f4(local_pairing_public_key, remote_pairing_public_key, local_random, 0, cb);
-        sm_send_pairing_confirm(cb);
-    } else {
-        // TODO: other methods
-    }
-}
-
-void sm_set_remote_ltk(uint8_t *data) {
-    memcpy_s(remote_ltk, SM_LENGTH_LTK, data, SM_LENGTH_LTK);
-}
-
-void sm_get_local_ltk(uint8_t *data) {
-    char *buffer = nullptr;
-    uint32_t device_info_size = sizeof(SM_DEVICE_INFO);
-
-    if (is_local_ltk_generated) { // first encrypt, get ltk from memory
-        memcpy_s(data, SM_LENGTH_LTK, local_ltk, SM_LENGTH_LTK);
-    } else { // already encrypted, get ltk from db
-        buffer = (char *)malloc(device_info_size);
-        device_info_file.setFileName(SM_DEVICE_INFO_FILE_NAME);
-        device_info_file.open(QIODevice::ReadOnly);
-        device_info_file.read(buffer, device_info_size);
-        device_info_file.close();
-
-        memcpy_s(data, SM_LENGTH_LTK, buffer, SM_LENGTH_LTK); // TODO: find ltk in multy device_info
-        free(buffer);
-    }
-}
-
-void sm_set_remote_ediv(uint8_t *data) {
-    memcpy_s(remote_ediv, SM_LENGTH_EDIV, data, SM_LENGTH_EDIV);
-}
-
-void sm_set_remote_rand(uint8_t *data) {
-    memcpy_s(remote_rand, SM_LENGTH_RAND, data, SM_LENGTH_RAND);
-}
-
-void sm_set_remote_irk(uint8_t *data) {
-    memcpy_s(remote_irk, SM_LENGTH_IRK, data, SM_LENGTH_IRK);
-}
-
-void sm_set_local_address_type(uint8_t type) {
-    local_addr_type = type;
-}
-
-void sm_set_local_address(uint8_t *data) {
-    memcpy_s(local_addr, SM_LENGTH_ADDR, data, SM_LENGTH_ADDR);
-}
-
-void sm_set_remote_address_type(uint8_t type) {
-    remote_addr_type = type;
-}
-
-void sm_set_remote_address(uint8_t *data) {
-    memcpy_s(remote_addr, SM_LENGTH_ADDR, data, SM_LENGTH_ADDR);
-}
-
-void sm_set_remote_csrk(uint8_t *data) {
-    memcpy_s(remote_csrk, SM_LENGTH_CSRK, data, SM_LENGTH_CSRK);
-}
-
-void sm_send(uint8_t *data, uint32_t length) {
-    l2cap_send(L2CAP_CID_SM, data, length);
+void sm_send(uint16_t connect_handle, uint8_t *data, uint32_t length) {
+    l2cap_send(connect_handle, L2CAP_CID_SM, data, length);
 }
