@@ -55,7 +55,7 @@ void MainWindow::on_pushButtonOpen_clicked()
 void MainWindow::on_pushButtonStart_clicked()
 {
     gatt_init();
-    hci_send_cmd_reset();
+    hci_init();
 }
 
 

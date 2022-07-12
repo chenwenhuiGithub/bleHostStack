@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include "sm.h"
 
-#define HCI_PACKET_TYPE_CMD                                             1
-#define HCI_PACKET_TYPE_ACL                                             2
-#define HCI_PACKET_TYPE_SCO                                             3
-#define HCI_PACKET_TYPE_EVT                                             4
+#define HCI_PACKET_TYPE_CMD                                             0x01
+#define HCI_PACKET_TYPE_ACL                                             0x02
+#define HCI_PACKET_TYPE_SCO                                             0x03
+#define HCI_PACKET_TYPE_EVT                                             0x04
 
 #define HCI_ADV_CHANNEL_MAP_37                                          0x01
 #define HCI_ADV_CHANNEL_MAP_38                                          0x02
@@ -96,6 +96,7 @@ typedef struct hci_connection {
 } hci_connection_t;
 
 
+void hci_init();
 void hci_recv_evt(uint8_t *data, uint32_t length);
 void hci_recv_acl(uint8_t *data, uint32_t length);
 void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length);

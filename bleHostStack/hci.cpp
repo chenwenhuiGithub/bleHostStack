@@ -326,13 +326,7 @@ static hci_stack_t hci_stack = {
         .timeout = 0x0080, // 1.28s(N*10ms)
         .min_ce_length = 0x0028, // 25ms(N*0.625ms)
         .max_ce_length = 0x0028  // 25ms(N*0.625ms)
-    },
-
-    .le_acl_packet_length = 0,
-    .num_of_allowed_le_acl_packets = 0,
-    .num_of_allowed_cmd_packets = 1,
-
-    .hci_connections = nullptr // TODO: add hci_init interface
+    }
 };
 
 static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
@@ -532,7 +526,8 @@ static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length) {
         free(deleted_connection->segment_buffer_recv);
         deleted_connection->segment_buffer_recv = nullptr;
     }
-    // TODO: free other resource
+    free(deleted_connection);
+    deleted_connection = nullptr;
     LOG_INFO("disconn_complete status:%u, connect_handle:0x%02x%02x, reason:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
     LOG_INFO("/***** peer device disconnect *****/");
 }
@@ -557,6 +552,15 @@ static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length) {
 
     LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
     sm_recv_evt_encryption_change(connect_handle, data[3]);
+}
+
+void hci_init() {
+    hci_stack.le_acl_packet_length = 0;
+    hci_stack.num_of_allowed_le_acl_packets = 0;
+    hci_stack.num_of_allowed_cmd_packets = 1;
+    hci_stack.hci_connections = nullptr;
+
+    hci_send_cmd_reset();
 }
 
 void hci_recv_evt(uint8_t *data, uint32_t length) {

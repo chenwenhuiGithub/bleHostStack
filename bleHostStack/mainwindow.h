@@ -10,7 +10,7 @@ typedef enum {
     STATUS_HEADRER_EVT,
     STATUS_HEADRER_ACL,
     STATUS_DATA_EVT,
-    STATUS_DATA_ACL,
+    STATUS_DATA_ACL
 } read_status_t;
 
 QT_BEGIN_NAMESPACE
