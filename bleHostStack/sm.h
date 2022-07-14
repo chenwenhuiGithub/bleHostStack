@@ -55,14 +55,6 @@
 
 #define SM_DEVICE_INFO_FILE_NAME                            "device_info.dat"
 
-typedef enum {
-    JUST_WORKS,
-    PASSKEY_I_INPUT_R_DISPLAY,
-    PASSKEY_I_DISPLAY_R_INPUT,
-    PASSKEY_I_INPUT_R_INPUT,
-    NUMERIC_COMPARISON,
-    OOB
-} SM_PAIRING_METHOD;
 
 typedef struct {
     uint8_t pairing_req[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_REQ];
@@ -96,8 +88,6 @@ typedef struct {
     uint8_t is_received_key_distribution_irk;
     uint8_t is_received_key_distribution_addr;
     uint8_t is_received_key_distribution_csrk;
-
-    SM_PAIRING_METHOD pairing_method;
 } sm_connection_t;
 
 

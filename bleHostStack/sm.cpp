@@ -43,6 +43,14 @@
 
 #define SM_LENGTH_PACKET_HEADER                             (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
 
+typedef enum {
+    JUST_WORKS,
+    PASSKEY_I_INPUT_R_DISPLAY,
+    PASSKEY_I_DISPLAY_R_INPUT,
+    PASSKEY_I_INPUT_R_INPUT,
+    NUMERIC_COMPARISON,
+    OOB
+} SM_PAIRING_METHOD;
 
 typedef struct {
     uint8_t local_ltk[HCI_LENGTH_LTK];
@@ -88,7 +96,7 @@ static void __sm_recv_pairing_public_key(uint16_t connect_handle, uint8_t *data,
 static void __sm_recv_pairing_random(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_save_device_info(uint16_t connect_handle);
-static void __sm_get_pairing_method(uint16_t connect_handle);
+static SM_PAIRING_METHOD __sm_get_pairing_method(uint16_t connect_handle);
 
 static SM_DEVICE_INFO device_info;
 static QFile device_info_file;
@@ -265,8 +273,7 @@ static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* ou
 }
 
 
-
-static void __sm_get_pairing_method(uint16_t connect_handle) {
+static SM_PAIRING_METHOD __sm_get_pairing_method(uint16_t connect_handle) {
     SM_PAIRING_METHOD legacy_pairing_method_table[5][5] = {
         {JUST_WORKS, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY},
         {JUST_WORKS, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY},
@@ -274,7 +281,6 @@ static void __sm_get_pairing_method(uint16_t connect_handle) {
         {JUST_WORKS, JUST_WORKS, JUST_WORKS, JUST_WORKS, JUST_WORKS},
         {PASSKEY_I_DISPLAY_R_INPUT, PASSKEY_I_DISPLAY_R_INPUT, PASSKEY_I_INPUT_R_DISPLAY,JUST_WORKS, PASSKEY_I_DISPLAY_R_INPUT},
     };
-
     SM_PAIRING_METHOD secure_connection_pairing_method_table[5][5] = {
         {JUST_WORKS, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, PASSKEY_I_INPUT_R_DISPLAY},
         {JUST_WORKS, NUMERIC_COMPARISON, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, NUMERIC_COMPARISON},
@@ -282,6 +288,7 @@ static void __sm_get_pairing_method(uint16_t connect_handle) {
         {JUST_WORKS, JUST_WORKS, JUST_WORKS, JUST_WORKS, JUST_WORKS},
         {PASSKEY_I_DISPLAY_R_INPUT, NUMERIC_COMPARISON, PASSKEY_I_INPUT_R_DISPLAY, JUST_WORKS, NUMERIC_COMPARISON},
     };
+    SM_PAIRING_METHOD pairing_method = JUST_WORKS;
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
     sm_connection.is_secure_connection = (sm_connection.pairing_req[3] & SM_AUTH_SECURE_CONNECTION) && (sm_connection.pairing_resp[3] & SM_AUTH_SECURE_CONNECTION);
@@ -289,41 +296,40 @@ static void __sm_get_pairing_method(uint16_t connect_handle) {
 
     if (sm_connection.is_secure_connection) {
         if (sm_connection.pairing_req[2] || sm_connection.pairing_resp[2]) {
-            sm_connection.pairing_method = OOB;
-            LOG_INFO("pairing_method:OOB");
-            return;
+            pairing_method = OOB;
+            goto RET;
         }
     } else {
         if (sm_connection.pairing_req[2] && sm_connection.pairing_resp[2]) {
-            sm_connection.pairing_method = OOB;
-            LOG_INFO("pairing_method:OOB");
-            return;
+            pairing_method = OOB;
+            goto RET;
         }
     }
 
     if ((sm_connection.pairing_req[3] & SM_AUTH_MITM) || (sm_connection.pairing_resp[3] & SM_AUTH_MITM)) {
         if (sm_connection.is_secure_connection) {
-            sm_connection.pairing_method = secure_connection_pairing_method_table[sm_connection.pairing_resp[1]][sm_connection.pairing_req[1]];
+            pairing_method = secure_connection_pairing_method_table[sm_connection.pairing_resp[1]][sm_connection.pairing_req[1]];
         } else {
-            sm_connection.pairing_method = legacy_pairing_method_table[sm_connection.pairing_resp[1]][sm_connection.pairing_req[1]];
+            pairing_method = legacy_pairing_method_table[sm_connection.pairing_resp[1]][sm_connection.pairing_req[1]];
         }
-
-        if (JUST_WORKS == sm_connection.pairing_method) {
-            LOG_INFO("pairing_method:just_works");
-        } else if (PASSKEY_I_INPUT_R_DISPLAY == sm_connection.pairing_method) {
-            LOG_INFO("pairing_method:passkey_i_input_r_display");
-        } else if (PASSKEY_I_DISPLAY_R_INPUT == sm_connection.pairing_method) {
-            LOG_INFO("pairing_method:passkey_i_display_r_input");
-        } else if (PASSKEY_I_INPUT_R_INPUT == sm_connection.pairing_method) {
-            LOG_INFO("pairing_method:passkey_i_input_r_input");
-        } else if (NUMERIC_COMPARISON == sm_connection.pairing_method) {
-            LOG_INFO("pairing_method:numeric_comparison");
-        } else {
-        }
-    } else {
-        sm_connection.pairing_method = JUST_WORKS;
-        LOG_INFO("pairing_method:just_works");
+        goto RET;
     }
+
+RET:
+    if (JUST_WORKS == pairing_method) {
+        LOG_INFO("pairing_method:just_works");
+    } else if (PASSKEY_I_INPUT_R_DISPLAY == pairing_method) {
+        LOG_INFO("pairing_method:passkey_i_input_r_display");
+    } else if (PASSKEY_I_DISPLAY_R_INPUT == pairing_method) {
+        LOG_INFO("pairing_method:passkey_i_display_r_input");
+    } else if (PASSKEY_I_INPUT_R_INPUT == pairing_method) {
+        LOG_INFO("pairing_method:passkey_i_input_r_input");
+    } else if (NUMERIC_COMPARISON == pairing_method) {
+        LOG_INFO("pairing_method:numeric_comparison");
+    } else {
+    }
+
+    return pairing_method;
 }
 
 void sm_recv(uint16_t connect_handle, uint8_t *data, uint32_t length) {
@@ -376,14 +382,15 @@ void sm_recv_evt_le_ltk_req(uint16_t connect_handle, uint8_t *random_number, uin
 }
 
 void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
-    uint16_t connect_handle = 0x0000; // TODO: based on connect_handle
+    uint16_t connect_handle = 0x0000; // TODO: based on connect_handle, add is_waitting_dhkey IE
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
     uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
+    SM_PAIRING_METHOD pairing_method = JUST_WORKS;
 
     memcpy_s(sm_connection.local_dhkey, SM_LENGTH_DHKEY, dhkey, SM_LENGTH_DHKEY);
 
-    __sm_get_pairing_method(connect_handle);
-    if ((JUST_WORKS == sm_connection.pairing_method) || (NUMERIC_COMPARISON == sm_connection.pairing_method)) {
+    pairing_method = __sm_get_pairing_method(connect_handle);
+    if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
         uint8_t cb[16] = {0};
         *(uint32_t *)(sm_connection.local_random) = rand();
         *(uint32_t *)(sm_connection.local_random + 4) = rand();
