@@ -392,7 +392,7 @@ void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
     pairing_method = __sm_get_pairing_method(connect_handle);
     if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
         uint8_t cb[16] = {0};
-        *(uint32_t *)(sm_connection.local_random) = rand();
+        *(uint32_t *)(sm_connection.local_random) = rand(); // TODO: set srand and generate 32bits rand number
         *(uint32_t *)(sm_connection.local_random + 4) = rand();
         *(uint32_t *)(sm_connection.local_random + 8) = rand();
         *(uint32_t *)(sm_connection.local_random + 12) = rand();
@@ -592,31 +592,36 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
     uint8_t ra[16] = {0};
     uint8_t rb[16] = {0};
     uint8_t calc_remote_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
+    uint8_t local_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
     uint8_t local_addr[HCI_LENGTH_ADDR] = {0};
     uint8_t local_addr_type = 0;
+    uint8_t local_ltk[SM_LENGTH_LTK] = {0};
+    uint8_t mackey[SM_LENGTH_MACKEY] = {0};
+    uint8_t local_iocap[SM_LENGTH_IOCAP] = {0};
+    uint8_t remote_iocap[SM_LENGTH_IOCAP] = {0};
+
+    local_iocap[0] = sm_connection.pairing_resp[1];
+    local_iocap[1] = sm_connection.pairing_resp[2];
+    local_iocap[2] = sm_connection.pairing_resp[3];
+    remote_iocap[0] = sm_connection.pairing_req[1];
+    remote_iocap[1] = sm_connection.pairing_req[2];
+    remote_iocap[2] = sm_connection.pairing_req[3];
 
     hci_get_local_addr_info(local_addr, &local_addr_type);
 
-    sm_connection.local_iocap[0] = sm_connection.pairing_resp[1];
-    sm_connection.local_iocap[1] = sm_connection.pairing_resp[2];
-    sm_connection.local_iocap[2] = sm_connection.pairing_resp[3];
-    sm_connection.remote_iocap[0] = sm_connection.pairing_req[1];
-    sm_connection.remote_iocap[1] = sm_connection.pairing_req[2];
-    sm_connection.remote_iocap[2] = sm_connection.pairing_req[3];
-
-    memcpy_s(sm_connection.remote_dhkey_check, SM_LENGTH_DHKEY_CHECK, data, SM_LENGTH_DHKEY_CHECK);
     __sm_f5(sm_connection.local_dhkey, sm_connection.remote_random, sm_connection.local_random, hci_connection->peer_addr_type, hci_connection->peer_addr,
-            local_addr_type, local_addr, sm_connection.local_mackey, sm_connection.local_ltk);
-    __sm_f6(sm_connection.local_mackey, sm_connection.remote_random, sm_connection.local_random, rb, sm_connection.remote_iocap,
+            local_addr_type, local_addr, mackey, local_ltk);
+    __sm_f6(mackey, sm_connection.remote_random, sm_connection.local_random, rb, remote_iocap,
             hci_connection->peer_addr_type, hci_connection->peer_addr, local_addr_type, local_addr, calc_remote_dhkey_check);
 
-    if (memcmp(sm_connection.remote_dhkey_check, calc_remote_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
+    if (memcmp(data, calc_remote_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
         LOG_ERROR("remote_dhkey_check error");
         sm_send_pairing_failed(connect_handle, SM_ERROR_DHKEY_CHECK_FAILED);
     } else {
-        __sm_f6(sm_connection.local_mackey, sm_connection.local_random, sm_connection.remote_random, ra, sm_connection.local_iocap, local_addr_type, local_addr,
-                hci_connection->peer_addr_type, hci_connection->peer_addr, sm_connection.local_dhkey_check);
-        sm_send_pairing_dhkey_check(connect_handle, sm_connection.local_dhkey_check);
+        memcpy_s(sm_connection.local_ltk, SM_LENGTH_LTK, local_ltk, SM_LENGTH_LTK);
+        __sm_f6(mackey, sm_connection.local_random, sm_connection.remote_random, ra, local_iocap, local_addr_type, local_addr,
+                hci_connection->peer_addr_type, hci_connection->peer_addr, local_dhkey_check);
+        sm_send_pairing_dhkey_check(connect_handle, local_dhkey_check);
         sm_connection.is_local_ltk_generated = 1;
     }
 }

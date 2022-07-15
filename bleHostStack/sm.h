@@ -63,11 +63,6 @@ typedef struct {
     uint8_t local_dhkey[SM_LENGTH_DHKEY];
     uint8_t local_random[SM_LENGTH_PAIRING_RANDOM];
     uint8_t remote_random[SM_LENGTH_PAIRING_RANDOM];
-    uint8_t local_dhkey_check[SM_LENGTH_DHKEY_CHECK];
-    uint8_t remote_dhkey_check[SM_LENGTH_DHKEY_CHECK];
-    uint8_t local_mackey[SM_LENGTH_MACKEY];
-    uint8_t local_iocap[SM_LENGTH_IOCAP];
-    uint8_t remote_iocap[SM_LENGTH_IOCAP];
     uint8_t local_ltk[SM_LENGTH_LTK];
     uint8_t remote_ltk[SM_LENGTH_LTK];
     uint8_t local_ediv[SM_LENGTH_EDIV];
