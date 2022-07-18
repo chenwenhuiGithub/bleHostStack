@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QSerialPortInfo>
+#include <QTime>
 #include "ringbuffer.h"
 #include "serial.h"
 #include "hci.h"
@@ -19,10 +20,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     read_status = STATUS_PACKET_TYPE;
     read_buffer_length = 0;
-    connect(serial_get_instance(), &QSerialPort::readyRead, this, &MainWindow::serialPort_readyRead);
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
         ui->comboBoxNum->addItem(info.portName());
     }
+    connect(serial_get_instance(), &QSerialPort::readyRead, this, &MainWindow::serialPort_readyRead);
+    srand(QTime::currentTime().msecsSinceStartOfDay());
 }
 
 

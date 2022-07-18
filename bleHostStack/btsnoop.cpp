@@ -13,7 +13,7 @@ typedef struct {
     uint8_t timestamp_μs[8];
 } btsnoop_packet_header_t;
 
-QFile file_btsnoop;
+static QFile file_btsnoop;
 
 void btsnoop_open() {
     if (file_btsnoop.isOpen()) {

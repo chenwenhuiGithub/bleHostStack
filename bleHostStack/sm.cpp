@@ -86,6 +86,8 @@ static void __sm_f5(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t at1, uint8_t* 
 static void __sm_f6(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t* r, uint8_t* iocap, uint8_t at1, uint8_t* a1, uint8_t at2, uint8_t* a2, uint8_t* out_dhkey_check);
 static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* out_passkey);
 
+static void __sm_generate_random(uint8_t* data, uint32_t length);
+
 static void __sm_recv_pairing_req(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_recv_encryption_info(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_recv_central_identification(uint16_t connect_handle, uint8_t *data, uint32_t length);
@@ -272,6 +274,18 @@ static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* ou
     *out_passkey = __get_be32(xs + 12) % 1000000;
 }
 
+static void __sm_generate_random(uint8_t* data, uint32_t length) {
+    uint32_t index = 0;
+
+    for (index = 0; index < length / 2; index++) {
+        *(uint16_t *)(data + index * 2) = rand();
+    }
+
+    if (length % 2) {
+        data[length - 1] = rand();
+    }
+}
+
 
 static SM_PAIRING_METHOD __sm_get_pairing_method(uint16_t connect_handle) {
     SM_PAIRING_METHOD legacy_pairing_method_table[5][5] = {
@@ -386,16 +400,13 @@ void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
     uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
     SM_PAIRING_METHOD pairing_method = JUST_WORKS;
+    uint8_t cb[SM_LENGTH_PAIRING_CONFIRM] = {0};
 
     memcpy_s(sm_connection.local_dhkey, SM_LENGTH_DHKEY, dhkey, SM_LENGTH_DHKEY);
 
     pairing_method = __sm_get_pairing_method(connect_handle);
     if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
-        uint8_t cb[16] = {0};
-        *(uint32_t *)(sm_connection.local_random) = rand(); // TODO: set srand and generate 32bits rand number
-        *(uint32_t *)(sm_connection.local_random + 4) = rand();
-        *(uint32_t *)(sm_connection.local_random + 8) = rand();
-        *(uint32_t *)(sm_connection.local_random + 12) = rand();
+        __sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
         __sm_f4(local_pairing_public_key, sm_connection.remote_pairing_public_key, sm_connection.local_random, 0, cb);
         sm_send_pairing_confirm(connect_handle, cb);
     } else {
@@ -420,10 +431,7 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
         }
 
         if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ID) != 0) {
-            *(uint32_t *)(sm_connection.local_irk) = rand();
-            *(uint32_t *)(sm_connection.local_irk + 4) = rand();
-            *(uint32_t *)(sm_connection.local_irk + 8) = rand();
-            *(uint32_t *)(sm_connection.local_irk + 12) = rand();
+            __sm_generate_random(sm_connection.local_irk, SM_LENGTH_IRK);
             sm_send_identity_information(connect_handle, sm_connection.local_irk);
 
             hci_get_local_addr_info(addr_info + HCI_LENGTH_ADDR_TYPE, &addr_info[0]);
@@ -431,10 +439,7 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
         }
 
         if ((responder_key_distribution & SM_KEY_DISTRIBUTION_SIGN) != 0) {
-            *(uint32_t *)(sm_connection.local_csrk) = rand();
-            *(uint32_t *)(sm_connection.local_csrk + 4) = rand();
-            *(uint32_t *)(sm_connection.local_csrk + 8) = rand();
-            *(uint32_t *)(sm_connection.local_csrk + 12) = rand();
+            __sm_generate_random(sm_connection.local_csrk, SM_LENGTH_CSRK);
             sm_send_signing_information(connect_handle, sm_connection.local_csrk);
         }
     } else {

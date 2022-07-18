@@ -1,3 +1,5 @@
+#include <QDate>
+#include <QTime>
 #include "log.h"
 
 void log(log_level_t level, const char* file_name, uint32_t file_line, const char* format, ...) {

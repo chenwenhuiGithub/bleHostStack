@@ -1,9 +1,6 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include <QDate>
-#include <QTime>
-
 typedef enum {
     LOG_LEVEL_TRACE = 0,
     LOG_LEVEL_DEBUG,
