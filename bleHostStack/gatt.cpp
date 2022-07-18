@@ -75,6 +75,8 @@
 #define GATT_LENGTH_PACKET_HEADER                           (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
 
 static void __gatt_print_hex(uint8_t *data, uint32_t length);
+static uint8_t __gatt_check_read_permission(uint16_t connect_handle, uint8_t att_permission);
+static uint8_t __gatt_check_write_permission(uint16_t connect_handle, uint8_t att_permission);
 
 /*
 att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B)                                 att_permission(1B)
@@ -215,6 +217,60 @@ static void __gatt_print_hex(uint8_t *data, uint32_t length) {
     }
 }
 
+static uint8_t __gatt_check_read_permission(uint16_t connect_handle, uint8_t att_permission) {
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+
+    if (att_permission & GATT_PERMISSION_READ_AUTHORIZATE) {
+        if (sm_connection.is_authorizated != SM_AUTHORIZATED_ON) {
+            LOG_ERROR("check read permission failed, no authorization, connect_handle:0x%04x", connect_handle);
+            return ATT_ERROR_INSUFFICIENT_AUTHORIZATION;
+        }
+    }
+
+    if (att_permission & GATT_PERMISSION_READ_AUTHENTICATE) {
+        if (sm_connection.is_authenticated != SM_AUTHENTICATED_ON) {
+            LOG_ERROR("check read permission failed, no authentication, connect_handle:0x%04x", connect_handle);
+            return ATT_ERROR_INSUFFICIENT_AUTHENTICATION;
+        }
+    }
+
+    if (att_permission & GATT_PERMISSION_READ_ENCRYPT) {
+        if (sm_connection.is_encrypted != SM_ENCRYPED_ON) {
+            LOG_ERROR("check read permission failed, no encryption, connect_handle:0x%04x", connect_handle);
+            return ATT_ERROR_INSUFFICIENT_ENCRYPTION;
+        }
+    }
+
+    return 0;
+}
+
+static uint8_t __gatt_check_write_permission(uint16_t connect_handle, uint8_t att_permission) {
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+
+    if (att_permission & GATT_PERMISSION_WRITE_AUTHORIZATE) {
+        if (sm_connection.is_authorizated != SM_AUTHORIZATED_ON) {
+            LOG_ERROR("check write permission failed, no authorization, connect_handle:0x%04x", connect_handle);
+            return ATT_ERROR_INSUFFICIENT_AUTHORIZATION;
+        }
+    }
+
+    if (att_permission & GATT_PERMISSION_WRITE_AUTHENTICATE) {
+        if (sm_connection.is_authenticated != SM_AUTHENTICATED_ON) {
+            LOG_ERROR("check write permission failed, no authentication, connect_handle:0x%04x", connect_handle);
+            return ATT_ERROR_INSUFFICIENT_AUTHENTICATION;
+        }
+    }
+
+    if (att_permission & GATT_PERMISSION_WRITE_ENCRYPT) {
+        if (sm_connection.is_encrypted != SM_ENCRYPED_ON) {
+            LOG_ERROR("check write permission failed, no encryption, connect_handle:0x%04x", connect_handle);
+            return ATT_ERROR_INSUFFICIENT_ENCRYPTION;
+        }
+    }
+
+    return 0;
+}
+
 // read part value of one characteristic
 void gatt_recv_read_blob_req(uint16_t connect_handle, uint16_t att_handle, uint16_t value_offset) {
     att_item_t *item = nullptr;
@@ -237,26 +293,29 @@ void gatt_recv_read_blob_req(uint16_t connect_handle, uint16_t att_handle, uint1
                 goto RET;
             }
 
-            if (item->value_length < value_offset) {
-                error_code = ATT_ERROR_INVALID_OFFSET;
-                goto RET;
-            }
+            error_code = __gatt_check_read_permission(connect_handle, item->permission);
+            if (!error_code) {
+                if (item->value_length < value_offset) {
+                    error_code = ATT_ERROR_INVALID_OFFSET;
+                    goto RET;
+                }
 
-            if (item->value_length <= att_mtu - 1) {
-                error_code = ATT_ERROR_ATTRIBUTE_NOT_LONG;
-                goto RET;
-            }
+                if (item->value_length <= att_mtu - 1) {
+                    error_code = ATT_ERROR_ATTRIBUTE_NOT_LONG;
+                    goto RET;
+                }
 
-            found = 1;
-            buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
-            buffer[offset] = ATT_OPERATE_READ_BLOB_RESP;
-            offset++;
-            copy_length = item->value_length - value_offset;
-            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
+                found = 1;
+                buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
+                buffer[offset] = ATT_OPERATE_READ_BLOB_RESP;
+                offset++;
+                copy_length = item->value_length - value_offset;
+                if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                    copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
+                }
+                memcpy_s(&buffer[offset], copy_length, item->value + value_offset, copy_length);
+                offset += copy_length;
             }
-            memcpy_s(&buffer[offset], copy_length, item->value + value_offset, copy_length);
-            offset += copy_length;
             goto RET;
         }
     }
@@ -300,16 +359,19 @@ void gatt_recv_read_req(uint16_t connect_handle, uint16_t att_handle) {
                 goto RET;
             }
 
-            found = 1;
-            buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
-            buffer[offset] = ATT_OPERATE_READ_RESP;
-            offset++;
-            copy_length = item->value_length;
-            if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
-                copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
+            error_code = __gatt_check_read_permission(connect_handle, item->permission);
+            if (!error_code) {
+                found = 1;
+                buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
+                buffer[offset] = ATT_OPERATE_READ_RESP;
+                offset++;
+                copy_length = item->value_length;
+                if (copy_length > att_mtu - (offset - GATT_LENGTH_PACKET_HEADER)) {
+                    copy_length = att_mtu - (offset - GATT_LENGTH_PACKET_HEADER);
+                }
+                memcpy_s(&buffer[offset], copy_length, item->value, copy_length);
+                offset += copy_length;
             }
-            memcpy_s(&buffer[offset], copy_length, item->value, copy_length);
-            offset += copy_length;
             goto RET;
         }
     }
@@ -573,7 +635,6 @@ RET:
 
 // write value of one characteristics
 void gatt_recv_write_req(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
-    // TODO: check permission
     att_item_t *item = nullptr;
     uint8_t buffer[GATT_LENGTH_PACKET_HEADER + ATT_LENGTH_HEADER] = {0};
     uint32_t offset = GATT_LENGTH_PACKET_HEADER;
@@ -592,13 +653,23 @@ void gatt_recv_write_req(uint16_t connect_handle, uint16_t att_handle, uint8_t *
                 goto RET;
             }
 
-            if (value_length <= item->value_length) {
+#if 0
+            if (value_length > item->value_length) {
+                error_code = ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH;
+                goto RET;
+            }
+#endif
+            error_code = __gatt_check_write_permission(connect_handle, item->permission);
+            if (!error_code) {
                 found = 1;
                 buffer[offset] = ATT_OPERATE_WRITE_RESP;
                 offset++;
+#if 0
                 memcpy_s(item->value, value_length, value, value_length);
-            } else {
-                error_code = ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LENGTH;
+#else
+                LOG_INFO("gatt_recv_write_req value_length:%u", value_length);
+                __gatt_print_hex(value, value_length);
+#endif
             }
             goto RET;
         }
@@ -616,8 +687,8 @@ RET:
 }
 
 void gatt_recv_write_cmd(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
-    // TODO: check permission
     att_item_t *item = nullptr;
+    uint8_t error_code = 0;
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
         for (uint16_t index_item = 0; index_item < services[index_service].items_cnt; index_item++) {
@@ -630,13 +701,17 @@ void gatt_recv_write_cmd(uint16_t connect_handle, uint16_t att_handle, uint8_t *
             if (item->handle > att_handle) {
                 return;
             }
+
+            error_code = __gatt_check_write_permission(connect_handle, item->permission);
+            if (!error_code) {
 #if 0
-            if (value_length <= item->value_length) {
-                memcpy_s(item->value, value_length, value, value_length);
-            }
+                if (value_length <= item->value_length) {
+                    memcpy_s(item->value, value_length, value, value_length);
+                }
 #else
-            LOG_INFO("gatt_recv_write_cmd value_length:%u", value_length);
-            __gatt_print_hex(value, value_length);
+                LOG_INFO("gatt_recv_write_cmd value_length:%u", value_length);
+                __gatt_print_hex(value, value_length);
+            }
 #endif
             return;
         }
@@ -648,7 +723,7 @@ void gatt_recv_handle_value_cfm(uint16_t connect_handle) {
 }
 
 void gatt_send_handle_value_notify(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
-    // TODO: check permission
+    // TODO: check ccc permission
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;
@@ -692,7 +767,7 @@ void gatt_send_handle_value_notify(uint16_t connect_handle, uint16_t att_handle,
 }
 
 void gatt_send_handle_value_indication(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length) {
-    // TODO: check permission and previous cfm is received
+    // TODO: check ccc permission and previous cfm is received
     att_item_t *item = nullptr;
     uint8_t *buffer = nullptr;
     uint32_t copy_length = 0;

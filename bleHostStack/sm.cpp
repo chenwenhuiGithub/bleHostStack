@@ -38,9 +38,6 @@
 #define SM_ERROR_TRANSPORT_DERIVATION_NOT_ALLOWED           0x0e
 #define SM_ERROR_KEY_REJECTED                               0x0f
 
-#define SM_ENCRYPTION_ENABLED_OFF                           0x00
-#define SM_ENCRYPTION_ENABLED_ON                            0x01
-
 #define SM_LENGTH_PACKET_HEADER                             (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
 
 typedef enum {
@@ -420,7 +417,8 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
     uint8_t addr_info[HCI_LENGTH_ADDR_TYPE + HCI_LENGTH_ADDR] = {0};
     uint8_t responder_key_distribution = sm_connection.pairing_req[6];
 
-    if (encryption_enabled == SM_ENCRYPTION_ENABLED_ON) {
+    sm_connection.is_encrypted = encryption_enabled;
+    if (encryption_enabled == SM_ENCRYPED_ON) {
         if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ENC) != 0) {
             sm_send_encryption_information(connect_handle, sm_connection.local_ltk);
 
