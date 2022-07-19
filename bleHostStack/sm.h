@@ -60,7 +60,7 @@
 #define SM_LENGTH_LTK                                       16
 #define SM_LENGTH_ADDR                                      6
 
-#define SM_DEVICE_INFO_FILE_NAME                            "device_info.dat"
+#define SM_DEVICE_DB_FILE_NAME                              "device_db.dat"
 
 
 typedef struct {
@@ -83,12 +83,11 @@ typedef struct {
     uint8_t remote_addr_type;
     uint8_t remote_addr[SM_LENGTH_ADDR];
 
-    uint8_t is_local_ltk_generated;
     uint8_t is_secure_connection;
     uint8_t is_encrypted;
     uint8_t encryption_key_size; // TODO: add permission check
-    uint8_t is_authenticated;
-    uint8_t is_authorizated;
+    uint8_t is_authenticated;    // TODO: add permission check
+    uint8_t is_authorizated;     // TODO: add permission check
     uint8_t is_received_key_distribution_ltk;
     uint8_t is_received_key_distribution_id;
     uint8_t is_received_key_distribution_irk;

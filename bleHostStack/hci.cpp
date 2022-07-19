@@ -164,6 +164,7 @@
 #define HCI_OCF_LE_SET_SCAN_ENABLE                                      0x0c
 #define HCI_OCF_LE_CREATE_CONNECT                                       0x0d
 #define HCI_OCF_LE_LTK_REQ_REPLY                                        0x1a
+#define HCI_OCF_LE_LTK_REQ_NEG_REPLY                                    0x1b
 #define HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY                          0x20
 #define HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY                      0x21
 #define HCI_OCF_LE_SET_DATA_LENGTH                                      0x22
@@ -261,6 +262,7 @@
 #define HCI_LENGTH_CMD_PARAM_LE_READ_LOCAL_P256_PUBLIC_KEY              0
 #define HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY                          64
 #define HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY                           18
+#define HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_NEG_REPLY                       2
 
 #define HCI_ACL_SEGMENT_PACKET_FIRST                                    0x20
 #define HCI_ACL_SEGMENT_PACKET_CONTINUE                                 0x10
@@ -414,7 +416,10 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             LOG_INFO("/***** wait peer devices to connect *****/");
             break;
         case HCI_OCF_LE_LTK_REQ_REPLY:
-            LOG_INFO("le_ltk_req_reply status:%u", data[3]);
+            LOG_INFO("le_ltk_req_reply status:%u, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
+            break;
+        case HCI_OCF_LE_LTK_REQ_NEG_REPLY:
+            LOG_INFO("le_ltk_req_neg_reply status:%u, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
             break;
         case HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY:
             LOG_INFO("le_remote_conn_param_req_reply status:%u, connect_handle:0x%02x%02x",
@@ -976,6 +981,22 @@ void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk) {
         hci_stack.num_of_allowed_cmd_packets--;
     } else {
         LOG_ERROR("hci_send_cmd_le_ltk_req_reply error, send cmd not allowed");
+    }
+}
+
+void hci_send_cmd_le_ltk_req_neg_reply(uint16_t connect_handle) {
+    uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_NEG_REPLY;
+    uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_NEG_REPLY] = { 0x00 };
+
+    if (hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_LTK_REQ_NEG_REPLY, HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_NEG_REPLY);
+        buffer[4] = connect_handle;
+        buffer[5] = (connect_handle >> 8) & 0x0f;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_ltk_req_neg_reply error, send cmd not allowed");
     }
 }
 

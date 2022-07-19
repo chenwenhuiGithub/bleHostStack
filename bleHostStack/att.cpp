@@ -176,7 +176,7 @@ static void __att_send_exchange_mtu_resp(uint16_t connect_handle, uint16_t mtu) 
 
     buffer[offset] = ATT_OPERATE_EXCHANGE_MTU_RESP;
     offset++;
-    buffer[offset] = mtu;
+    buffer[offset] = (uint8_t)mtu;
     offset++;
     buffer[offset] = mtu >> 8;
     offset++;

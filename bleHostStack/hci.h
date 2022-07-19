@@ -117,6 +117,7 @@ void hci_send_cmd_le_set_adv_enable(hci_le_adv_enable_t enable);
 void hci_send_cmd_le_read_local_P256_public_key();
 void hci_send_cmd_le_generate_dhkey(uint8_t *pub_key);
 void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk);
+void hci_send_cmd_le_ltk_req_neg_reply(uint16_t connect_handle);
 bool hci_send_cmd_allowed();
 bool hci_send_acl_allowed();
 void hci_get_local_addr_info(uint8_t *addr, uint8_t *addr_type);
