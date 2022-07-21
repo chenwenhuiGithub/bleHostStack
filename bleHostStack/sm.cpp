@@ -50,8 +50,6 @@ typedef enum {
 } sm_pairing_method_t;
 
 typedef struct {
-    uint8_t is_used;
-
     uint8_t remote_addr_type;
     uint8_t remote_addr[HCI_LENGTH_ADDR];
     uint8_t remote_irk[SM_LENGTH_IRK];
@@ -78,6 +76,7 @@ static void __mem_swap_self(uint8_t* data, uint32_t length);
 static void __sm_encrypt(uint8_t* k, uint8_t* plain_data, uint8_t* enc_data);
 static void __sm_aes_cmac(uint8_t* k, uint8_t* input, uint32_t length, uint8_t* output);
 
+static void __sm_ah(uint8_t* k, uint8_t* r, uint8_t* out_hash);
 static void __sm_c1(uint8_t* k, uint8_t* r, uint8_t* preq, uint8_t *pres, uint8_t iat, uint8_t *ia, uint8_t rat, uint8_t *ra, uint8_t *out_confirm);
 static void __sm_s1(uint8_t* k, uint8_t* r1, uint8_t* r2, uint8_t* out_stk);
 static void __sm_f4(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t z, uint8_t* out_confirm);
@@ -87,7 +86,7 @@ static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* ou
 
 static void __sm_generate_random(uint8_t* data, uint32_t length);
 
-static bool __sm_device_db_entry_add(sm_device_db_entry_t *entry);
+static bool __sm_device_db_entry_add(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry);
 static bool __sm_device_db_entry_get(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry);
 static bool __sm_device_db_entry_update(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry);
 static bool __sm_device_db_entry_delete(uint8_t remote_addr_type, uint8_t *remote_addr);
@@ -153,6 +152,16 @@ static void __sm_aes_cmac(uint8_t* k, uint8_t* input, uint32_t length, uint8_t* 
     tc_cmac_setup(&state, k, &sched);
     tc_cmac_update(&state, input, length);
     tc_cmac_final(output, &state);
+}
+
+// k:16B, r:3B, out_hash:3B
+static void __sm_ah(uint8_t* k, uint8_t* r, uint8_t* out_hash) {
+    uint8_t tmp[16] = {0};
+    uint8_t output[16] = {0};
+
+    memcpy_s(tmp, 3, r, 3);
+    __sm_encrypt(k, tmp, output);
+    memcpy_s(out_hash, 3, output, 3);
 }
 
 // k:16B, r:16B, preq:7B, pres:7B, ia:6B, ra:6B, out_confirm:16B
@@ -288,99 +297,157 @@ static void __sm_generate_random(uint8_t* data, uint32_t length) {
     }
 }
 
-static bool __sm_device_db_entry_add(sm_device_db_entry_t *entry) {
-    bool ret = true;
+static bool __sm_device_db_entry_add(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry) {
+    bool result = true;
     QFile file(SM_DEVICE_DB_FILE_NAME);
     sm_device_db_entry_t read_entry = {0};
     uint32_t offset = 0;
+    uint8_t calc_hash[3] = {0};
 
     file.open(QIODevice::ReadWrite);
     while (!file.atEnd()) {
         file.read((char*)&read_entry, sizeof(sm_device_db_entry_t));
-        if (read_entry.is_used == 1 && read_entry.remote_addr_type == entry->remote_addr_type && (!memcmp(read_entry.remote_addr, entry->remote_addr, HCI_LENGTH_ADDR))) {
-            ret = false;
-            break;
-        } else if (!read_entry.is_used) {
-            ret = true;
-            break;
-        } else {
-            offset += sizeof(sm_device_db_entry_t);
+
+        if (read_entry.remote_addr_type == remote_addr_type && (!memcmp(read_entry.remote_addr, remote_addr, HCI_LENGTH_ADDR))) {
+                result = false;
+                goto RET;
         }
+
+        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
+                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+                if (!memcmp(calc_hash, remote_addr, 3)) {
+                    result = false;
+                    goto RET;
+                }
+            }
+        }
+
+        offset += sizeof(sm_device_db_entry_t);
     }
 
-    if (ret) {
+RET:
+    if (result) {
         file.seek(offset);
         file.write((char*)entry, sizeof(sm_device_db_entry_t));
     }
     file.close();
 
-    return ret;
+    return result;
 }
 
 static bool __sm_device_db_entry_get(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry) {
-    bool ret = false;
+    bool result = false;
     QFile file(SM_DEVICE_DB_FILE_NAME);
     sm_device_db_entry_t read_entry = {0};
+    uint8_t calc_hash[3] = {0};
 
     file.open(QIODevice::ReadOnly);
     while (!file.atEnd()) {
         file.read((char*)&read_entry, sizeof(sm_device_db_entry_t));
-        if (read_entry.is_used == 1 && read_entry.remote_addr_type == remote_addr_type && (!memcmp(read_entry.remote_addr, remote_addr, HCI_LENGTH_ADDR))) {
-            ret = true;
-            memcpy_s(entry, sizeof(sm_device_db_entry_t), &read_entry, sizeof(sm_device_db_entry_t));
-            break;
+
+        if (read_entry.remote_addr_type == remote_addr_type && (!memcmp(read_entry.remote_addr, remote_addr, HCI_LENGTH_ADDR))) {
+            result = true;
+            goto RET;
         }
+
+        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
+                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+                if (!memcmp(calc_hash, remote_addr, 3)) {
+                    result = true;
+                    goto RET;
+                }
+            }
+        }
+    }
+
+RET:
+    if (result) {
+        memcpy_s(entry, sizeof(sm_device_db_entry_t), &read_entry, sizeof(sm_device_db_entry_t));
     }
     file.close();
 
-    return ret;
+    return result;
 }
 
 static bool __sm_device_db_entry_update(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry) {
-    bool ret = false;
+    bool result = false;
     QFile file(SM_DEVICE_DB_FILE_NAME);
     sm_device_db_entry_t read_entry = {0};
     uint32_t offset = 0;
+    uint8_t calc_hash[3] = {0};
 
     file.open(QIODevice::ReadWrite);
     while (!file.atEnd()) {
         file.read((char*)&read_entry, sizeof(sm_device_db_entry_t));
-        if (read_entry.is_used == 1 && read_entry.remote_addr_type == remote_addr_type && (!memcmp(read_entry.remote_addr, remote_addr, HCI_LENGTH_ADDR))) {
-            ret = true;
-            file.seek(offset);
-            file.write((char*)entry, sizeof(sm_device_db_entry_t));
-            break;
-        } else {
-            offset += sizeof(sm_device_db_entry_t);
+
+        if (read_entry.remote_addr_type == remote_addr_type && (!memcmp(read_entry.remote_addr, remote_addr, HCI_LENGTH_ADDR))) {
+            result = true;
+            goto RET;
         }
+
+        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
+                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+                if (!memcmp(calc_hash, remote_addr, 3)) {
+                    result = true;
+                    goto RET;
+                }
+            }
+        }
+
+        offset += sizeof(sm_device_db_entry_t);
+    }
+
+RET:
+    if (result) {
+        file.seek(offset);
+        file.write((char*)entry, sizeof(sm_device_db_entry_t));
     }
     file.close();
 
-    return ret;
+    return result;
 }
 
 static bool __sm_device_db_entry_delete(uint8_t remote_addr_type, uint8_t *remote_addr) {
-    bool ret = false;
+    bool result = false;
     QFile file(SM_DEVICE_DB_FILE_NAME);
     sm_device_db_entry_t read_entry = {0};
     uint32_t offset = 0;
+    uint8_t calc_hash[3] = {0};
 
     file.open(QIODevice::ReadWrite);
     while (!file.atEnd()) {
         file.read((char*)&read_entry, sizeof(sm_device_db_entry_t));
-        if (read_entry.is_used == 1 && read_entry.remote_addr_type == remote_addr_type && (!memcmp(read_entry.remote_addr, remote_addr, HCI_LENGTH_ADDR))) {
-            ret = true;
-            read_entry.is_used = 0;
-            file.seek(offset);
-            file.write((char*)&read_entry, sizeof(sm_device_db_entry_t));
-            break;
-        } else {
-            offset += sizeof(sm_device_db_entry_t);
+
+        if (read_entry.remote_addr_type == remote_addr_type && (!memcmp(read_entry.remote_addr, remote_addr, HCI_LENGTH_ADDR))) {
+            result = true;
+            goto RET;
         }
+
+        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
+                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+                if (!memcmp(calc_hash, remote_addr, 3)) {
+                    result = true;
+                    goto RET;
+                }
+            }
+        }
+
+        offset += sizeof(sm_device_db_entry_t);
+    }
+
+RET:
+    if (result) {
+        file.seek(offset);
+        memset(&read_entry, 0, sizeof(sm_device_db_entry_t));
+        file.write((char*)&read_entry, sizeof(sm_device_db_entry_t)); // TODO: delete memory from file
     }
     file.close();
 
-    return ret;
+    return result;
 }
 
 static sm_pairing_method_t __sm_get_pairing_method(uint16_t connect_handle) {
@@ -591,17 +658,15 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
         __sm_generate_random(sm_connection.local_irk, SM_LENGTH_IRK);
         __sm_generate_random(sm_connection.local_csrk, SM_LENGTH_CSRK);
 
-        entry.is_used = 1;
-        entry.remote_addr_type = hci_connection->peer_addr_type; // base hci addr
+        entry.remote_addr_type = hci_connection->peer_addr_type;
         memcpy_s(entry.remote_addr, HCI_LENGTH_ADDR, hci_connection->peer_addr, HCI_LENGTH_ADDR);
         memcpy_s(entry.local_ltk, SM_LENGTH_LTK, sm_connection.local_ltk, SM_LENGTH_LTK);
         memcpy_s(entry.local_ediv, SM_LENGTH_EDIV, sm_connection.local_ediv, SM_LENGTH_EDIV);
         memcpy_s(entry.local_rand, SM_LENGTH_RAND, sm_connection.local_rand, SM_LENGTH_RAND);
         memcpy_s(entry.local_csrk, SM_LENGTH_CSRK, sm_connection.local_csrk, SM_LENGTH_CSRK);
         entry.is_secure_connection = sm_connection.is_secure_connection;
-        if (!__sm_device_db_entry_add(&entry)) {
-            LOG_ERROR("device add db error, remote_addr_type:0x%02x, remote_addr:%02x:%02x:%02x:%02x:%02x:%02x", entry.remote_addr_type,
-                      entry.remote_addr[0], entry.remote_addr[1], entry.remote_addr[2], entry.remote_addr[3], entry.remote_addr[4], entry.remote_addr[5]);
+        if (!__sm_device_db_entry_add(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry)) {
+            __sm_device_db_entry_update(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry);
         }
     }
 }
@@ -611,7 +676,7 @@ void sm_recv_evt_le_ltk_req(uint16_t connect_handle, uint8_t *random_number, uin
     hci_connection_t *hci_connection = hci_find_connection_by_handle(connect_handle);
     sm_device_db_entry_t entry = {0};
 
-    if (__sm_device_db_entry_get(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry)) { // base hci addr
+    if (__sm_device_db_entry_get(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry)) {
         hci_send_cmd_le_ltk_req_reply(connect_handle, entry.local_ltk);
     } else {
         LOG_ERROR("device get db error, remote_addr_type:0x%02x, remote_addr:%02x:%02x:%02x:%02x:%02x:%02x", hci_connection->peer_addr_type,
@@ -630,8 +695,10 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
     uint8_t responder_key_distribution = sm_connection.pairing_req[6];
     sm_device_db_entry_t entry = {0};
 
-    if (__sm_device_db_entry_get(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry)) { // base hci addr
+    if (__sm_device_db_entry_get(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry)) {
         if (encryption_enabled == SM_ENCRYPED_ON) {
+            sm_connection.is_encrypted = SM_ENCRYPED_ON;
+
             if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ENC) != 0) {
                 sm_send_encryption_information(connect_handle, entry.local_ltk);
 
@@ -643,7 +710,7 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
             if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ID) != 0) {
                 sm_send_identity_information(connect_handle, sm_connection.local_irk);
 
-                hci_get_local_addr_info(addr_info + HCI_LENGTH_ADDR_TYPE, &addr_info[0]); // base hci addr
+                hci_get_local_addr_info(addr_info + HCI_LENGTH_ADDR_TYPE, &addr_info[0]);
                 sm_send_identity_address_information(connect_handle, addr_info);
             }
 
@@ -651,13 +718,13 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
                 sm_send_signing_information(connect_handle, entry.local_csrk);
             }
 
-            sm_connection.is_encrypted = SM_ENCRYPED_ON;
-            entry.is_encrypted = SM_ENCRYPED_ON;
-            __sm_device_db_entry_update(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry); // base hci addr
+            if (entry.is_encrypted != SM_ENCRYPED_ON) {
+                entry.is_encrypted = SM_ENCRYPED_ON;
+                __sm_device_db_entry_update(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry);
+            }
         } else {
             sm_connection.is_encrypted = SM_ENCRYPED_OFF;
-            entry.is_encrypted = SM_ENCRYPED_OFF;
-            __sm_device_db_entry_delete(hci_connection->peer_addr_type, hci_connection->peer_addr); // base hci addr
+            __sm_device_db_entry_delete(hci_connection->peer_addr_type, hci_connection->peer_addr);
         }
     } else {
         LOG_ERROR("device get db error, remote_addr_type:0x%02x, remote_addr:%02x:%02x:%02x:%02x:%02x:%02x", hci_connection->peer_addr_type,
@@ -699,7 +766,8 @@ static void __sm_recv_identity_address_info(uint16_t connect_handle, uint8_t *da
     (void)length;
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
-    sm_connection.remote_addr_type = data[0]; // data not same with connection event?
+    // maybe not same with hci, for example, peer use random address for hci connection and use public address after sm
+    sm_connection.remote_addr_type = data[0];
     memcpy_s(sm_connection.remote_addr, HCI_LENGTH_ADDR, data + HCI_LENGTH_ADDR_TYPE, HCI_LENGTH_ADDR);
     sm_connection.is_received_key_distribution_addr = 1;
     __sm_save_device_info(connect_handle);
@@ -739,12 +807,12 @@ static void __sm_save_device_info(uint16_t connect_handle) {
         }
     }
 
-    if (__sm_device_db_entry_get(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry)) { // base hci addr
-        entry.remote_addr_type = sm_connection.remote_addr_type; // TODO: base sm addr, different with hci addr, how to search after restart?
+    if (__sm_device_db_entry_get(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry)) {
+        entry.remote_addr_type = sm_connection.remote_addr_type;
         memcpy_s(entry.remote_addr, HCI_LENGTH_ADDR, sm_connection.remote_addr, HCI_LENGTH_ADDR);
         memcpy_s(entry.remote_irk, SM_LENGTH_IRK, sm_connection.remote_irk, SM_LENGTH_IRK);
         memcpy_s(entry.remote_csrk, SM_LENGTH_CSRK, sm_connection.remote_csrk, SM_LENGTH_CSRK);
-        __sm_device_db_entry_update(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry); // base hci addr
+        __sm_device_db_entry_update(hci_connection->peer_addr_type, hci_connection->peer_addr, &entry);
         LOG_INFO("all key distributions received, device db saved");
     } else {
         LOG_ERROR("device get db error, remote_addr_type:0x%02x, remote_addr:%02x:%02x:%02x:%02x:%02x:%02x", hci_connection->peer_addr_type,

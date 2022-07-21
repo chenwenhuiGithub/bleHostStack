@@ -17,6 +17,11 @@
 #define HCI_ADDR_TYPE_RANDOM_DEVICE                                     0x01
 #define HCI_ADDR_TYPE_PUBLIC_IDENTITY                                   0x02
 #define HCI_ADDR_TYPE_RANDOM_IDENTITY                                   0x03
+#define HCI_RANDOM_ADDR_SUBTYPE_NONRESOLVABLE                           0x00
+#define HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE                              0x01
+#define HCI_RANDOM_ADDR_SUBTYPE_STATIC                                  0x03
+
+
 
 #define HCI_LENGTH_PACKET_TYPE                                          1
 #define HCI_LENGTH_EVT_HEADER                                           2

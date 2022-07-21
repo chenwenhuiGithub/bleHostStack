@@ -376,13 +376,15 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             break;
         case HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS:
             LOG_INFO("read_local_supported_commands status:%u", data[3]);
+            // HCI_Read_BD_ADDR used to get public address
+            // HCI_LE_Set_Random_Address used to set random address, once set, controller will use random address for hci connection
             hci_send_cmd_read_bd_addr();
             break;
         case HCI_OCF_READ_BD_ADDR:
             LOG_INFO("read_bd_addr status:%u, bd_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                      data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
             memcpy_s(hci_stack.local_addr, HCI_LENGTH_ADDR, data + 4, HCI_LENGTH_ADDR);
-            hci_stack.local_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE;  // TODO: how to get local address type?
+            hci_stack.local_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE;
             hci_send_cmd_write_class_of_device(hci_stack.class_of_device);
             break;
         default:
