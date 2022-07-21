@@ -63,13 +63,25 @@
 #define SM_DEVICE_DB_FILE_NAME                              "device_db.dat"
 
 
+typedef enum {
+    JUST_WORKS,
+    PASSKEY_I_INPUT_R_DISPLAY,
+    PASSKEY_I_DISPLAY_R_INPUT,
+    PASSKEY_I_INPUT_R_INPUT,
+    NUMERIC_COMPARISON,
+    OOB
+} sm_pairing_method_t;
+
 typedef struct {
     uint8_t pairing_req[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_REQ];
     uint8_t pairing_resp[SM_LENGTH_HEADER + SM_LENGTH_PAIRING_RESP];
     uint8_t remote_pairing_public_key[SM_LENGTH_P256_PUBLIC_KEY];
+    uint8_t remote_pairing_confirm[SM_LENGTH_PAIRING_CONFIRM];
     uint8_t local_dhkey[SM_LENGTH_DHKEY];
     uint8_t local_random[SM_LENGTH_PAIRING_RANDOM];
     uint8_t remote_random[SM_LENGTH_PAIRING_RANDOM];
+    uint8_t local_r[SM_LENGTH_PAIRING_RANDOM];
+    uint8_t remote_r[SM_LENGTH_PAIRING_RANDOM];
     uint8_t local_ltk[SM_LENGTH_LTK];
     uint8_t remote_ltk[SM_LENGTH_LTK];
     uint8_t local_ediv[SM_LENGTH_EDIV];
@@ -82,6 +94,11 @@ typedef struct {
     uint8_t remote_csrk[SM_LENGTH_CSRK];
     uint8_t remote_addr_type;
     uint8_t remote_addr[SM_LENGTH_ADDR];
+    sm_pairing_method_t pairing_method;
+
+    uint32_t passkey_num; // 0 ~ 999999(0xF423F), 20 bits
+    uint8_t passkey_index;
+    uint8_t passkey_r;
 
     uint8_t is_secure_connection;
     uint8_t is_encrypted;

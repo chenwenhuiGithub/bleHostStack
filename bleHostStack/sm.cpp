@@ -40,15 +40,6 @@
 
 #define SM_LENGTH_PACKET_HEADER                             (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
 
-typedef enum {
-    JUST_WORKS,
-    PASSKEY_I_INPUT_R_DISPLAY,
-    PASSKEY_I_DISPLAY_R_INPUT,
-    PASSKEY_I_INPUT_R_INPUT,
-    NUMERIC_COMPARISON,
-    OOB
-} sm_pairing_method_t;
-
 typedef struct {
     uint8_t remote_addr_type;
     uint8_t remote_addr[HCI_LENGTH_ADDR];
@@ -100,6 +91,7 @@ static void __sm_recv_signing_info(uint16_t connect_handle, uint8_t *data, uint3
 static void __sm_recv_pairing_public_key(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_recv_pairing_random(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data, uint32_t length);
+static void __sm_recv_pairing_confirm(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_save_device_info(uint16_t connect_handle);
 static sm_pairing_method_t __sm_get_pairing_method(uint16_t connect_handle);
 
@@ -531,6 +523,8 @@ void sm_recv(uint16_t connect_handle, uint8_t *data, uint32_t length) {
         __sm_recv_pairing_random(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     case SM_OPERATE_PAIRING_DHKEY_CHECK:
         __sm_recv_pairing_dhkey_check(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
+    case SM_OPERATE_PAIRING_CONFIRM:
+        __sm_recv_pairing_confirm(connect_handle, data + SM_LENGTH_HEADER, length - SM_LENGTH_HEADER); break;
     default:
         LOG_WARNING("sm_recv invalid, op_code:0x%02x", op_code); break;
     }
@@ -580,33 +574,76 @@ void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
     uint16_t connect_handle = connect_handle_last_send_le_generate_dhkey;
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
     uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
-    sm_pairing_method_t pairing_method = JUST_WORKS;
-    uint8_t cb[SM_LENGTH_PAIRING_CONFIRM] = {0};
+    uint8_t local_pairing_confirm[SM_LENGTH_PAIRING_CONFIRM] = {0};
 
     memcpy_s(sm_connection.local_dhkey, SM_LENGTH_DHKEY, dhkey, SM_LENGTH_DHKEY);
 
-    pairing_method = __sm_get_pairing_method(connect_handle);
-    if ((JUST_WORKS == pairing_method) || (NUMERIC_COMPARISON == pairing_method)) {
+    sm_connection.pairing_method = __sm_get_pairing_method(connect_handle);
+    if ((JUST_WORKS == sm_connection.pairing_method) || (NUMERIC_COMPARISON == sm_connection.pairing_method)) {
+        memset(sm_connection.local_r, 0, SM_LENGTH_PAIRING_RANDOM); // for just_work or numeric_comparison, set ra and rb to 0
+        memset(sm_connection.remote_r, 0, SM_LENGTH_PAIRING_RANDOM);
+
         __sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
-        __sm_f4(local_pairing_public_key, sm_connection.remote_pairing_public_key, sm_connection.local_random, 0, cb);
-        sm_send_pairing_confirm(connect_handle, cb);
+        __sm_f4(local_pairing_public_key, sm_connection.remote_pairing_public_key, sm_connection.local_random, 0, local_pairing_confirm);
+        sm_send_pairing_confirm(connect_handle, local_pairing_confirm);
+    } else if (PASSKEY_I_INPUT_R_DISPLAY == sm_connection.pairing_method) {
+        __sm_generate_random((uint8_t *)&sm_connection.passkey_num, sizeof(sm_connection.passkey_num));
+        sm_connection.passkey_num %= 1000000;
+        sm_connection.passkey_index = 0;
+
+        memset(sm_connection.local_r, 0, SM_LENGTH_PAIRING_RANDOM); // for passkey, inject ra and rb
+        sm_connection.local_r[0] = (uint8_t)sm_connection.passkey_num;
+        sm_connection.local_r[1] = (uint8_t)(sm_connection.passkey_num >> 8);
+        sm_connection.local_r[2] = (uint8_t)(sm_connection.passkey_num >> 16);
+        memcpy_s(sm_connection.remote_r, SM_LENGTH_PAIRING_RANDOM, sm_connection.local_r, SM_LENGTH_PAIRING_RANDOM);
+        LOG_INFO("passkey_num:%06u", sm_connection.passkey_num);
     } else {
         // TODO: other methods
+        LOG_ERROR("pairing method not supported");
     }
 }
 
-// step 4
+// step 4.2.1(PASSKEY_I_INPUT_R_DISPLAY)
+static void __sm_recv_pairing_confirm(uint16_t connect_handle, uint8_t *data, uint32_t length) {
+    (void)length;
+    sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
+    uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
+    uint8_t local_pairing_confirm[SM_LENGTH_PAIRING_CONFIRM] = {0};
+
+    memcpy_s(sm_connection.remote_pairing_confirm, SM_LENGTH_PAIRING_CONFIRM, data, SM_LENGTH_PAIRING_CONFIRM);
+    __sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
+    if ((sm_connection.passkey_num >> sm_connection.passkey_index) & 0x01) {
+        sm_connection.passkey_r = 0x81; // why add 0x80?
+    } else {
+        sm_connection.passkey_r = 0x80;
+    }
+    __sm_f4(local_pairing_public_key, sm_connection.remote_pairing_public_key, sm_connection.local_random, sm_connection.passkey_r, local_pairing_confirm);
+    sm_send_pairing_confirm(connect_handle, local_pairing_confirm);
+}
+
+// step 4.1(JUST_WORKS or NUMERIC_COMPARISON) 4.2.2(PASSKEY_I_INPUT_R_DISPLAY)
 static void __sm_recv_pairing_random(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
-    uint32_t vb = 0;
+    uint32_t local_v = 0;
     uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
+    uint8_t calc_pairing_confirm[SM_LENGTH_PAIRING_CONFIRM] = {0};
 
     memcpy_s(sm_connection.remote_random, SM_LENGTH_PAIRING_RANDOM, data, SM_LENGTH_PAIRING_RANDOM);
-    sm_send_pairing_random(connect_handle, sm_connection.local_random);
-
-    __sm_g2(sm_connection.remote_pairing_public_key, local_pairing_public_key, sm_connection.remote_random, sm_connection.local_random, &vb);
-    LOG_INFO("g2:%u", vb);
+    if ((JUST_WORKS == sm_connection.pairing_method) || (NUMERIC_COMPARISON == sm_connection.pairing_method)) {
+        sm_send_pairing_random(connect_handle, sm_connection.local_random);
+        __sm_g2(sm_connection.remote_pairing_public_key, local_pairing_public_key, sm_connection.remote_random, sm_connection.local_random, &local_v);
+        LOG_INFO("g2:%u", local_v);
+    } else if (PASSKEY_I_INPUT_R_DISPLAY == sm_connection.pairing_method) {
+        __sm_f4(sm_connection.remote_pairing_public_key, local_pairing_public_key, sm_connection.remote_random, sm_connection.passkey_r, calc_pairing_confirm);
+        if (!memcmp(calc_pairing_confirm, sm_connection.remote_pairing_confirm, SM_LENGTH_PAIRING_CONFIRM)) {
+            sm_send_pairing_random(connect_handle, sm_connection.local_random);
+            sm_connection.passkey_index++;
+        } else {
+            LOG_ERROR("confirm_check error, pairing failed");
+            sm_send_pairing_failed(connect_handle, SM_ERROR_CONFIRM_VALUE_FAILED);
+        }
+    }
 }
 
 // step 5
@@ -614,8 +651,6 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
     (void)length;
     hci_connection_t *hci_connection = hci_find_connection_by_handle(connect_handle);
     sm_connection_t& sm_connection = hci_connection->sm_connection;
-    uint8_t ra[16] = {0};
-    uint8_t rb[16] = {0};
     uint8_t calc_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
     uint8_t local_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
     uint8_t local_addr[HCI_LENGTH_ADDR] = {0};
@@ -637,14 +672,14 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
 
     __sm_f5(sm_connection.local_dhkey, sm_connection.remote_random, sm_connection.local_random, hci_connection->peer_addr_type, hci_connection->peer_addr,
             local_addr_type, local_addr, mackey, ltk);
-    __sm_f6(mackey, sm_connection.remote_random, sm_connection.local_random, rb, remote_iocap,
+    __sm_f6(mackey, sm_connection.remote_random, sm_connection.local_random, sm_connection.local_r, remote_iocap,
             hci_connection->peer_addr_type, hci_connection->peer_addr, local_addr_type, local_addr, calc_dhkey_check);
 
     if (memcmp(data, calc_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
         LOG_ERROR("dhkey_check error, pairing failed");
         sm_send_pairing_failed(connect_handle, SM_ERROR_DHKEY_CHECK_FAILED);
     } else {
-        __sm_f6(mackey, sm_connection.local_random, sm_connection.remote_random, ra, local_iocap, local_addr_type, local_addr,
+        __sm_f6(mackey, sm_connection.local_random, sm_connection.remote_random, sm_connection.remote_r, local_iocap, local_addr_type, local_addr,
                 hci_connection->peer_addr_type, hci_connection->peer_addr, local_dhkey_check);
         sm_send_pairing_dhkey_check(connect_handle, local_dhkey_check);
 
