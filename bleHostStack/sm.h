@@ -59,9 +59,17 @@
 #define SM_LENGTH_P256_PUBLIC_KEY                           64
 #define SM_LENGTH_LTK                                       16
 #define SM_LENGTH_ADDR                                      6
+#define SM_LENGTH_KEYPRESS_NOTIFICATION                     1
 
 #define SM_DEVICE_DB_FILE_NAME                              "device_db.dat"
 
+typedef enum {
+    KEYPRESS_ENTRY_STARTED,
+    KEYPRESS_DIGIT_ENTERED,
+    KEYPRESS_DIGIT_ERASED,
+    KEYPRESS_CLEARED,
+    KEYPRESS_ENTRY_COMPLETED
+} sm_keypress_notification_t;
 
 typedef enum {
     JUST_WORKS,
@@ -128,6 +136,7 @@ void sm_send_central_identification(uint16_t connect_handle, uint8_t *data);
 void sm_send_identity_information(uint16_t connect_handle, uint8_t *data);
 void sm_send_identity_address_information(uint16_t connect_handle, uint8_t *data);
 void sm_send_signing_information(uint16_t connect_handle, uint8_t *data);
+void sm_send_keypress_notification(uint16_t connect_handle, sm_keypress_notification_t notification);
 void sm_send(uint16_t connect_handle, uint8_t *data, uint32_t length);
 
 #endif // SM_H

@@ -20,6 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     read_status = STATUS_PACKET_TYPE;
     read_buffer_length = 0;
+    is_processing = 0;
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
         ui->comboBoxNum->addItem(info.portName());
     }
@@ -96,6 +97,10 @@ void MainWindow::serialPort_readyRead()
         return;
     }
 
+    if (is_processing) { // if is processing one event or acl, just write data to ringbuffer
+        return;
+    }
+
     while (!ringbuffer_is_empty()) {
         switch (read_status) {
         case STATUS_PACKET_TYPE:
@@ -139,10 +144,12 @@ void MainWindow::serialPort_readyRead()
         case STATUS_DATA_EVT:
             ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_EVT_HEADER, read_buffer[2]);
             if (ret) {
+                is_processing = 1;
                 read_buffer_length += read_buffer[2];
                 btsnoop_wirte(read_buffer, read_buffer_length, BTSNOOP_PACKET_FLAG_EVT_RECV);
                 hci_recv_evt(read_buffer + HCI_LENGTH_PACKET_TYPE, read_buffer_length - HCI_LENGTH_PACKET_TYPE);
                 read_status = STATUS_PACKET_TYPE;
+                is_processing = 0;
             } else {
                 LOG_DEBUG("ringbuffer_read invalid, no enough data, status:STATUS_DATA_EVT");
                 return;
@@ -152,10 +159,12 @@ void MainWindow::serialPort_readyRead()
             acl_length = read_buffer[3] | (read_buffer[4] << 8);
             ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER, acl_length);
             if (ret) {
+                is_processing = 1;
                 read_buffer_length += acl_length;
                 btsnoop_wirte(read_buffer, read_buffer_length, BTSNOOP_PACKET_FLAG_ACL_SCO_RECV);
                 hci_recv_acl(read_buffer + HCI_LENGTH_PACKET_TYPE, read_buffer_length - HCI_LENGTH_PACKET_TYPE);
                 read_status = STATUS_PACKET_TYPE;
+                is_processing = 0;
             } else {
                 LOG_DEBUG("ringbuffer_read invalid, no enough data, status:STATUS_DATA_ACL");
                 return;
