@@ -1,6 +1,6 @@
 #include "serial.h"
 
-QSerialPort serialPort;
+static QSerialPort serialPort;
 
 QSerialPort* serial_get_instance() {
     return &serialPort;

@@ -469,6 +469,7 @@ static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length) {
 }
 
 static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
+    (void)length;
     uint8_t sub_event = data[0];
     uint16_t connect_handle = 0x0000;
 
@@ -598,7 +599,7 @@ void hci_recv_acl(uint8_t *data, uint32_t length) {
     uint16_t segment_length_current = 0;
 
     if (HCI_ACL_SEGMENT_PACKET_FIRST == pb_flag) {
-        conn->segment_length_total = data[4] | (data[5] << 8); // TODO: based on connect_handle
+        conn->segment_length_total = data[4] | (data[5] << 8);
         segment_length_current = length - HCI_LENGTH_ACL_HEADER;
         conn->segment_length_received = length - HCI_LENGTH_ACL_HEADER;
 

@@ -1,12 +1,12 @@
-#include "ringbuffer.h"
 #include <memory>
+#include "ringbuffer.h"
 
 static uint32_t __ringbuffer_used();
 static uint32_t __ringbuffer_left();
 
-uint8_t ringbuffer_buf[RINGBUFFER_SIZE] = { 0x00 };
-uint32_t ringbuffer_read_pos = 0;
-uint32_t ringbuffer_write_pos = 0;
+static uint8_t ringbuffer_buf[RINGBUFFER_SIZE] = { 0x00 };
+static uint32_t ringbuffer_read_pos = 0;
+static uint32_t ringbuffer_write_pos = 0;
 
 void ringbuffer_reset() {
     ringbuffer_read_pos = 0;

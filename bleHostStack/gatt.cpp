@@ -322,7 +322,7 @@ void gatt_recv_read_blob_req(uint16_t connect_handle, uint16_t att_handle, uint1
 
 RET:
     if (!found) {
-        if (!error_code) { // no match handle
+        if (!error_code) {
             error_code = ATT_ERROR_INVALID_HANDLE;
         }
         gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_BLOB_REQ, att_handle, error_code);
@@ -378,7 +378,7 @@ void gatt_recv_read_req(uint16_t connect_handle, uint16_t att_handle) {
 
 RET:
     if (!found) {
-        if (!error_code) { // no match handle
+        if (!error_code) {
             error_code = ATT_ERROR_INVALID_HANDLE;
         }
         gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_REQ, att_handle, error_code);
@@ -405,7 +405,7 @@ void gatt_recv_find_information_req(uint16_t connect_handle, uint16_t att_handle
     buffer = (uint8_t *)malloc(GATT_LENGTH_PACKET_HEADER + att_mtu);
     buffer[offset] = ATT_OPERATE_FIND_INFO_RESP;
     offset++;
-    buffer[offset] = ATT_UUID_TYPE_BITS_16; // TODO: 128 bits uuid
+    buffer[offset] = ATT_UUID_TYPE_BITS_16;
     offset++;
 
     for (uint8_t index_service = 0; index_service < service_count; index_service++) {
@@ -437,7 +437,7 @@ void gatt_recv_find_information_req(uint16_t connect_handle, uint16_t att_handle
 
 RET:
     if (!found) {
-        if (!error_code) { // no match handle
+        if (!error_code) {
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
         gatt_send_error_resp(connect_handle, ATT_OPERATE_FIND_INFO_REQ, att_handle_start, error_code);
@@ -497,7 +497,7 @@ void gatt_recv_find_by_type_value_req(uint16_t connect_handle, uint16_t att_hand
 
 RET:
     if (!found) {
-        if (!error_code) { // no match handle
+        if (!error_code) {
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
         gatt_send_error_resp(connect_handle, ATT_OPERATE_FIND_BY_TYPE_VALUE_REQ, att_handle_start, error_code);
@@ -539,7 +539,7 @@ void gatt_recv_read_by_type_req(uint16_t connect_handle, uint16_t att_handle_sta
 
             if (item->type == att_type) {
                 if (found == 0) { // the first item matched
-                    pair_value_length = (uint8_t)(item->value_length); // TODO: handle large than 1Byte?
+                    pair_value_length = (uint8_t)(item->value_length);
                     buffer[offset] = 2 + pair_value_length;
                     offset++;
                 } else { // subsequent items not matched
@@ -564,7 +564,7 @@ void gatt_recv_read_by_type_req(uint16_t connect_handle, uint16_t att_handle_sta
 
 RET:
     if (!found) {
-        if (!error_code) { // no match handle
+        if (!error_code) {
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
         gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_BY_TYPE_REQ, att_handle_start, error_code);
@@ -584,7 +584,7 @@ void gatt_recv_read_by_group_type_req(uint16_t connect_handle, uint16_t att_hand
     uint8_t *buffer = nullptr;
     uint16_t att_mtu = att_get_mtu(connect_handle);
     uint32_t offset = GATT_LENGTH_PACKET_HEADER;
-    uint8_t pair_value_length = 6; // start_handle, end_handle, uuid, TODO: 128 bits uuid
+    uint8_t pair_value_length = 6; // start_handle, end_handle, uuid
     uint8_t error_code = 0;
     uint8_t found = 0;
 
@@ -619,7 +619,7 @@ void gatt_recv_read_by_group_type_req(uint16_t connect_handle, uint16_t att_hand
 
 RET:
     if (!found) {
-        if (!error_code) { // no match handle
+        if (!error_code) {
             error_code = ATT_ERROR_ATTRIBUTE_NOT_FOUND;
         }
         gatt_send_error_resp(connect_handle, ATT_OPERATE_READ_BY_GROUP_TYPE_REQ, att_handle_start, error_code);
@@ -719,6 +719,7 @@ void gatt_recv_write_cmd(uint16_t connect_handle, uint16_t att_handle, uint8_t *
 }
 
 void gatt_recv_handle_value_cfm(uint16_t connect_handle) {
+    (void)connect_handle;
     // set flag to enable send next indication
 }
 

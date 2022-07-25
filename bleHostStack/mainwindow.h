@@ -36,6 +36,6 @@ private:
     read_status_t read_status;
     uint8_t read_buffer[READ_BUFFER_SIZE];
     uint32_t read_buffer_length;
-    uint8_t is_processing; // avoid slots function re-entrant
+    uint8_t is_processing;
 };
 #endif // MAINWINDOW_H

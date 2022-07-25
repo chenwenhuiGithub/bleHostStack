@@ -51,6 +51,7 @@
 #define SM_LENGTH_CSRK                                      16
 #define SM_LENGTH_P256_PUBLIC_KEY                           64
 #define SM_LENGTH_LTK                                       16
+#define SM_LENGTH_TK                                        16
 #define SM_LENGTH_ADDR                                      6
 #define SM_LENGTH_KEYPRESS_NOTIFICATION                     1
 
@@ -81,8 +82,8 @@ typedef struct {
     uint8_t local_dhkey[SM_LENGTH_DHKEY];
     uint8_t local_random[SM_LENGTH_PAIRING_RANDOM];
     uint8_t remote_random[SM_LENGTH_PAIRING_RANDOM];
-    uint8_t local_r[SM_LENGTH_PAIRING_RANDOM];
-    uint8_t remote_r[SM_LENGTH_PAIRING_RANDOM];
+    uint8_t local_r[SM_LENGTH_TK];
+    uint8_t remote_r[SM_LENGTH_TK];
     uint8_t local_ltk[SM_LENGTH_LTK];
     uint8_t remote_ltk[SM_LENGTH_LTK];
     uint8_t local_ediv[SM_LENGTH_EDIV];

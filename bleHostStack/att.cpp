@@ -98,20 +98,6 @@ static void __att_recv_read_by_type_req(uint16_t connect_handle, uint8_t *data, 
     uint16_t att_handle_end = data[2] | (data[3] << 8);
     uint16_t att_type = data[4] | (data[5] << 8);
 
-// TODO: support 16 Bytes uuid
-#if 0
-    if ((length - 4) == ATT_LENGTH_UUID16) {
-        memcpy_s(group_type.uuid, 2, data + 4, 2);
-        group_type.length = 2;
-    } else if ((length - 4) == ATT_LENGTH_UUID128) {
-        memcpy_s(group_type.uuid, 16, data + 4, 16);
-        group_type.length = 16;
-    } else {
-        qDebug("att_recv_read_by_group_type_req invalid, length:%u", length);
-        return;
-    }
-#endif
-
     gatt_recv_read_by_type_req(connect_handle, att_handle_start, att_handle_end, att_type);
 }
 
@@ -120,20 +106,6 @@ static void __att_recv_read_by_group_type_req(uint16_t connect_handle, uint8_t *
     uint16_t att_handle_start = data[0] | (data[1] << 8);
     uint16_t att_handle_end = data[2] | (data[3] << 8);
     uint16_t group_type = data[4] | (data[5] << 8);
-
-// TODO: support 16 Bytes uuid
-#if 0
-    if ((length - 4) == ATT_LENGTH_UUID16) {
-        memcpy_s(group_type.uuid, 2, data + 4, 2);
-        group_type.length = 2;
-    } else if ((length - 4) == ATT_LENGTH_UUID128) {
-        memcpy_s(group_type.uuid, 16, data + 4, 16);
-        group_type.length = 16;
-    } else {
-        qDebug("att_recv_read_by_group_type_req invalid, length:%u", length);
-        return;
-    }
-#endif
 
     gatt_recv_read_by_group_type_req(connect_handle, att_handle_start, att_handle_end, group_type);
 }

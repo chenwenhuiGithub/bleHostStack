@@ -1,10 +1,11 @@
-#include "btsnoop.h"
 #include <QFile>
 #include <QDateTime>
+#include "btsnoop.h"
 #include "hci.h"
 
 #define BTSNOOP_BASE_TIMESTAMP                  0x00dcddb30f2f8000ULL  // 1970-01-01 00:00:00
 
+#pragma pack(1)
 typedef struct {
     uint8_t length_original[4];
     uint8_t length_included[4];
@@ -12,6 +13,7 @@ typedef struct {
     uint8_t cumulative_drops[4];
     uint8_t timestamp_μs[8];
 } btsnoop_packet_header_t;
+#pragma pack()
 
 static QFile file_btsnoop;
 

@@ -97,7 +97,7 @@ void MainWindow::serialPort_readyRead()
         return;
     }
 
-    if (is_processing) { // if is processing one event or acl, just write data to ringbuffer
+    if (is_processing) { // avoid function re-entrant, just write data to ringbuffer if is processing event or acl
         return;
     }
 

@@ -256,10 +256,10 @@ static void __sm_f6(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t* r, uint8_t* i
     __mem_swap_copy(m + 32, r, 16);
     __mem_swap_copy(m + 48, iocap, 3);
     m[51] = at1;
-    memcpy_s(m + 52, 6, a1, 6); // no need?
+    memcpy_s(m + 52, 6, a1, 6);
     __mem_swap_copy(m + 52, a1, 6);
     m[58] = at2;
-    memcpy_s(m + 59, 6, a2, 6); // no need?
+    memcpy_s(m + 59, 6, a2, 6);
     __mem_swap_copy(m + 59, a2, 6);
 
     __mem_swap_copy(ws, w, 16);
@@ -441,7 +441,7 @@ RET:
     if (result) {
         file.seek(offset);
         memset(&read_entry, 0, sizeof(sm_device_db_entry_t));
-        file.write((char*)&read_entry, sizeof(sm_device_db_entry_t)); // TODO: delete memory from file
+        file.write((char*)&read_entry, sizeof(sm_device_db_entry_t));
     }
     file.close();
 
@@ -564,10 +564,8 @@ static void __sm_recv_pairing_req(uint16_t connect_handle, uint8_t *data, uint32
 static void __sm_recv_pairing_public_key(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     (void)length;
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
-    uint8_t *local_pairing_public_key = hci_get_local_p256_public_key();
 
     memcpy_s(sm_connection.remote_pairing_public_key, HCI_LENGTH_P256_PUBLIC_KEY, data, HCI_LENGTH_P256_PUBLIC_KEY);
-
     connect_handle_last_send_le_generate_dhkey = connect_handle;
     hci_send_cmd_le_generate_dhkey(sm_connection.remote_pairing_public_key);
 }
@@ -585,8 +583,8 @@ void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
 
     __sm_get_pairing_method(connect_handle);
     if ((JUST_WORKS == sm_connection.pairing_method) || (NUMERIC_COMPARISON == sm_connection.pairing_method)) {
-        memset(sm_connection.local_r, 0, SM_LENGTH_PAIRING_RANDOM); // for just_work or numeric_comparison, set ra and rb to 0
-        memset(sm_connection.remote_r, 0, SM_LENGTH_PAIRING_RANDOM);
+        memset(sm_connection.local_r, 0, SM_LENGTH_TK); // for just_work or numeric_comparison, set ra and rb to 0
+        memset(sm_connection.remote_r, 0, SM_LENGTH_TK);
 
         __sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
         __sm_f4(local_pairing_public_key, sm_connection.remote_pairing_public_key, sm_connection.local_random, 0, local_pairing_confirm);
@@ -595,22 +593,22 @@ void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
         __sm_generate_random((uint8_t *)&sm_connection.passkey_num, sizeof(sm_connection.passkey_num));
         sm_connection.passkey_num %= 1000000;
         sm_connection.passkey_index = 0;
-        memset(sm_connection.local_r, 0, SM_LENGTH_PAIRING_RANDOM); // for passkey, inject ra and rb
+        memset(sm_connection.local_r, 0, SM_LENGTH_TK); // for passkey, inject ra and rb
         sm_connection.local_r[0] = (uint8_t)sm_connection.passkey_num;
         sm_connection.local_r[1] = (uint8_t)(sm_connection.passkey_num >> 8);
         sm_connection.local_r[2] = (uint8_t)(sm_connection.passkey_num >> 16);
-        memcpy_s(sm_connection.remote_r, SM_LENGTH_PAIRING_RANDOM, sm_connection.local_r, SM_LENGTH_PAIRING_RANDOM);
+        memcpy_s(sm_connection.remote_r, SM_LENGTH_TK, sm_connection.local_r, SM_LENGTH_TK);
         LOG_INFO("passkey:%06u, please input on peer device", sm_connection.passkey_num);
     } else if (PASSKEY_I_DISPLAY_R_INPUT == sm_connection.pairing_method) {
         sm_send_keypress_notification(connect_handle, KEYPRESS_ENTRY_STARTED);
         sm_connection.passkey_num = QInputDialog::getInt(nullptr, "PASSKEY_R_INPUT", "please input peer device num", 0, 0, 999999, 1, &pressed_ok);
         if (pressed_ok) {
             sm_connection.passkey_index = 0;
-            memset(sm_connection.local_r, 0, SM_LENGTH_PAIRING_RANDOM); // for passkey, inject ra and rb
+            memset(sm_connection.local_r, 0, SM_LENGTH_TK); // for passkey, inject ra and rb
             sm_connection.local_r[0] = (uint8_t)sm_connection.passkey_num;
             sm_connection.local_r[1] = (uint8_t)(sm_connection.passkey_num >> 8);
             sm_connection.local_r[2] = (uint8_t)(sm_connection.passkey_num >> 16);
-            memcpy_s(sm_connection.remote_r, SM_LENGTH_PAIRING_RANDOM, sm_connection.local_r, SM_LENGTH_PAIRING_RANDOM);
+            memcpy_s(sm_connection.remote_r, SM_LENGTH_TK, sm_connection.local_r, SM_LENGTH_TK);
             sm_send_keypress_notification(connect_handle, KEYPRESS_ENTRY_COMPLETED); // trigger initor start to send pairing confirm(20 times)
         } else {
             sm_send_pairing_failed(connect_handle, SM_ERROR_PASSKEY_ENTRY_FAILED);
@@ -735,6 +733,8 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
 
 // step 6
 void sm_recv_evt_le_ltk_req(uint16_t connect_handle, uint8_t *random_number, uint8_t *encrypted_diversifier) {
+    (void)random_number;
+    (void)encrypted_diversifier;
     hci_connection_t *hci_connection = hci_find_connection_by_handle(connect_handle);
     sm_device_db_entry_t entry = {0};
 
