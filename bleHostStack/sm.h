@@ -35,13 +35,6 @@
 #define SM_INITIATOR_KEY_DISTRIBUTION                       SM_KEY_DISTRIBUTION_ID | SM_KEY_DISTRIBUTION_SIGN
 #define SM_RESPONDER_KEY_DISTRIBUTION                       SM_KEY_DISTRIBUTION_ID | SM_KEY_DISTRIBUTION_SIGN
 
-#define SM_ENCRYPED_OFF                                     0x00
-#define SM_ENCRYPED_ON                                      0x01
-#define SM_AUTHENTICATED_OFF                                0x00
-#define SM_AUTHENTICATED_ON                                 0x01
-#define SM_AUTHORIZATED_OFF                                 0x00
-#define SM_AUTHORIZATED_ON                                  0x01
-
 #define SM_LENGTH_HEADER                                    1
 #define SM_LENGTH_PAIRING_REQ                               6
 #define SM_LENGTH_PAIRING_RESP                              6
@@ -111,7 +104,7 @@ typedef struct {
     uint8_t is_secure_connection;
     uint8_t is_encrypted;
     uint8_t encryption_key_size; // TODO: add permission check
-    uint8_t is_authenticated;    // TODO: add permission check
+    uint8_t is_authenticated;
     uint8_t is_authorizated;     // TODO: add permission check
     uint8_t is_received_key_distribution_ltk;
     uint8_t is_received_key_distribution_id;

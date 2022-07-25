@@ -86,7 +86,7 @@ att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B
 0x0002          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x02(GATT_CHARACTERISTIC_PROPERITY_READ)          0x01(GATT_PERMISSION_READ)
                                                                 0x0003(handle)
                                                                 0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)
-0x0003          0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)            [32B]"ble_demo"                                   0x01(GATT_PERMISSION_READ)
+0x0003          0x2a00(GATT_OBJECT_TYPE_DEVICE_NAME)            [32B]"ble_demo"                                   0x02(GATT_PERMISSION_READ_ENCRYPT)
 
 // GATT service
 0x0011          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x1801(GATT_SERVICE_GATT)                         0x01(GATT_PERMISSION_READ)
@@ -100,8 +100,8 @@ att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B
 0x0102          0x2803(GATT_DECLARATION_CHARACTERISTIC)         0x12(GATT_CHARACTERISTIC_PROPERITY_READ/NOTIFY)   0x01(GATT_PERMISSION_READ)
                                                                 0x0103(handle)
                                                                 0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)
-0x0103          0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)          [1B]0x62(98%)                                     0x02(GATT_PERMISSION_READ_ENCRYPT)
-0x0104          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x21(GATT_PERMISSION_READ|WRITE_ENCRYPT)
+0x0103          0x2a19(GATT_OBJECT_TYPE_BATTERY_LEVEL)          [1B]0x62(98%)                                     0x04(GATT_PERMISSION_READ_AUTHENTICATE)
+0x0104          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x41(GATT_PERMISSION_READ|WRITE_AUTHENTICATE)
 
 // TEST service
 0x1001          0x2800(GATT_DECLARATION_PRIMARY_SERVICE)        0x18ff(GATT_SERVICE_TEST)                         0x01(GATT_PERMISSION_READ)
@@ -151,7 +151,7 @@ uint8_t test_ccc[] = {0x00, 0x00};
 att_item_t items_gacc[] = {
     {0x0001, GATT_DECLARATION_PRIMARY_SERVICE, gacc_uuid, sizeof(gacc_uuid), GATT_PERMISSION_READ},
     {0x0002, GATT_DECLARATION_CHARACTERISTIC, gacc_characteristic, sizeof(gacc_characteristic), GATT_PERMISSION_READ},
-    {0x0003, GATT_OBJECT_TYPE_DEVICE_NAME, gacc_device_name, sizeof(gacc_device_name), GATT_PERMISSION_READ}
+    {0x0003, GATT_OBJECT_TYPE_DEVICE_NAME, gacc_device_name, sizeof(gacc_device_name), GATT_PERMISSION_READ_ENCRYPT}
 };
 
 att_item_t items_gatt[] = {
@@ -163,8 +163,8 @@ att_item_t items_gatt[] = {
 att_item_t items_battery[] = {
     {0x0101, GATT_DECLARATION_PRIMARY_SERVICE, battery_uuid, sizeof(battery_uuid), GATT_PERMISSION_READ},
     {0x0102, GATT_DECLARATION_CHARACTERISTIC, battery_characteristic, sizeof(battery_characteristic), GATT_PERMISSION_READ},
-    {0x0103, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ_ENCRYPT},
-    {0x0104, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, battery_ccc, sizeof(battery_ccc), GATT_PERMISSION_READ | GATT_PERMISSION_WRITE_ENCRYPT}
+    {0x0103, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ_AUTHENTICATE},
+    {0x0104, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, battery_ccc, sizeof(battery_ccc), GATT_PERMISSION_READ | GATT_PERMISSION_WRITE_AUTHENTICATE}
 };
 
 att_item_t items_test[] = {
@@ -221,21 +221,21 @@ static uint8_t __gatt_check_read_permission(uint16_t connect_handle, uint8_t att
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
     if (att_permission & GATT_PERMISSION_READ_AUTHORIZATE) {
-        if (sm_connection.is_authorizated != SM_AUTHORIZATED_ON) {
+        if (!sm_connection.is_authorizated) {
             LOG_ERROR("check read permission failed, no authorization, connect_handle:0x%04x", connect_handle);
             return ATT_ERROR_INSUFFICIENT_AUTHORIZATION;
         }
     }
 
     if (att_permission & GATT_PERMISSION_READ_AUTHENTICATE) {
-        if (sm_connection.is_authenticated != SM_AUTHENTICATED_ON) {
+        if (!sm_connection.is_authenticated) {
             LOG_ERROR("check read permission failed, no authentication, connect_handle:0x%04x", connect_handle);
             return ATT_ERROR_INSUFFICIENT_AUTHENTICATION;
         }
     }
 
     if (att_permission & GATT_PERMISSION_READ_ENCRYPT) {
-        if (sm_connection.is_encrypted != SM_ENCRYPED_ON) {
+        if (!sm_connection.is_encrypted) {
             LOG_ERROR("check read permission failed, no encryption, connect_handle:0x%04x", connect_handle);
             return ATT_ERROR_INSUFFICIENT_ENCRYPTION;
         }
@@ -248,21 +248,21 @@ static uint8_t __gatt_check_write_permission(uint16_t connect_handle, uint8_t at
     sm_connection_t& sm_connection = hci_find_connection_by_handle(connect_handle)->sm_connection;
 
     if (att_permission & GATT_PERMISSION_WRITE_AUTHORIZATE) {
-        if (sm_connection.is_authorizated != SM_AUTHORIZATED_ON) {
+        if (!sm_connection.is_authorizated) {
             LOG_ERROR("check write permission failed, no authorization, connect_handle:0x%04x", connect_handle);
             return ATT_ERROR_INSUFFICIENT_AUTHORIZATION;
         }
     }
 
     if (att_permission & GATT_PERMISSION_WRITE_AUTHENTICATE) {
-        if (sm_connection.is_authenticated != SM_AUTHENTICATED_ON) {
+        if (!sm_connection.is_authenticated) {
             LOG_ERROR("check write permission failed, no authentication, connect_handle:0x%04x", connect_handle);
             return ATT_ERROR_INSUFFICIENT_AUTHENTICATION;
         }
     }
 
     if (att_permission & GATT_PERMISSION_WRITE_ENCRYPT) {
-        if (sm_connection.is_encrypted != SM_ENCRYPED_ON) {
+        if (!sm_connection.is_encrypted) {
             LOG_ERROR("check write permission failed, no encryption, connect_handle:0x%04x", connect_handle);
             return ATT_ERROR_INSUFFICIENT_ENCRYPTION;
         }
