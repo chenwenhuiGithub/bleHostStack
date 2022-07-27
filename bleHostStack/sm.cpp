@@ -40,7 +40,7 @@
 #define SM_ERROR_TRANSPORT_DERIVATION_NOT_ALLOWED           0x0e
 #define SM_ERROR_KEY_REJECTED                               0x0f
 
-#define SM_LENGTH_PACKET_HEADER                             (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
+#define SM_LENGTH_PACKET_HEADER                             (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + L2CAP_LENGTH_HEADER)
 
 
 #pragma pack(1)
@@ -65,7 +65,6 @@ typedef struct {
 } sm_device_db_entry_t;
 #pragma pack()
 
-static uint16_t connect_handle_last_send_le_generate_dhkey = 0;
 
 static uint32_t __get_be32(uint8_t* data);
 static void __mem_swap_copy(uint8_t* dst, uint8_t* src, uint32_t length);
@@ -73,15 +72,12 @@ static void __mem_swap_self(uint8_t* data, uint32_t length);
 static void __sm_encrypt(uint8_t* k, uint8_t* plain_data, uint8_t* enc_data);
 static void __sm_aes_cmac(uint8_t* k, uint8_t* input, uint32_t length, uint8_t* output);
 
-static void __sm_ah(uint8_t* k, uint8_t* r, uint8_t* out_hash);
 static void __sm_c1(uint8_t* k, uint8_t* r, uint8_t* preq, uint8_t *pres, uint8_t iat, uint8_t *ia, uint8_t rat, uint8_t *ra, uint8_t *out_confirm);
 static void __sm_s1(uint8_t* k, uint8_t* r1, uint8_t* r2, uint8_t* out_stk);
 static void __sm_f4(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t z, uint8_t* out_confirm);
 static void __sm_f5(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t at1, uint8_t* a1, uint8_t at2, uint8_t* a2, uint8_t* out_mackey, uint8_t* out_ltk);
 static void __sm_f6(uint8_t* w, uint8_t* n1, uint8_t* n2, uint8_t* r, uint8_t* iocap, uint8_t at1, uint8_t* a1, uint8_t at2, uint8_t* a2, uint8_t* out_dhkey_check);
 static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* out_passkey);
-
-static void __sm_generate_random(uint8_t* data, uint32_t length);
 
 static bool __sm_device_db_entry_add(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry);
 static bool __sm_device_db_entry_get(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry);
@@ -100,6 +96,9 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
 static void __sm_recv_pairing_confirm(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __sm_save_device_info(uint16_t connect_handle);
 static void __sm_get_pairing_method(uint16_t connect_handle);
+
+
+static uint16_t connect_handle_last_send_le_generate_dhkey = 0;
 
 
 static uint32_t __get_be32(uint8_t* data) {
@@ -150,16 +149,6 @@ static void __sm_aes_cmac(uint8_t* k, uint8_t* input, uint32_t length, uint8_t* 
     tc_cmac_setup(&state, k, &sched);
     tc_cmac_update(&state, input, length);
     tc_cmac_final(output, &state);
-}
-
-// k:16B, r:3B, out_hash:3B
-static void __sm_ah(uint8_t* k, uint8_t* r, uint8_t* out_hash) {
-    uint8_t tmp[16] = {0};
-    uint8_t output[16] = {0};
-
-    memcpy_s(tmp, 3, r, 3);
-    __sm_encrypt(k, tmp, output);
-    memcpy_s(out_hash, 3, output, 3);
 }
 
 // k:16B, r:16B, preq:7B, pres:7B, ia:6B, ra:6B, out_confirm:16B
@@ -283,18 +272,6 @@ static void __sm_g2(uint8_t* u, uint8_t* v, uint8_t* x, uint8_t* y, uint32_t* ou
     *out_passkey = __get_be32(xs + 12) % 1000000;
 }
 
-static void __sm_generate_random(uint8_t* data, uint32_t length) {
-    uint32_t index = 0;
-
-    for (index = 0; index < length / 2; index++) {
-        *(uint16_t *)(data + index * 2) = rand();
-    }
-
-    if (length % 2) {
-        data[length - 1] = rand();
-    }
-}
-
 static bool __sm_device_db_entry_add(uint8_t remote_addr_type, uint8_t *remote_addr, sm_device_db_entry_t *entry) {
     bool result = true;
     QFile file(SM_DEVICE_DB_FILE_NAME);
@@ -311,9 +288,9 @@ static bool __sm_device_db_entry_add(uint8_t remote_addr_type, uint8_t *remote_a
                 goto RET;
         }
 
-        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
-            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
-                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+        if (HCI_ADDR_TYPE_RANDOM == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // [47:46] = 0b01
+                sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
                 if (!memcmp(calc_hash, remote_addr, 3)) {
                     result = false;
                     goto RET;
@@ -349,9 +326,9 @@ static bool __sm_device_db_entry_get(uint8_t remote_addr_type, uint8_t *remote_a
             goto RET;
         }
 
-        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
-            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
-                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+        if (HCI_ADDR_TYPE_RANDOM == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) {
+                sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
                 if (!memcmp(calc_hash, remote_addr, 3)) {
                     result = true;
                     goto RET;
@@ -385,9 +362,9 @@ static bool __sm_device_db_entry_update(uint8_t remote_addr_type, uint8_t *remot
             goto RET;
         }
 
-        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
-            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
-                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+        if (HCI_ADDR_TYPE_RANDOM == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) {
+                sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
                 if (!memcmp(calc_hash, remote_addr, 3)) {
                     result = true;
                     goto RET;
@@ -424,9 +401,9 @@ static bool __sm_device_db_entry_delete(uint8_t remote_addr_type, uint8_t *remot
             goto RET;
         }
 
-        if (HCI_ADDR_TYPE_RANDOM_DEVICE == remote_addr_type) {
-            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) { // address[47:46]
-                __sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
+        if (HCI_ADDR_TYPE_RANDOM == remote_addr_type) {
+            if (HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE == (remote_addr[5] >> 6)) {
+                sm_ah(read_entry.remote_irk, remote_addr + 3, calc_hash);
                 if (!memcmp(calc_hash, remote_addr, 3)) {
                     result = true;
                     goto RET;
@@ -447,6 +424,29 @@ RET:
 
     return result;
 }
+
+// k:16B, r:3B, out_hash:3B
+void sm_ah(uint8_t* k, uint8_t* r, uint8_t* out_hash) {
+    uint8_t tmp[16] = {0};
+    uint8_t output[16] = {0};
+
+    memcpy_s(tmp, 3, r, 3);
+    __sm_encrypt(k, tmp, output);
+    memcpy_s(out_hash, 3, output, 3);
+}
+
+void sm_generate_random(uint8_t* data, uint32_t length) {
+    uint32_t index = 0;
+
+    for (index = 0; index < length / 2; index++) {
+        *(uint16_t *)(data + index * 2) = rand();
+    }
+
+    if (length % 2) {
+        data[length - 1] = rand();
+    }
+}
+
 
 static void __sm_get_pairing_method(uint16_t connect_handle) {
     sm_pairing_method_t legacy_pairing_method_table[5][5] = {
@@ -586,11 +586,11 @@ void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey) {
         memset(sm_connection.local_r, 0, SM_LENGTH_TK); // for just_work or numeric_comparison, set ra and rb to 0
         memset(sm_connection.remote_r, 0, SM_LENGTH_TK);
 
-        __sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
+        sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
         __sm_f4(local_pairing_public_key, sm_connection.remote_pairing_public_key, sm_connection.local_random, 0, local_pairing_confirm);
         sm_send_pairing_confirm(connect_handle, local_pairing_confirm);
     } else if (PASSKEY_I_INPUT_R_DISPLAY == sm_connection.pairing_method) {
-        __sm_generate_random((uint8_t *)&sm_connection.passkey_num, sizeof(sm_connection.passkey_num));
+        sm_generate_random((uint8_t *)&sm_connection.passkey_num, sizeof(sm_connection.passkey_num));
         sm_connection.passkey_num %= 1000000;
         sm_connection.passkey_index = 0;
         memset(sm_connection.local_r, 0, SM_LENGTH_TK); // for passkey, inject ra and rb
@@ -627,7 +627,7 @@ static void __sm_recv_pairing_confirm(uint16_t connect_handle, uint8_t *data, ui
     uint8_t local_pairing_confirm[SM_LENGTH_PAIRING_CONFIRM] = {0};
 
     memcpy_s(sm_connection.remote_pairing_confirm, SM_LENGTH_PAIRING_CONFIRM, data, SM_LENGTH_PAIRING_CONFIRM);
-    __sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
+    sm_generate_random(sm_connection.local_random, SM_LENGTH_PAIRING_RANDOM);
     if ((sm_connection.passkey_num >> sm_connection.passkey_index) & 0x01) {
         sm_connection.passkey_r = 0x81; // why add 0x80?
     } else {
@@ -677,8 +677,8 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
     sm_connection_t& sm_connection = hci_connection->sm_connection;
     uint8_t calc_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
     uint8_t local_dhkey_check[SM_LENGTH_DHKEY_CHECK] = {0};
-    uint8_t local_addr[HCI_LENGTH_ADDR] = {0};
-    uint8_t local_addr_type = 0;
+    hci_addr_type_t local_addr_type = HCI_ADDR_TYPE_RANDOM;
+    uint8_t *local_addr_random = hci_get_local_addr_random();
     uint8_t ltk[SM_LENGTH_LTK] = {0};
     uint8_t mackey[SM_LENGTH_MACKEY] = {0};
     uint8_t local_iocap[SM_LENGTH_IOCAP] = {0};
@@ -692,18 +692,16 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
     remote_iocap[1] = sm_connection.pairing_req[2];
     remote_iocap[2] = sm_connection.pairing_req[3];
 
-    hci_get_local_addr_info(local_addr, &local_addr_type);
-
     __sm_f5(sm_connection.local_dhkey, sm_connection.remote_random, sm_connection.local_random, hci_connection->peer_addr_type, hci_connection->peer_addr,
-            local_addr_type, local_addr, mackey, ltk);
+            (uint8_t)local_addr_type, local_addr_random, mackey, ltk);
     __sm_f6(mackey, sm_connection.remote_random, sm_connection.local_random, sm_connection.local_r, remote_iocap,
-            hci_connection->peer_addr_type, hci_connection->peer_addr, local_addr_type, local_addr, calc_dhkey_check);
+            hci_connection->peer_addr_type, hci_connection->peer_addr, (uint8_t)local_addr_type, local_addr_random, calc_dhkey_check);
 
     if (memcmp(data, calc_dhkey_check, SM_LENGTH_DHKEY_CHECK)) {
         LOG_ERROR("dhkey_check error, pairing failed");
         sm_send_pairing_failed(connect_handle, SM_ERROR_DHKEY_CHECK_FAILED);
     } else {
-        __sm_f6(mackey, sm_connection.local_random, sm_connection.remote_random, sm_connection.remote_r, local_iocap, local_addr_type, local_addr,
+        __sm_f6(mackey, sm_connection.local_random, sm_connection.remote_random, sm_connection.remote_r, local_iocap, (uint8_t)local_addr_type, local_addr_random,
                 hci_connection->peer_addr_type, hci_connection->peer_addr, local_dhkey_check);
         sm_send_pairing_dhkey_check(connect_handle, local_dhkey_check);
 
@@ -714,8 +712,7 @@ static void __sm_recv_pairing_dhkey_check(uint16_t connect_handle, uint8_t *data
         } else {
             // TODO: for legacy pairing
         }
-        __sm_generate_random(sm_connection.local_irk, SM_LENGTH_IRK);
-        __sm_generate_random(sm_connection.local_csrk, SM_LENGTH_CSRK);
+        sm_generate_random(sm_connection.local_csrk, SM_LENGTH_CSRK);
 
         entry.remote_addr_type = hci_connection->peer_addr_type;
         memcpy_s(entry.remote_addr, HCI_LENGTH_ADDR, hci_connection->peer_addr, HCI_LENGTH_ADDR);
@@ -753,7 +750,10 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
     hci_connection_t *hci_connection = hci_find_connection_by_handle(connect_handle);
     sm_connection_t& sm_connection = hci_connection->sm_connection;
     uint8_t central_id[SM_LENGTH_EDIV + SM_LENGTH_RAND] = {0};
+    hci_addr_type_t local_addr_type = HCI_ADDR_TYPE_PUBLIC;
+    uint8_t *local_addr_public = hci_get_local_addr_public();
     uint8_t addr_info[HCI_LENGTH_ADDR_TYPE + HCI_LENGTH_ADDR] = {0};
+    uint8_t *local_random_irk = hci_get_local_addr_random_irk();
     uint8_t responder_key_distribution = sm_connection.pairing_req[6];
     sm_device_db_entry_t entry = {0};
 
@@ -775,9 +775,10 @@ void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_e
             }
 
             if ((responder_key_distribution & SM_KEY_DISTRIBUTION_ID) != 0) {
-                sm_send_identity_information(connect_handle, sm_connection.local_irk);
+                sm_send_identity_information(connect_handle, local_random_irk);
 
-                hci_get_local_addr_info(addr_info + HCI_LENGTH_ADDR_TYPE, &addr_info[0]);
+                addr_info[0] = (uint8_t)local_addr_type;
+                memcpy_s(addr_info + HCI_LENGTH_ADDR_TYPE, HCI_LENGTH_ADDR, local_addr_public, HCI_LENGTH_ADDR);
                 sm_send_identity_address_information(connect_handle, addr_info);
             }
 

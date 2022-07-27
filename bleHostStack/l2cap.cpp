@@ -22,7 +22,7 @@ void l2cap_recv(uint16_t connect_handle, uint8_t *data, uint32_t length) {
 }
 
 void l2cap_send(uint16_t connect_handle, l2cap_cid_t cid, uint8_t *data, uint32_t length) {
-    uint32_t offset = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER;
+    uint32_t offset = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL;
 
     data[offset] = length;
     offset++;

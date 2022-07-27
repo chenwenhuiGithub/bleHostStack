@@ -17,27 +17,26 @@ typedef struct {
 
 static QFile file_btsnoop;
 
-void btsnoop_open() {
-    if (file_btsnoop.isOpen()) {
-        file_btsnoop.close();
-    }
 
+void btsnoop_open() {
     QDateTime curDateTime = QDateTime::currentDateTime();
     QString fileName = curDateTime.toString("yyyy_MM_dd_hh_mm_ss") + ".dat";
-    file_btsnoop.setFileName(fileName);
-    file_btsnoop.open(QIODevice::WriteOnly);
-
     uint8_t file_header[16] = {
-        'b', 't', 's', 'n', 'o', 'o', 'p', 0x00, // identification pattern:"btsnoop"
+        'b', 't', 's', 'n', 'o', 'o', 'p', 0x00, // identification pattern:btsnoop
         0x00, 0x00, 0x00, 0x01, // version number:1
         0x00, 0x00, 0x03, 0xea  // datalink type:1002(HCI UART - H4)
     };
+
+    if (file_btsnoop.isOpen()) {
+        file_btsnoop.close();
+    }
+    file_btsnoop.setFileName(fileName);
+    file_btsnoop.open(QIODevice::WriteOnly);
     file_btsnoop.write((char*)file_header, sizeof(file_header));
 }
 
 void btsnoop_wirte(uint8_t *data, uint32_t length, btsnoop_packet_flag_t flag) {
     uint64_t timestamp = QDateTime::currentMSecsSinceEpoch() * 1000ULL + BTSNOOP_BASE_TIMESTAMP;
-
     btsnoop_packet_header_t packet_header {
         .length_original = {(uint8_t)(length >> 24), (uint8_t)(length >> 16), (uint8_t)(length >> 8), (uint8_t)length},
         .length_included = {(uint8_t)(length >> 24), (uint8_t)(length >> 16), (uint8_t)(length >> 8), (uint8_t)length},
@@ -53,7 +52,7 @@ void btsnoop_wirte(uint8_t *data, uint32_t length, btsnoop_packet_flag_t flag) {
     }
 }
 
-void btsnoop_close(void) {
+void btsnoop_close() {
     if (file_btsnoop.isOpen()) {
         file_btsnoop.close();
     }

@@ -26,12 +26,10 @@
 #define GATT_SERVICE_HUMAN_INTERFACE_DEVICE                 0x1812
 #define GATT_SERVICE_TEST                                   0x18ff
 
-
 #define GATT_DECLARATION_PRIMARY_SERVICE                    0x2800
 #define GATT_DECLARATION_SECONDARY_SERVICE                  0x2801
 #define GATT_DECLARATION_INCLUDE                            0x2802
 #define GATT_DECLARATION_CHARACTERISTIC                     0x2803
-
 
 #define GATT_DESCRIPTOR_CHARACTERISTIC_EXTENDED_PROPERTY    0x2900
 #define GATT_DESCRIPTOR_CHARACTERISTIC_USER_DESCRIPTION     0x2901
@@ -40,14 +38,12 @@
 #define GATT_DESCRIPTOR_CHARACTERISTIC_PRESENTATION_FORMAT  0x2904
 #define GATT_DESCRIPTOR_CHARACTERISTIC_AGGREGATE_FORMAT     0x2905
 
-
 #define GATT_OBJECT_TYPE_DEVICE_NAME                        0x2a00
 #define GATT_OBJECT_TYPE_APPEARANCE                         0x2a01
 #define GATT_OBJECT_TYPE_SERVICE_CHANGED                    0x2a05
 #define GATT_OBJECT_TYPE_BATTERY_LEVEL                      0x2a19
 #define GATT_OBJECT_TYPE_TEST_RX                            0x2afe
 #define GATT_OBJECT_TYPE_TEST_TX                            0x2aff
-
 
 #define GATT_PERMISSION_READ                                0x01
 #define GATT_PERMISSION_READ_ENCRYPT                        0x02
@@ -58,7 +54,6 @@
 #define GATT_PERMISSION_WRITE_AUTHENTICATE                  0x40
 #define GATT_PERMISSION_WRITE_AUTHORIZATE                   0x80
 
-
 #define GATT_CHARACTERISTIC_PROPERITY_BROADCAST             0x01
 #define GATT_CHARACTERISTIC_PROPERITY_READ                  0x02
 #define GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP          0x04
@@ -68,15 +63,25 @@
 #define GATT_CHARACTERISTIC_PROPERITY_AUTHENTICATE          0x40
 #define GATT_CHARACTERISTIC_PROPERITY_EXTENDED_PROPERTY     0x80
 
-
 #define GATT_MAX_COUNT_SERVICE                              10
 #define GATT_MAX_SIZE_DEVICE_NAME                           32
 
-#define GATT_LENGTH_PACKET_HEADER                           (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
+#define GATT_LENGTH_PACKET_HEADER                           (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + L2CAP_LENGTH_HEADER)
+
 
 static void __gatt_print_hex(uint8_t *data, uint32_t length);
 static uint8_t __gatt_check_read_permission(uint16_t connect_handle, uint8_t att_permission);
 static uint8_t __gatt_check_write_permission(uint16_t connect_handle, uint8_t att_permission);
+
+
+typedef struct {
+    att_item_t *items;
+    uint16_t items_cnt;
+    uint16_t start_handle;
+    uint16_t end_handle;
+    uint16_t service_id;
+} gatt_service_t;
+
 
 /*
 att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B)                                 att_permission(1B)
@@ -116,58 +121,58 @@ att_handle(2B)  att_type(UUID, 2B/16B)                          att_value(0-512B
 0x1013          0x2902(GATT_CLIENT_CHARACTER_CONFIG)            [2B]0x0000                                        0x11(GATT_PERMISSION_READ|WRITE)
 */
 
-uint8_t gacc_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
-uint8_t gacc_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ,
-                                 0x03, 0x00,
-                                 (uint8_t)GATT_OBJECT_TYPE_DEVICE_NAME, GATT_OBJECT_TYPE_DEVICE_NAME >> 8};
-uint8_t gacc_device_name[GATT_MAX_SIZE_DEVICE_NAME] = {'b', 'l', 'e', '_', 'd', 'e', 'm', 'o'};
+static uint8_t gacc_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ACCESS, GATT_SERVICE_GENERIC_ACCESS >> 8};
+static uint8_t gacc_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ,
+                                        0x03, 0x00,
+                                        (uint8_t)GATT_OBJECT_TYPE_DEVICE_NAME, GATT_OBJECT_TYPE_DEVICE_NAME >> 8};
+static uint8_t gacc_device_name[GATT_MAX_SIZE_DEVICE_NAME] = {'b', 'l', 'e', '_', 'd', 'e', 'm', 'o'};
 
 
-uint8_t gatt_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ATTRIBUTE, GATT_SERVICE_GENERIC_ATTRIBUTE >> 8};
-uint8_t gatt_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_INDICATE,
-                                 0x13, 0x00,
-                                 (uint8_t)GATT_OBJECT_TYPE_SERVICE_CHANGED, GATT_OBJECT_TYPE_SERVICE_CHANGED >> 8};
-uint8_t gatt_service_changed[] = {0x00, 0x00, 0x00, 0x00};
+static uint8_t gatt_uuid[] = {(uint8_t)GATT_SERVICE_GENERIC_ATTRIBUTE, GATT_SERVICE_GENERIC_ATTRIBUTE >> 8};
+static uint8_t gatt_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_INDICATE,
+                                        0x13, 0x00,
+                                        (uint8_t)GATT_OBJECT_TYPE_SERVICE_CHANGED, GATT_OBJECT_TYPE_SERVICE_CHANGED >> 8};
+static uint8_t gatt_service_changed[] = {0x00, 0x00, 0x00, 0x00};
 
 
-uint8_t battery_uuid[] = {(uint8_t)GATT_SERVICE_BATTERY, GATT_SERVICE_BATTERY >> 8};
-uint8_t battery_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
-                                    0x03, 0x01,
-                                    (uint8_t)GATT_OBJECT_TYPE_BATTERY_LEVEL, GATT_OBJECT_TYPE_BATTERY_LEVEL >> 8};
-uint8_t battery_level[] = {0x62}; // 98%
-uint8_t battery_ccc[] = {0x00, 0x00};
+static uint8_t battery_uuid[] = {(uint8_t)GATT_SERVICE_BATTERY, GATT_SERVICE_BATTERY >> 8};
+static uint8_t battery_characteristic[] = {GATT_CHARACTERISTIC_PROPERITY_READ | GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
+                                           0x03, 0x01,
+                                           (uint8_t)GATT_OBJECT_TYPE_BATTERY_LEVEL, GATT_OBJECT_TYPE_BATTERY_LEVEL >> 8};
+static uint8_t battery_level[] = {0x62}; // 98%
+static uint8_t battery_ccc[] = {0x00, 0x00};
 
 
-uint8_t test_uuid[] = {(uint8_t)GATT_SERVICE_TEST, GATT_SERVICE_TEST >> 8};
-uint8_t test_characteristic_rx[] = {GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP,
-                                    0x03, 0x10,
-                                    (uint8_t)GATT_OBJECT_TYPE_TEST_RX, GATT_OBJECT_TYPE_TEST_RX >> 8};
-uint8_t test_characteristic_tx[] = {GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
-                                    0x12, 0x10,
-                                    (uint8_t)GATT_OBJECT_TYPE_TEST_TX, GATT_OBJECT_TYPE_TEST_TX >> 8};
-uint8_t test_ccc[] = {0x00, 0x00};
+static uint8_t test_uuid[] = {(uint8_t)GATT_SERVICE_TEST, GATT_SERVICE_TEST >> 8};
+static uint8_t test_characteristic_rx[] = {GATT_CHARACTERISTIC_PROPERITY_WRITE_NORESP,
+                                           0x03, 0x10,
+                                           (uint8_t)GATT_OBJECT_TYPE_TEST_RX, GATT_OBJECT_TYPE_TEST_RX >> 8};
+static uint8_t test_characteristic_tx[] = {GATT_CHARACTERISTIC_PROPERITY_NOTIFY,
+                                           0x12, 0x10,
+                                           (uint8_t)GATT_OBJECT_TYPE_TEST_TX, GATT_OBJECT_TYPE_TEST_TX >> 8};
+static uint8_t test_ccc[] = {0x00, 0x00};
 
 
-att_item_t items_gacc[] = {
+static att_item_t items_gacc[] = {
     {0x0001, GATT_DECLARATION_PRIMARY_SERVICE, gacc_uuid, sizeof(gacc_uuid), GATT_PERMISSION_READ},
     {0x0002, GATT_DECLARATION_CHARACTERISTIC, gacc_characteristic, sizeof(gacc_characteristic), GATT_PERMISSION_READ},
     {0x0003, GATT_OBJECT_TYPE_DEVICE_NAME, gacc_device_name, sizeof(gacc_device_name), GATT_PERMISSION_READ_ENCRYPT}
 };
 
-att_item_t items_gatt[] = {
+static att_item_t items_gatt[] = {
     {0x0011, GATT_DECLARATION_PRIMARY_SERVICE, gatt_uuid, sizeof(gatt_uuid), GATT_PERMISSION_READ},
     {0x0012, GATT_DECLARATION_CHARACTERISTIC, gatt_characteristic, sizeof(gatt_characteristic), GATT_PERMISSION_READ},
     {0x0013, GATT_OBJECT_TYPE_SERVICE_CHANGED, gatt_service_changed, sizeof(gatt_service_changed), GATT_PERMISSION_READ}
 };
 
-att_item_t items_battery[] = {
+static att_item_t items_battery[] = {
     {0x0101, GATT_DECLARATION_PRIMARY_SERVICE, battery_uuid, sizeof(battery_uuid), GATT_PERMISSION_READ},
     {0x0102, GATT_DECLARATION_CHARACTERISTIC, battery_characteristic, sizeof(battery_characteristic), GATT_PERMISSION_READ},
     {0x0103, GATT_OBJECT_TYPE_BATTERY_LEVEL, battery_level, sizeof(battery_level), GATT_PERMISSION_READ_AUTHENTICATE},
     {0x0104, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, battery_ccc, sizeof(battery_ccc), GATT_PERMISSION_READ | GATT_PERMISSION_WRITE_AUTHENTICATE}
 };
 
-att_item_t items_test[] = {
+static att_item_t items_test[] = {
     {0x1001, GATT_DECLARATION_PRIMARY_SERVICE, test_uuid, sizeof(test_uuid), GATT_PERMISSION_READ},
     {0x1002, GATT_DECLARATION_CHARACTERISTIC, test_characteristic_rx, sizeof(test_characteristic_rx), GATT_PERMISSION_READ},
     {0x1003, GATT_OBJECT_TYPE_TEST_RX, nullptr, 0, GATT_PERMISSION_WRITE},
@@ -176,9 +181,9 @@ att_item_t items_test[] = {
     {0x1013, GATT_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIG, test_ccc, sizeof(test_ccc), GATT_PERMISSION_READ | GATT_PERMISSION_WRITE}
 };
 
+static gatt_service_t services[GATT_MAX_COUNT_SERVICE];
+static uint8_t service_count = 0;
 
-gatt_service_t services[GATT_MAX_COUNT_SERVICE];
-uint8_t service_count = 0;
 
 void gatt_init() {
     gatt_add_service(items_gacc, 3, 0x0001, 0x0003, GATT_SERVICE_GENERIC_ACCESS);

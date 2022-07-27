@@ -122,9 +122,9 @@ void MainWindow::serialPort_readyRead()
             }
             break;
         case STATUS_HEADRER_EVT:
-            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE, HCI_LENGTH_EVT_HEADER);
+            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE, HCI_LENGTH_HEADER_EVT);
             if (ret) {
-                read_buffer_length += HCI_LENGTH_EVT_HEADER;
+                read_buffer_length += HCI_LENGTH_HEADER_EVT;
                 read_status = STATUS_DATA_EVT;
             } else {
                 LOG_DEBUG("ringbuffer_read invalid, no enough data, status:STATUS_HEADRER_EVT");
@@ -132,9 +132,9 @@ void MainWindow::serialPort_readyRead()
             }
             break;
         case STATUS_HEADRER_ACL:
-            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE, HCI_LENGTH_ACL_HEADER);
+            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE, HCI_LENGTH_HEADER_ACL);
             if (ret) {
-                read_buffer_length += HCI_LENGTH_ACL_HEADER;
+                read_buffer_length += HCI_LENGTH_HEADER_ACL;
                 read_status = STATUS_DATA_ACL;
             } else {
                 LOG_DEBUG("ringbuffer_read invalid, no enough data, status:STATUS_HEADRER_ACL");
@@ -142,7 +142,7 @@ void MainWindow::serialPort_readyRead()
             }
             break;
         case STATUS_DATA_EVT:
-            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_EVT_HEADER, read_buffer[2]);
+            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_EVT, read_buffer[2]);
             if (ret) {
                 is_processing = 1;
                 read_buffer_length += read_buffer[2];
@@ -157,7 +157,7 @@ void MainWindow::serialPort_readyRead()
             break;
         case STATUS_DATA_ACL:
             acl_length = read_buffer[3] | (read_buffer[4] << 8);
-            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER, acl_length);
+            ret = ringbuffer_read(read_buffer + HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL, acl_length);
             if (ret) {
                 is_processing = 1;
                 read_buffer_length += acl_length;

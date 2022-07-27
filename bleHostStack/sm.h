@@ -132,5 +132,7 @@ void sm_send_identity_address_information(uint16_t connect_handle, uint8_t *data
 void sm_send_signing_information(uint16_t connect_handle, uint8_t *data);
 void sm_send_keypress_notification(uint16_t connect_handle, sm_keypress_notification_t notification);
 void sm_send(uint16_t connect_handle, uint8_t *data, uint32_t length);
+void sm_ah(uint8_t* k, uint8_t* r, uint8_t* out_hash);
+void sm_generate_random(uint8_t* data, uint32_t length);
 
 #endif // SM_H

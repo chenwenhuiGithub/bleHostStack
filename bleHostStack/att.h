@@ -56,8 +56,6 @@
 #define ATT_ERROR_VALUE_NOT_ALLOWED                     0x13
 
 #define ATT_LENGTH_HEADER                               1
-#define ATT_LENGTH_UUID16                               2
-#define ATT_LENGTH_UUID128                              16
 #define ATT_LENGTH_ERROR_RESP                           4
 #define ATT_LENGTH_EXCHANGE_MTU_RESP                    2
 

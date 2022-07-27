@@ -1,10 +1,11 @@
 #include "hci.h"
+#include "l2cap.h"
+#include "att.h"
+#include "sm.h"
 #include "serial.h"
 #include "btsnoop.h"
-#include "l2cap.h"
 #include "log.h"
-#include "sm.h"
-#include "att.h"
+
 
 // Opcode Group Field (OGF) values
 #define HCI_OGF_LINK_CONTROL                                            0x01
@@ -156,7 +157,7 @@
 #define HCI_OCF_LE_SET_EVENT_MASK                                       0x01
 #define HCI_OCF_LE_READ_BUFFER_SIZE                                     0x02
 #define HCI_OCF_LE_READ_LOCAL_SUPPORTED_FEATURE                         0x03
-#define HCI_OCF_LE_SET_RANDOM_ADDRESS                                   0x05
+#define HCI_OCF_LE_SET_RANDOM_ADDR                                      0x05
 #define HCI_OCF_LE_SET_ADV_PARAM                                        0x06
 #define HCI_OCF_LE_SET_ADV_DATA                                         0x08
 #define HCI_OCF_LE_SET_ADV_ENABLE                                       0x0a
@@ -241,6 +242,13 @@
 #define HCI_EVENT_LE_DIRECTED_ADV_REPORT                                0x0b
 
 
+#define HCI_ACL_SEGMENT_PACKET_FIRST                                    0x20
+#define HCI_ACL_SEGMENT_PACKET_CONTINUE                                 0x10
+
+#define HCI_LENGTH_EVENT_MASK                                           8
+#define HCI_LENGTH_LE_EVENT_MASK                                        8
+#define HCI_LENGTH_CLASS_OF_DEVICE                                      3
+
 #define HCI_LENGTH_CMD_HEADER                                           4
 #define HCI_LENGTH_CMD_PARAM_RESET                                      0
 #define HCI_LENGTH_CMD_PARAM_READ_BD_ADDR                               0
@@ -249,6 +257,7 @@
 #define HCI_LENGTH_CMD_PARAM_SET_EVENT_MASK                             8
 #define HCI_LENGTH_CMD_PARAM_WRITE_CLASS_OF_DEVICE                      3
 #define HCI_LENGTH_CMD_PARAM_WRITE_LE_HOST_SUPPORT                      2
+#define HCI_LENGTH_CMD_PARAM_LE_SET_RANDOM_ADDR                         6
 #define HCI_LENGTH_CMD_PARAM_LE_READ_BUFFER_SIZE                        0
 #define HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_REPLY             14
 #define HCI_LENGTH_CMD_PARAM_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY         3
@@ -264,9 +273,6 @@
 #define HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_REPLY                           18
 #define HCI_LENGTH_CMD_PARAM_LE_LTK_REQ_NEG_REPLY                       2
 
-#define HCI_ACL_SEGMENT_PACKET_FIRST                                    0x20
-#define HCI_ACL_SEGMENT_PACKET_CONTINUE                                 0x10
-
 
 static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length);
 static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length);
@@ -275,6 +281,8 @@ static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_number_of_completed_packets(uint8_t* data, uint32_t length);
 static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length);
 static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length);
+static void __hci_generate_random_addr(uint8_t *addr);
+
 
 typedef struct {
     uint8_t class_of_device[HCI_LENGTH_CLASS_OF_DEVICE];
@@ -289,47 +297,58 @@ typedef struct {
     uint8_t num_of_allowed_le_acl_packets;
     uint8_t num_of_allowed_cmd_packets;
 
-    uint8_t local_addr[HCI_LENGTH_ADDR];
-    uint8_t local_addr_type;
+    hci_addr_type_t local_addr_type;
+    uint8_t local_addr_public[HCI_LENGTH_ADDR];
+    uint8_t local_addr_random[HCI_LENGTH_ADDR];
+    uint8_t local_addr_random_irk[SM_LENGTH_IRK];
+
     uint8_t local_p256_public_key[HCI_LENGTH_P256_PUBLIC_KEY];
 
     hci_connection_t *hci_connections;
 } hci_stack_t;
 
+
 static hci_stack_t hci_stack = {
-    .class_of_device = {0x0c, 0x02, 0x7a},
-    .event_mask = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f},
-    .le_event_mask = {0xff, 0xff, 0xff, 0xff, 0x07, 0x00, 0x00, 0x00},
+    .class_of_device = HCI_CLASS_OF_DEVICE,
+    .event_mask = HCI_EVENT_MASK,
+    .le_event_mask = HCI_LE_EVENT_MASK,
 
     .le_adv_param = {
-        .adv_interval_min = 0x0800, // 1.28s(N*0.625ms)
-        .adv_interval_max = 0x0800, // 1.28s(N*0.625ms)
-        .adv_type = HCI_ADV_TYPE_ADV_IND,
-        .own_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
-        .peer_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE,
+        .adv_interval_min = HCI_ADV_INTERVAL_MIN,
+        .adv_interval_max = HCI_ADV_INTERVAL_MAX,
+        .adv_type = HCI_ADV_TYPE,
+        .own_addr_type = HCI_ADDR_TYPE_RANDOM,
+        .peer_addr_type = HCI_ADDR_TYPE_PUBLIC,
         .peer_addr = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-        .adv_channel_map = HCI_ADV_CHANNEL_MAP_37 | HCI_ADV_CHANNEL_MAP_38 | HCI_ADV_CHANNEL_MAP_39,
-        .adv_filter_policy = HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_ALL
+        .adv_channel_map = HCI_ADV_CHANNEL_MAP,
+        .adv_filter_policy = HCI_ADV_FILTER_POLICY
     },
 
     .le_adv_data = {
-        .adv_data_length = 0x0d,
-        .adv_data = {
-            0x02, 0x01, 0x06, // flag:0x06
-            0x09, 0x09, 0x62, 0x6c, 0x65, 0x5f, 0x64, 0x65, 0x6d, 0x6f, // device_name:ble_demo
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        }
+        .adv_data_length = HCI_ADV_DATA_LENGTH,
+        .adv_data = HCI_ADV_DATA
     },
 
     .le_conn_param = {
-        .conn_interval_min = 0x0018, // 30ms(N*1.25ms)
-        .conn_interval_max = 0x0018, // 30ms(N*1.25ms)
-        .max_latency = 10,
-        .timeout = 0x0080, // 1.28s(N*10ms)
-        .min_ce_length = 0x0028, // 25ms(N*0.625ms)
-        .max_ce_length = 0x0028  // 25ms(N*0.625ms)
-    }
+        .conn_interval_min = HCI_CONN_INTERVAL_MIN,
+        .conn_interval_max = HCI_CONN_INTERVAL_MAX,
+        .max_latency = HCI_CONN_MAX_LATENCY,
+        .timeout = HCI_CONN_TIMEOUT,
+        .min_ce_length = HCI_CONN_MIN_CE_LENGTH,
+        .max_ce_length = HCI_CONN_MAX_CE_LENGTH
+    },
+
+    .local_addr_type = HCI_ADDR_TYPE_RANDOM,
+    .local_addr_random_irk = {0xcd, 0x79, 0x4e, 0x24, 0x8b, 0x47, 0x87, 0x75, 0xac, 0x64, 0x60, 0x2b, 0x86, 0x5c, 0x3f, 0x34} // random generate
 };
+
+
+static void __hci_generate_random_addr(uint8_t *addr) {
+    sm_generate_random(addr + 3, 3);
+    addr[5] &= 0x7f;
+    addr[5] |= 0x40; // [47:46] = 0b01
+    sm_ah(hci_stack.local_addr_random_irk, addr + 3, addr);
+}
 
 static void __hci_assign_cmd_header(uint8_t *buffer, uint8_t ogf, uint16_t ocf, uint8_t param_length) {
     buffer[0] = HCI_PACKET_TYPE_CMD;
@@ -376,15 +395,14 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             break;
         case HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS:
             LOG_INFO("read_local_supported_commands status:%u", data[3]);
-            // HCI_Read_BD_ADDR used to get public address
-            // HCI_LE_Set_Random_Address used to set random address, once set, controller will use random address for hci connection
             hci_send_cmd_read_bd_addr();
             break;
         case HCI_OCF_READ_BD_ADDR:
-            LOG_INFO("read_bd_addr status:%u, bd_addr:%02x:%02x:%02x:%02x:%02x:%02x",
+            // HCI_Read_BD_ADDR:get public address, HCI_LE_Set_Random_Address:set random address
+            // once set random address, controller will use random address for hci connection
+            LOG_INFO("read_bd_addr status:%u, public_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                      data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
-            memcpy_s(hci_stack.local_addr, HCI_LENGTH_ADDR, data + 4, HCI_LENGTH_ADDR);
-            hci_stack.local_addr_type = HCI_ADDR_TYPE_PUBLIC_DEVICE;
+            memcpy_s(hci_stack.local_addr_public, HCI_LENGTH_ADDR, data + 4, HCI_LENGTH_ADDR);
             hci_send_cmd_write_class_of_device(hci_stack.class_of_device);
             break;
         default:
@@ -399,6 +417,13 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
                      data[3], (data[4] | (data[5] << 8)), data[6]);
             hci_stack.le_acl_packet_length = data[4] | (data[5] << 8);
             hci_stack.num_of_allowed_le_acl_packets = data[6];
+            __hci_generate_random_addr(hci_stack.local_addr_random);
+            hci_send_cmd_le_set_random_address(hci_stack.local_addr_random);
+            break;
+        case HCI_OCF_LE_SET_RANDOM_ADDR:
+            LOG_INFO("le_set_random_addr status:%u, random_addr:%02x:%02x:%02x:%02x:%02x:%02x", data[3],
+                     hci_stack.local_addr_random[0], hci_stack.local_addr_random[1], hci_stack.local_addr_random[2],
+                     hci_stack.local_addr_random[3], hci_stack.local_addr_random[4], hci_stack.local_addr_random[5]);
             hci_send_cmd_le_set_event_mask(hci_stack.le_event_mask);
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
@@ -478,7 +503,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         connect_handle = data[2] | ((data[3] & 0x0f) << 8);
-        hci_add_connection(connect_handle, data + 6, data[5]);
+        hci_add_connection(connect_handle, (hci_addr_type_t)data[5], data + 6);
         LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_CONN_UPDATE_COMPLETE:
@@ -502,7 +527,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         LOG_INFO("le_enhanced_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         connect_handle = data[2] | ((data[3] & 0x0f) << 8);
-        hci_add_connection(connect_handle, data + 6, data[5]);
+        hci_add_connection(connect_handle, (hci_addr_type_t)data[5], data + 6);
         LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_DATA_LENGTH_CHANGE:
@@ -576,17 +601,17 @@ void hci_recv_evt(uint8_t *data, uint32_t length) {
 
     switch (event_code) {
     case HCI_EVENT_DISCONN_COMPLETE:
-        __hci_recv_evt_disconn_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+        __hci_recv_evt_disconn_complete(data + HCI_LENGTH_HEADER_EVT, length - HCI_LENGTH_HEADER_EVT); break;
     case HCI_EVENT_ENCRYPTION_CHANGE:
-        __hci_recv_evt_encryption_change(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+        __hci_recv_evt_encryption_change(data + HCI_LENGTH_HEADER_EVT, length - HCI_LENGTH_HEADER_EVT); break;
     case HCI_EVENT_COMMAND_COMPLETE:
-        __hci_recv_evt_command_complete(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+        __hci_recv_evt_command_complete(data + HCI_LENGTH_HEADER_EVT, length - HCI_LENGTH_HEADER_EVT); break;
     case HCI_EVENT_COMMAND_STATUS:
-        __hci_recv_evt_command_status(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+        __hci_recv_evt_command_status(data + HCI_LENGTH_HEADER_EVT, length - HCI_LENGTH_HEADER_EVT); break;
     case HCI_EVENT_LE_META:
-        __hci_recv_evt_le_meta(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+        __hci_recv_evt_le_meta(data + HCI_LENGTH_HEADER_EVT, length - HCI_LENGTH_HEADER_EVT); break;
     case HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS:
-        __hci_recv_evt_number_of_completed_packets(data + HCI_LENGTH_EVT_HEADER, length - HCI_LENGTH_EVT_HEADER); break;
+        __hci_recv_evt_number_of_completed_packets(data + HCI_LENGTH_HEADER_EVT, length - HCI_LENGTH_HEADER_EVT); break;
     default:
         LOG_WARNING("hci_recv_evt invalid, event_code:0x%02x", event_code); break;
     }
@@ -600,18 +625,18 @@ void hci_recv_acl(uint8_t *data, uint32_t length) {
 
     if (HCI_ACL_SEGMENT_PACKET_FIRST == pb_flag) {
         conn->segment_length_total = data[4] | (data[5] << 8);
-        segment_length_current = length - HCI_LENGTH_ACL_HEADER;
-        conn->segment_length_received = length - HCI_LENGTH_ACL_HEADER;
+        segment_length_current = length - HCI_LENGTH_HEADER_ACL;
+        conn->segment_length_received = length - HCI_LENGTH_HEADER_ACL;
 
         if (conn->segment_length_received == conn->segment_length_total + L2CAP_LENGTH_HEADER) {
-            l2cap_recv(connect_handle, data + HCI_LENGTH_ACL_HEADER, length - HCI_LENGTH_ACL_HEADER);
+            l2cap_recv(connect_handle, data + HCI_LENGTH_HEADER_ACL, length - HCI_LENGTH_HEADER_ACL);
             return;
         }
         conn->segment_buffer_recv = (uint8_t *)malloc(L2CAP_LENGTH_HEADER + conn->segment_length_total);
-        memcpy_s(conn->segment_buffer_recv, segment_length_current, data + HCI_LENGTH_ACL_HEADER, segment_length_current);
+        memcpy_s(conn->segment_buffer_recv, segment_length_current, data + HCI_LENGTH_HEADER_ACL, segment_length_current);
     } else if (HCI_ACL_SEGMENT_PACKET_CONTINUE == pb_flag) {
-        segment_length_current = length - HCI_LENGTH_ACL_HEADER;
-        memcpy_s(conn->segment_buffer_recv + conn->segment_length_received, segment_length_current, data + HCI_LENGTH_ACL_HEADER, segment_length_current);
+        segment_length_current = length - HCI_LENGTH_HEADER_ACL;
+        memcpy_s(conn->segment_buffer_recv + conn->segment_length_received, segment_length_current, data + HCI_LENGTH_HEADER_ACL, segment_length_current);
         conn->segment_length_received += segment_length_current;
 
         if (conn->segment_length_received == conn->segment_length_total + L2CAP_LENGTH_HEADER) {
@@ -626,7 +651,7 @@ void hci_recv_acl(uint8_t *data, uint32_t length) {
 
 void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length) {
     uint32_t packet_length = 0;
-    uint32_t offset = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER;
+    uint32_t offset = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL;
     bool first_segment_sent = false;
     uint8_t *segment_buffer_send = nullptr;
 
@@ -639,7 +664,7 @@ void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length) {
             data[3] = length;
             data[4] = length >> 8;
 
-            packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
+            packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + length;
             serial_write(data, packet_length);
             btsnoop_wirte(data, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
             hci_stack.num_of_allowed_le_acl_packets--;
@@ -647,7 +672,7 @@ void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length) {
             LOG_ERROR("hci_send_acl error, send acl not allowed");
         }
     } else {
-        segment_buffer_send = (uint8_t *)malloc(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length);
+        segment_buffer_send = (uint8_t *)malloc(HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + hci_stack.le_acl_packet_length);
         while (true) {
             if (hci_send_acl_allowed()) {
                 segment_buffer_send[0] = HCI_PACKET_TYPE_ACL;
@@ -665,7 +690,7 @@ void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length) {
                     segment_buffer_send[4] = hci_stack.le_acl_packet_length >> 8;
                     memcpy_s(segment_buffer_send + 5, hci_stack.le_acl_packet_length, data + offset, hci_stack.le_acl_packet_length);
 
-                    packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + hci_stack.le_acl_packet_length;
+                    packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + hci_stack.le_acl_packet_length;
                     serial_write(segment_buffer_send, packet_length);
                     btsnoop_wirte(segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
                     length -= hci_stack.le_acl_packet_length;
@@ -677,7 +702,7 @@ void hci_send_acl(uint16_t connect_handle, uint8_t *data, uint32_t length) {
                         segment_buffer_send[4] = length >> 8;
                         memcpy_s(segment_buffer_send + 5, length, data + offset, length);
 
-                        packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + length;
+                        packet_length = HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + length;
                         serial_write(segment_buffer_send, packet_length);
                         btsnoop_wirte(segment_buffer_send, packet_length, BTSNOOP_PACKET_FLAG_ACL_SCO_SEND);
                         hci_stack.num_of_allowed_le_acl_packets--;
@@ -792,6 +817,21 @@ void hci_send_cmd_le_read_buffer_size() {
         hci_stack.num_of_allowed_cmd_packets--;
     } else {
         LOG_ERROR("hci_send_cmd_le_read_buffer_size error, send cmd not allowed");
+    }
+}
+
+void hci_send_cmd_le_set_random_address(uint8_t *addr) {
+    uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_RANDOM_ADDR;
+    uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_RANDOM_ADDR] = { 0x00 };
+
+    if (hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_RANDOM_ADDR, HCI_LENGTH_CMD_PARAM_LE_SET_RANDOM_ADDR);
+        memcpy_s(&buffer[4], HCI_LENGTH_ADDR, addr, HCI_LENGTH_ADDR);
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_set_random_address error, send cmd not allowed");
     }
 }
 
@@ -955,13 +995,13 @@ void hci_send_cmd_le_read_local_P256_public_key() {
     }
 }
 
-void hci_send_cmd_le_generate_dhkey(uint8_t *pub_key) {
+void hci_send_cmd_le_generate_dhkey(uint8_t *public_key) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY] = { 0x00 };
 
     if (hci_send_cmd_allowed()) {
         __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_GENERATE_DHKEY, HCI_LENGTH_CMD_PARAM_LE_GENERATE_DHKEY);
-        memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY, pub_key, HCI_LENGTH_P256_PUBLIC_KEY);
+        memcpy_s(&buffer[4], HCI_LENGTH_P256_PUBLIC_KEY, public_key, HCI_LENGTH_P256_PUBLIC_KEY);
         serial_write(buffer, cmd_length);
         btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
         hci_stack.num_of_allowed_cmd_packets--;
@@ -1003,11 +1043,6 @@ void hci_send_cmd_le_ltk_req_neg_reply(uint16_t connect_handle) {
     }
 }
 
-void hci_get_local_addr_info(uint8_t *addr, uint8_t *addr_type) {
-    memcpy_s(addr, HCI_LENGTH_ADDR, hci_stack.local_addr, HCI_LENGTH_ADDR);
-    *addr_type = hci_stack.local_addr_type;
-}
-
 uint16_t hci_get_le_acl_packet_length() {
     return hci_stack.le_acl_packet_length;
 }
@@ -1016,14 +1051,29 @@ uint8_t* hci_get_local_p256_public_key() {
     return hci_stack.local_p256_public_key;
 }
 
-hci_connection_t* hci_add_connection(uint16_t connect_handle, uint8_t *peer_addr, uint8_t peer_addr_type) {
+hci_addr_type_t hci_get_local_addr_type() {
+    return hci_stack.local_addr_type;
+}
+
+uint8_t* hci_get_local_addr_public() {
+    return hci_stack.local_addr_public;
+}
+
+uint8_t* hci_get_local_addr_random() {
+    return hci_stack.local_addr_random;
+}
+
+uint8_t* hci_get_local_addr_random_irk() {
+    return hci_stack.local_addr_random_irk;
+}
+
+hci_connection_t* hci_add_connection(uint16_t connect_handle, hci_addr_type_t peer_addr_type, uint8_t *peer_addr) {
     hci_connection_t *conn = (hci_connection_t *)malloc(sizeof(hci_connection_t));
     memset(conn, 0, sizeof(hci_connection_t));
     conn->connect_handle = connect_handle;
-    memcpy_s(conn->peer_addr, HCI_LENGTH_ADDR, peer_addr, HCI_LENGTH_ADDR);
     conn->peer_addr_type = peer_addr_type;
+    memcpy_s(conn->peer_addr, HCI_LENGTH_ADDR, peer_addr, HCI_LENGTH_ADDR);
     conn->att_mtu = ATT_MTU_DEFAULT;
-
     conn->next = hci_stack.hci_connections;
     hci_stack.hci_connections = conn; // insert to list head
 

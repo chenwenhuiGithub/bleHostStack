@@ -4,7 +4,8 @@
 #include "gatt.h"
 #include "log.h"
 
-#define ATT_LENGTH_PACKET_HEADER           (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_ACL_HEADER + L2CAP_LENGTH_HEADER)
+#define ATT_LENGTH_PACKET_HEADER           (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + L2CAP_LENGTH_HEADER)
+
 
 static void __att_recv_find_info_req(uint16_t connect_handle, uint8_t *data, uint32_t length);
 static void __att_recv_find_by_type_value_req(uint16_t connect_handle, uint8_t *data, uint32_t length);

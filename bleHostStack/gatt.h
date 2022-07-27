@@ -11,13 +11,6 @@ typedef struct {
     uint8_t permission;
 } att_item_t;
 
-typedef struct {
-    att_item_t *items;
-    uint16_t items_cnt;
-    uint16_t start_handle;
-    uint16_t end_handle;
-    uint16_t service_id;
-} gatt_service_t;
 
 void gatt_init();
 void gatt_add_service(att_item_t *items, uint16_t items_cnt, uint16_t start_handle, uint16_t end_handle, uint16_t service_id);
