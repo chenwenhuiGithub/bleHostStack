@@ -24,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
         ui->comboBoxNum->addItem(info.portName());
     }
+    ui->pushButtonTest->setEnabled(false);
     connect(serial_get_instance(), &QSerialPort::readyRead, this, &MainWindow::serialPort_readyRead);
     srand(QTime::currentTime().msecsSinceStartOfDay());
 }
@@ -38,32 +39,31 @@ MainWindow::~MainWindow()
 void MainWindow::on_pushButtonOpen_clicked()
 {
     if (ui->pushButtonOpen->text() == "Open") {
-        if (! serial_open(ui->comboBoxNum->currentText())) {
+        if (!serial_open(ui->comboBoxNum->currentText())) {
             LOG_ERROR("serial open failed");
             return;
         }
         btsnoop_open();
         ringbuffer_reset();
         ui->pushButtonOpen->setText("Close");
+        ui->pushButtonTest->setEnabled(true);
+
+        gatt_init();
+        hci_init();
         LOG_INFO("serial open success");
     } else {
         serial_close();
         btsnoop_close();
         ui->pushButtonOpen->setText("Open");
+        ui->pushButtonTest->setEnabled(false);
         LOG_INFO("serial closed");
     }
 }
 
 
-void MainWindow::on_pushButtonStart_clicked()
-{
-    gatt_init();
-    hci_init();
-}
-
-
 void MainWindow::on_pushButtonTest_clicked()
 {
+#if 0
     const uint32_t data_length = 2048;
     uint32_t i = 0;
     uint8_t data[data_length] = {0};
@@ -76,11 +76,19 @@ void MainWindow::on_pushButtonTest_clicked()
     }
 
     for (i = 0; i < data_length/maxPacketSize; i++) {
-        gatt_send_handle_value_notify(connect_handle, 0x1012, data + i*maxPacketSize, maxPacketSize);
+        gatt_send_notify(connect_handle, GATT_SERVICE_TEST, GATT_OBJECT_TYPE_TEST_TX, data + i*maxPacketSize, maxPacketSize);
     }
     if (data_length % maxPacketSize) {
-        gatt_send_handle_value_notify(connect_handle, 0x1012, data + i*maxPacketSize, data_length % maxPacketSize);
+        gatt_send_notify(connect_handle, GATT_SERVICE_TEST, GATT_OBJECT_TYPE_TEST_TX, data + i*maxPacketSize, data_length % maxPacketSize);
     }
+#endif
+
+    uint16_t connect_handle = 0x0000;
+    uint8_t battery_level = 0;
+
+    sm_generate_random(&battery_level, sizeof(battery_level));
+    battery_level %= 101;
+    gatt_send_notify(connect_handle, GATT_SERVICE_BATTERY, GATT_OBJECT_TYPE_BATTERY_LEVEL, &battery_level, sizeof(battery_level));
 }
 
 
