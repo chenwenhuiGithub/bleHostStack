@@ -8,7 +8,11 @@
 #define SM_IOCAP_KEYBORAD_ONLY                              0x02
 #define SM_IOCAP_NO_INPUT_NO_OUTPUT                         0x03
 #define SM_IOCAP_KEYBOARD_DISPLAY                           0x04
-#define SM_IOCAP                                            SM_IOCAP_DISPLAY_YESNO
+// #define SM_IOCAP                                            SM_IOCAP_DISPLAY_ONLY       // PASSKEY_I_INPUT_R_DISPLAY
+// #define SM_IOCAP                                            SM_IOCAP_DISPLAY_YESNO      // legacy:PASSKEY_I_INPUT_R_DISPLAY, secure:NUMERIC_COMPARISON
+// #define SM_IOCAP                                            SM_IOCAP_KEYBORAD_ONLY      // PASSKEY_I_DISPLAY_R_INPUT
+// #define SM_IOCAP                                            SM_IOCAP_NO_INPUT_NO_OUTPUT // JUST_WORKS
+#define SM_IOCAP                                            SM_IOCAP_KEYBOARD_DISPLAY   // legacy:PASSKEY_I_DISPLAY_R_INPUT, secure:NUMERIC_COMPARISON
 
 #define SM_OOB_DATA_FLAG_NOT_PRESENT                        0x00
 #define SM_OOB_DATA_FLAG_PRESENT                            0x01
@@ -18,7 +22,8 @@
 #define SM_AUTH_MITM                                        0x04
 #define SM_AUTH_SECURE_CONNECTION                           0x08
 #define SM_AUTH_KEYPRESS                                    0x10
-#define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM | SM_AUTH_SECURE_CONNECTION
+// #define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM | SM_AUTH_SECURE_CONNECTION
+#define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM
 
 #define SM_MIN_ENCRYPT_KEY_SIZE                             7
 #define SM_MAX_ENCRYPT_KEY_SIZE                             16
@@ -82,8 +87,8 @@ typedef struct {
     uint8_t local_dhkey[SM_LENGTH_DHKEY];
     uint8_t local_random[SM_LENGTH_PAIRING_RANDOM];
     uint8_t remote_random[SM_LENGTH_PAIRING_RANDOM];
-    uint8_t local_r[SM_LENGTH_TK];
-    uint8_t remote_r[SM_LENGTH_TK];
+    uint8_t local_tk[SM_LENGTH_TK];
+    uint8_t remote_tk[SM_LENGTH_TK];
     uint8_t local_ltk[SM_LENGTH_LTK];
     uint8_t remote_ltk[SM_LENGTH_LTK];
     uint8_t local_ediv[SM_LENGTH_EDIV];
