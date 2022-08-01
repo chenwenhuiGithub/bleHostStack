@@ -22,8 +22,8 @@
 #define SM_AUTH_MITM                                        0x04
 #define SM_AUTH_SECURE_CONNECTION                           0x08
 #define SM_AUTH_KEYPRESS                                    0x10
-// #define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM | SM_AUTH_SECURE_CONNECTION
-#define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM
+#define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM | SM_AUTH_SECURE_CONNECTION // secure connection pairing
+// #define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM // legacy pairing
 
 #define SM_MIN_ENCRYPT_KEY_SIZE                             7
 #define SM_MAX_ENCRYPT_KEY_SIZE                             16
@@ -121,7 +121,7 @@ typedef struct {
 
 
 void sm_recv(uint16_t connect_handle, uint8_t *data, uint32_t length);
-void sm_recv_evt_le_ltk_req(uint16_t connect_handle, uint8_t *random_number, uint8_t *encrypted_diversifier);
+void sm_recv_evt_le_ltk_req(uint16_t connect_handle, uint8_t *rand, uint8_t *ediv);
 void sm_recv_evt_le_generate_dhkey_complete(uint8_t *dhkey);
 void sm_recv_evt_encryption_change(uint16_t connect_handle, uint8_t encryption_enabled);
 void sm_send_pairing_resp(uint16_t connect_handle, uint8_t *data);

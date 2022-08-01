@@ -367,19 +367,19 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
     case HCI_OGF_CONTROLLER_BASEBAND:
         switch (ocf) {
         case HCI_OCF_RESET:
-            LOG_INFO("reset status:%u", data[3]);
+            LOG_INFO("reset status:0x%02x", data[3]);
             hci_send_cmd_read_local_version_info();
             break;
         case HCI_OCF_WRITE_CLASS_OF_DEVICE:
-            LOG_INFO("write_class_of_device status:%u", data[3]);
+            LOG_INFO("write_class_of_device status:0x%02x", data[3]);
             hci_send_cmd_set_event_mask(hci_stack.event_mask);
             break;
         case HCI_OCF_SET_EVENT_MASK:
-            LOG_INFO("set_event_mask status:%u", data[3]);
+            LOG_INFO("set_event_mask status:0x%02x", data[3]);
             hci_send_cmd_write_le_host_support(HCI_LE_HOST_SUPPORT_ENABLE);
             break;
         case HCI_OCF_WRITE_LE_HOST_SUPPORT:
-            LOG_INFO("write_le_host_support status:%u", data[3]);
+            LOG_INFO("write_le_host_support status:0x%02x", data[3]);
             hci_send_cmd_le_read_buffer_size();
             break;
         default:
@@ -390,18 +390,17 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
     case HCI_OGF_INFORMATIONAL_PARAM:
         switch (ocf) {
         case HCI_OCF_READ_LOCAL_VERSION_INFO:
-            LOG_INFO("read_local_version_info status:%u, hci_version:%u", data[3], data[4]);
+            LOG_INFO("read_local_version_info status:0x%02x, hci_version:0x%02x", data[3], data[4]);
             hci_send_cmd_read_local_supported_commands();
             break;
         case HCI_OCF_READ_LOCAL_SUPPORTED_COMMANDS:
-            LOG_INFO("read_local_supported_commands status:%u", data[3]);
+            LOG_INFO("read_local_supported_commands status:0x%02x", data[3]);
             hci_send_cmd_read_bd_addr();
             break;
         case HCI_OCF_READ_BD_ADDR:
             // HCI_Read_BD_ADDR:get public address, HCI_LE_Set_Random_Address:set random address
             // once set random address, controller will use random address for hci connection
-            LOG_INFO("read_bd_addr status:%u, public_addr:%02x:%02x:%02x:%02x:%02x:%02x",
-                     data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
+            LOG_INFO("read_bd_addr status:0x%02x, public_addr:%02x:%02x:%02x:%02x:%02x:%02x", data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
             memcpy_s(hci_stack.local_addr_public, HCI_LENGTH_ADDR, data + 4, HCI_LENGTH_ADDR);
             hci_send_cmd_write_class_of_device(hci_stack.class_of_device);
             break;
@@ -413,48 +412,45 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
     case HCI_OGF_LE_CONTROLLER:
         switch (ocf) {
         case HCI_OCF_LE_READ_BUFFER_SIZE:
-            LOG_INFO("le_read_buffer_size status:%u, le_acl_packet_length:%u, total_num_le_acl_packets:%u",
-                     data[3], (data[4] | (data[5] << 8)), data[6]);
+            LOG_INFO("le_read_buffer_size status:0x%02x, le_acl_packet_length:%u, total_num_le_acl_packets:%u", data[3], (data[4] | (data[5] << 8)), data[6]);
             hci_stack.le_acl_packet_length = data[4] | (data[5] << 8);
             hci_stack.num_of_allowed_le_acl_packets = data[6];
             __hci_generate_random_addr(hci_stack.local_addr_random);
             hci_send_cmd_le_set_random_address(hci_stack.local_addr_random);
             break;
         case HCI_OCF_LE_SET_RANDOM_ADDR:
-            LOG_INFO("le_set_random_addr status:%u, random_addr:%02x:%02x:%02x:%02x:%02x:%02x", data[3],
+            LOG_INFO("le_set_random_addr status:0x%02x, random_addr:%02x:%02x:%02x:%02x:%02x:%02x", data[3],
                      hci_stack.local_addr_random[0], hci_stack.local_addr_random[1], hci_stack.local_addr_random[2],
                      hci_stack.local_addr_random[3], hci_stack.local_addr_random[4], hci_stack.local_addr_random[5]);
             hci_send_cmd_le_set_event_mask(hci_stack.le_event_mask);
             break;
         case HCI_OCF_LE_SET_EVENT_MASK:
-            LOG_INFO("le_set_event_mask status:%u", data[3]);
+            LOG_INFO("le_set_event_mask status:0x%02x", data[3]);
             hci_send_cmd_le_read_local_P256_public_key();
             break;
         case HCI_OCF_LE_SET_ADV_PARAM:
-            LOG_INFO("le_set_adv_param status:%u", data[3]);
+            LOG_INFO("le_set_adv_param status:0x%02x", data[3]);
             hci_send_cmd_le_set_adv_data(&hci_stack.le_adv_data);
             break;
         case HCI_OCF_LE_SET_ADV_DATA:
-            LOG_INFO("le_set_adv_data status:%u", data[3]);
+            LOG_INFO("le_set_adv_data status:0x%02x", data[3]);
             hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE);
             break;
         case HCI_OCF_LE_SET_ADV_ENABLE:
-            LOG_INFO("le_set_adv_enable status:%u", data[3]);
+            LOG_INFO("le_set_adv_enable status:0x%02x", data[3]);
             LOG_INFO("/***** wait peer devices to connect *****/");
             break;
         case HCI_OCF_LE_LTK_REQ_REPLY:
-            LOG_INFO("le_ltk_req_reply status:%u, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
+            LOG_INFO("le_ltk_req_reply status:0x%02x, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
             break;
         case HCI_OCF_LE_LTK_REQ_NEG_REPLY:
-            LOG_INFO("le_ltk_req_neg_reply status:%u, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
+            LOG_INFO("le_ltk_req_neg_reply status:0x%02x, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
             break;
         case HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_REPLY:
-            LOG_INFO("le_remote_conn_param_req_reply status:%u, connect_handle:0x%02x%02x",
-                     data[3], data[4], (data[5] & 0x0f));
+            LOG_INFO("le_remote_conn_param_req_reply status:0x%02x, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
             break;
         case HCI_OCF_LE_REMOTE_CONN_PARAM_REQ_NEG_REPLY:
-            LOG_INFO("hci_send_cmd_le_remote_conn_param_req_neg_reply status:%u, connect_handle:0x%02x%02x",
-                     data[3], data[4], (data[5] & 0x0f));
+            LOG_INFO("hci_send_cmd_le_remote_conn_param_req_neg_reply status:0x%02x, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
             break;
         default:
             LOG_WARNING("__hci_recv_evt_command_complete invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
@@ -477,10 +473,10 @@ static void __hci_recv_evt_command_status(uint8_t *data, uint32_t length) {
     case HCI_OGF_LE_CONTROLLER:
         switch (ocf) {
         case HCI_OCF_LE_READ_LOCAL_P256_PUBLIC_KEY:
-            LOG_INFO("le_read_local_p256_public_key status:%u", data[0]);
+            LOG_INFO("le_read_local_p256_public_key status:0x%02x", data[0]);
             break;
         case HCI_OCF_LE_GENERATE_DHKEY:
-            LOG_INFO("le_generate_dhkey status:%u", data[0]);
+            LOG_INFO("le_generate_dhkey status:0x%02x", data[0]);
             break;
         default:
             LOG_WARNING("__hci_recv_evt_command_status invalid, ogf:0x%02x, ocf:0x%04x", ogf, ocf);
@@ -500,18 +496,18 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
 
     switch (sub_event) {
     case HCI_EVENT_LE_CONN_COMPLETE:
-        LOG_INFO("le_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
+        LOG_INFO("le_conn_complete status:0x%02x, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         connect_handle = data[2] | ((data[3] & 0x0f) << 8);
         hci_add_connection(connect_handle, (hci_addr_type_t)data[5], data + 6);
         LOG_INFO("/***** peer device connects success *****/");
         break;
     case HCI_EVENT_LE_CONN_UPDATE_COMPLETE:
-        LOG_INFO("le_conn_update_complete status:%u, connect_handle:0x%02x%02x, interval:%0.2fms, latency:%u, timeout:%ums",
+        LOG_INFO("le_conn_update_complete status:0x%02x, connect_handle:0x%02x%02x, interval:%0.2fms, latency:%u, timeout:%ums",
                  data[1], data[2], (data[3] & 0x0f), (data[4] | (data[5] << 8)) * 1.25, data[6] | (data[7] << 8), (data[8] | (data[9] << 8)) * 10);
         break;
     case HCI_EVENT_LE_LTK_REQ:
-        LOG_INFO("le_ltk_req connect_handle:0x%02x%02x, random_number:0x%02x%02x%02x%02x%02x%02x%02x%02x, encrypted_diversifier:0x%02x%02x",
+        LOG_INFO("le_ltk_req connect_handle:0x%02x%02x, rand:0x%02x%02x%02x%02x%02x%02x%02x%02x, ediv:0x%02x%02x",
                  data[1], (data[2] & 0x0f), data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
         connect_handle = data[1] | ((data[2] & 0x0f) << 8);
         sm_recv_evt_le_ltk_req(connect_handle, data + 3, data + 11);
@@ -524,7 +520,7 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         hci_send_cmd_le_remote_conn_param_req_reply(connect_handle, &hci_stack.le_conn_param);
         break;
     case HCI_EVENT_LE_ENHANCED_CONN_COMPLETE:
-        LOG_INFO("le_enhanced_conn_complete status:%u, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
+        LOG_INFO("le_enhanced_conn_complete status:0x%02x, connect_handle:0x%02x%02x, peer_addr_type:0x%02x, peer_addr:%02x:%02x:%02x:%02x:%02x:%02x",
                  data[1], data[2], (data[3] & 0x0f), data[5], data[6],  data[7], data[8], data[9], data[10], data[11]);
         connect_handle = data[2] | ((data[3] & 0x0f) << 8);
         hci_add_connection(connect_handle, (hci_addr_type_t)data[5], data + 6);
@@ -536,12 +532,12 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
                  data[7] | (data[8] << 8), data[9] | (data[10] << 8));
         break;
     case HCI_EVENT_LE_READ_LOCAL_P256_PUBLIC_KEY_COMPLETE:
-        LOG_INFO("le_read_local_p256_public_key_complete status:%u", data[1]);
+        LOG_INFO("le_read_local_p256_public_key_complete status:0x%02x", data[1]);
         memcpy_s(hci_stack.local_p256_public_key, HCI_LENGTH_P256_PUBLIC_KEY, data + 2, HCI_LENGTH_P256_PUBLIC_KEY);
         hci_send_cmd_le_set_adv_param(&hci_stack.le_adv_param);
         break;
     case HCI_EVENT_LE_GENERATE_DHKEY_COMPLETE:
-        LOG_INFO("le_generate_dhkey_complete status:%u", data[1]);
+        LOG_INFO("le_generate_dhkey_complete status:0x%02x", data[1]);
         sm_recv_evt_le_generate_dhkey_complete(data + 2); // all connections re-used one local pub-priv key pair?
         break;
     default:
@@ -561,7 +557,7 @@ static void __hci_recv_evt_disconn_complete(uint8_t* data, uint32_t length) {
     }
     free(deleted_connection);
     deleted_connection = nullptr;
-    LOG_INFO("disconn_complete status:%u, connect_handle:0x%02x%02x, reason:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
+    LOG_INFO("disconn_complete status:0x%02x, connect_handle:0x%02x%02x, reason:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
     LOG_INFO("/***** peer device disconnect *****/");
 }
 
@@ -583,7 +579,7 @@ static void __hci_recv_evt_encryption_change(uint8_t* data, uint32_t length) {
     (void)length;
     uint16_t connect_handle = data[1] | ((data[2] & 0x0f) << 8);
 
-    LOG_INFO("encryption_change status:%u, connect_handle[0]:0x%02x%02x, encryption_enabled:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
+    LOG_INFO("encryption_change status:0x%02x, connect_handle[0]:0x%02x%02x, encryption_enabled:0x%02x", data[0], data[1], (data[2] & 0x0f), data[3]);
     sm_recv_evt_encryption_change(connect_handle, data[3]);
 }
 
