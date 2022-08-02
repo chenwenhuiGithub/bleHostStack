@@ -63,32 +63,15 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonTest_clicked()
 {
-#if 0
-    const uint32_t data_length = 2048;
+    const uint32_t data_length = 1024;
     uint32_t i = 0;
     uint8_t data[data_length] = {0};
     uint16_t connect_handle = 0x0000;
-    uint16_t att_mtu = att_get_mtu(connect_handle);
-    uint16_t maxPacketSize = att_mtu - 3;
 
     for (i = 0; i < data_length; i++) {
         data[i] = i;
     }
-
-    for (i = 0; i < data_length/maxPacketSize; i++) {
-        gatt_send_notify(connect_handle, GATT_SERVICE_TEST, GATT_OBJECT_TYPE_TEST_TX, data + i*maxPacketSize, maxPacketSize);
-    }
-    if (data_length % maxPacketSize) {
-        gatt_send_notify(connect_handle, GATT_SERVICE_TEST, GATT_OBJECT_TYPE_TEST_TX, data + i*maxPacketSize, data_length % maxPacketSize);
-    }
-#endif
-
-    uint16_t connect_handle = 0x0000;
-    uint8_t battery_level = 0;
-
-    sm_generate_random(&battery_level, sizeof(battery_level));
-    battery_level %= 101;
-    gatt_send_notify(connect_handle, GATT_SERVICE_BATTERY, GATT_OBJECT_TYPE_BATTERY_LEVEL, &battery_level, sizeof(battery_level));
+    gatt_send_passthrough(connect_handle, data, sizeof(data));
 }
 
 

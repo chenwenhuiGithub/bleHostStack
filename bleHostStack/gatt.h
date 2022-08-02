@@ -81,8 +81,9 @@ void gatt_recv_read_blob_req(uint16_t connect_handle, uint16_t att_handle, uint1
 void gatt_recv_write_req(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length);
 void gatt_recv_write_cmd(uint16_t connect_handle, uint16_t att_handle, uint8_t *value, uint32_t value_length);
 void gatt_recv_handle_value_cfm(uint16_t connect_handle);
-void gatt_send_notify(uint16_t connect_handle, uint16_t service_id, uint16_t characteristic_id, uint8_t *value, uint32_t value_length);
-void gatt_send_indicate(uint16_t connect_handle, uint16_t service_id, uint16_t characteristic_id, uint8_t *value, uint32_t value_length);
+void gatt_send_notify(uint16_t connect_handle, uint16_t service_id, uint16_t characteristic_id);
+void gatt_send_indicate(uint16_t connect_handle, uint16_t service_id, uint16_t characteristic_id);
+void gatt_send_passthrough(uint16_t connect_handle, uint8_t *value, uint32_t value_length);
 void gatt_send_error_resp(uint16_t connect_handle, uint8_t op_code, uint16_t handle, uint8_t error_code);
 
 #endif // GATT_H
