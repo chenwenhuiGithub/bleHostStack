@@ -87,6 +87,20 @@ void MainWindow::on_pushButtonTestPeripheral_clicked()
 }
 
 
+void MainWindow::on_pushButtonScan_clicked()
+{
+    if (ui->pushButtonScan->text() == "Start Scan") {
+        hci_send_cmd_le_set_scan_enable(HCI_LE_SCAN_ENABLE, HCI_LE_SCAN_FILTER_DUPLICATE_ENABLE);
+        ui->pushButtonScan->setText("Stop Scan");
+        LOG_INFO("/***** scan started *****/");
+    } else {
+        hci_send_cmd_le_set_scan_enable(HCI_LE_SCAN_DISABLE, HCI_LE_SCAN_FILTER_DUPLICATE_ENABLE);
+        ui->pushButtonScan->setText("Start Scan");
+        LOG_INFO("/***** scan stoped *****/");
+    }
+}
+
+
 void MainWindow::serialPort_readyRead()
 {
     uint8_t packet_type = 0;

@@ -265,6 +265,8 @@
 #define HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM                           15
 #define HCI_LENGTH_CMD_PARAM_LE_SET_ADV_DATA                            32
 #define HCI_LENGTH_CMD_PARAM_LE_SET_ADV_ENABLE                          1
+#define HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_PARAM                          7
+#define HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_ENABLE                         2
 #define HCI_LENGTH_CMD_PARAM_LE_SET_DATA_LENGTH                         6
 #define HCI_LENGTH_CMD_PARAM_LE_READ_SUGGESTED_DEFAULT_DATA_LENGTH      0
 #define HCI_LENGTH_CMD_PARAM_LE_WRITE_SUGGESTED_DEFAULT_DATA_LENGTH     4
@@ -291,6 +293,7 @@ typedef struct {
 
     hci_le_adv_param_t le_adv_param;
     hci_le_adv_data_t le_adv_data;
+    hci_le_scan_param_t le_scan_param;
     hci_le_conn_param_t le_conn_param;
 
     uint16_t le_acl_packet_length;
@@ -327,6 +330,14 @@ static hci_stack_t hci_stack = {
     .le_adv_data = {
         .adv_data_length = HCI_ADV_DATA_LENGTH,
         .adv_data = HCI_ADV_DATA
+    },
+
+    .le_scan_param = {
+        .scan_type = HCI_SCAN_TYPE,
+        .scan_interval = HCI_SCAN_INTERVAL,
+        .scan_window = HCI_SCAN_WINDOW,
+        .own_addr_type = HCI_ADDR_TYPE_RANDOM,
+        .scan_filter_policy = HCI_SCAN_FILTER_POLICY
     },
 
     .le_conn_param = {
@@ -434,9 +445,16 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             break;
         case HCI_OCF_LE_SET_ADV_DATA:
             LOG_INFO("le_set_adv_data status:0x%02x", data[3]);
+            hci_send_cmd_le_set_scan_param(&hci_stack.le_scan_param);
             break;
         case HCI_OCF_LE_SET_ADV_ENABLE:
             LOG_INFO("le_set_adv_enable status:0x%02x", data[3]);
+            break;
+        case HCI_OCF_LE_SET_SCAN_PARAM:
+            LOG_INFO("le_set_scan_param status:0x%02x", data[3]);
+            break;
+        case HCI_OCF_LE_SET_SCAN_ENABLE:
+            LOG_INFO("le_set_scan_enable status:0x%02x", data[3]);
             break;
         case HCI_OCF_LE_LTK_REQ_REPLY:
             LOG_INFO("le_ltk_req_reply status:0x%02x, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));
@@ -499,6 +517,10 @@ static void __hci_recv_evt_le_meta(uint8_t *data, uint32_t length) {
         connect_handle = data[2] | ((data[3] & 0x0f) << 8);
         hci_add_connection(connect_handle, (hci_addr_type_t)data[5], data + 6);
         LOG_INFO("/***** peer device connects success *****/");
+        break;
+    case HCI_EVENT_LE_ADV_REPORT:
+        LOG_INFO("le_adv_report num:%u, event_type:0x%02x, addr_type:0x%02x, addr:%02x:%02x:%02x:%02x:%02x:%02x, data_length:%u, rssi:%d",
+                 data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], (int8_t)data[11 + data[10]]);
         break;
     case HCI_EVENT_LE_CONN_UPDATE_COMPLETE:
         LOG_INFO("le_conn_update_complete status:0x%02x, connect_handle:0x%02x%02x, interval:%0.2fms, latency:%u, timeout:%ums",
@@ -920,7 +942,7 @@ void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask) {
     }
 }
 
-void hci_send_cmd_le_set_adv_param(hci_le_adv_param_t *adv_param){
+void hci_send_cmd_le_set_adv_param(hci_le_adv_param_t *adv_param) {
     uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM;
     uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_ADV_PARAM] = { 0x00 };
 
@@ -971,6 +993,43 @@ void hci_send_cmd_le_set_adv_enable(hci_le_adv_enable_t enable) {
         hci_stack.num_of_allowed_cmd_packets--;
     } else {
         LOG_ERROR("hci_send_cmd_le_set_adv_enable error, send cmd not allowed");
+    }
+}
+
+void hci_send_cmd_le_set_scan_param(hci_le_scan_param_t *scan_param) {
+    uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_PARAM;
+    uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_PARAM] = { 0x00 };
+
+    if (hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_SCAN_PARAM, HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_PARAM);
+        buffer[4] = scan_param->scan_type;
+        buffer[5] = scan_param->scan_interval;
+        buffer[6] = scan_param->scan_interval >> 8;
+        buffer[7] = scan_param->scan_window;
+        buffer[8] = scan_param->scan_window >> 8;
+        buffer[9] = scan_param->own_addr_type;
+        buffer[10] = scan_param->scan_filter_policy;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_set_scan_param error, send cmd not allowed");
+    }
+}
+
+void hci_send_cmd_le_set_scan_enable(hci_le_scan_enable_t scan_enable, hci_le_scan_filter_duplicate_enable_t filter_duplicate_enable) {
+    uint32_t cmd_length = HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_ENABLE;
+    uint8_t buffer[HCI_LENGTH_CMD_HEADER + HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_ENABLE] = { 0x00 };
+
+    if (hci_send_cmd_allowed()) {
+        __hci_assign_cmd_header(buffer, HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_SET_SCAN_ENABLE, HCI_LENGTH_CMD_PARAM_LE_SET_SCAN_ENABLE);
+        buffer[4] = scan_enable;
+        buffer[5] = filter_duplicate_enable;
+        serial_write(buffer, cmd_length);
+        btsnoop_wirte(buffer, cmd_length, BTSNOOP_PACKET_FLAG_CMD_SEND);
+        hci_stack.num_of_allowed_cmd_packets--;
+    } else {
+        LOG_ERROR("hci_send_cmd_le_set_scan_enable error, send cmd not allowed");
     }
 }
 

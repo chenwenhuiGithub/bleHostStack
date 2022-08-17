@@ -41,6 +41,21 @@
 #define HCI_ADV_INTERVAL_MIN                                            0x0800 // 1.28s(N*0.625ms)
 #define HCI_ADV_INTERVAL_MAX                                            0x0800 // 1.28s(N*0.625ms)
 
+
+#define HCI_SCAN_TYPE_PASSIVE                                           0x00
+#define HCI_SCAN_TYPE_ACTIVE                                            0x01
+#define HCI_SCAN_TYPE                                                   HCI_SCAN_TYPE_ACTIVE
+
+#define HCI_SCAN_INTERVAL                                               0x0010 // 10ms(N*0.625ms)
+#define HCI_SCAN_WINDOW                                                 0x0010 // 10ms(N*0.625ms)
+
+#define HCI_SCAN_FILTER_POLICY_BASIC_UNFILTERED                         0x00
+#define HCI_SCAN_FILTER_POLICY_BASIC_FILTERED                           0x01
+#define HCI_SCAN_FILTER_POLICY_EXTENDED_UNFILTERED                      0x02
+#define HCI_SCAN_FILTER_POLICY_EXTENDED_FILTERED                        0x03
+#define HCI_SCAN_FILTER_POLICY                                          HCI_SCAN_FILTER_POLICY_BASIC_UNFILTERED
+
+
 #define HCI_CONN_INTERVAL_MIN                                           0x0018 // 30ms(N*1.25ms)
 #define HCI_CONN_INTERVAL_MAX                                           0x0018 // 30ms(N*1.25ms)
 #define HCI_CONN_MAX_LATENCY                                            10
@@ -79,6 +94,16 @@ typedef enum {
     HCI_LE_ADV_ENABLE
 } hci_le_adv_enable_t;
 
+typedef enum {
+    HCI_LE_SCAN_DISABLE,
+    HCI_LE_SCAN_ENABLE
+} hci_le_scan_enable_t;
+
+typedef enum {
+    HCI_LE_SCAN_FILTER_DUPLICATE_DISABLE,
+    HCI_LE_SCAN_FILTER_DUPLICATE_ENABLE
+} hci_le_scan_filter_duplicate_enable_t;
+
 typedef struct {
     uint16_t conn_interval_min;
     uint16_t conn_interval_max;
@@ -103,6 +128,14 @@ typedef struct {
     uint8_t adv_data_length;
     uint8_t adv_data[HCI_LENGTH_ADV_DATA];
 } hci_le_adv_data_t;
+
+typedef struct {
+    uint8_t scan_type;
+    uint16_t scan_interval;
+    uint16_t scan_window;
+    hci_addr_type_t own_addr_type;
+    uint8_t scan_filter_policy;
+} hci_le_scan_param_t;
 
 typedef struct hci_connection {
     uint16_t connect_handle;
@@ -136,6 +169,8 @@ void hci_send_cmd_le_set_event_mask(uint8_t *le_event_mask);
 void hci_send_cmd_le_set_adv_param(hci_le_adv_param_t *adv_param);
 void hci_send_cmd_le_set_adv_data(hci_le_adv_data_t *adv_data);
 void hci_send_cmd_le_set_adv_enable(hci_le_adv_enable_t enable);
+void hci_send_cmd_le_set_scan_param(hci_le_scan_param_t *scan_param);
+void hci_send_cmd_le_set_scan_enable(hci_le_scan_enable_t scan_enable, hci_le_scan_filter_duplicate_enable_t filter_duplicate_enable);
 void hci_send_cmd_le_read_local_P256_public_key();
 void hci_send_cmd_le_generate_dhkey(uint8_t *public_key);
 void hci_send_cmd_le_ltk_req_reply(uint16_t connect_handle, uint8_t *ltk);
