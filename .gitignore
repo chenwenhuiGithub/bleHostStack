@@ -1,5 +1,5 @@
 .gitignore
+.qt_for_python
+.vscode
+build
 build-bleHostStack-*
-bleHostStack/.qt_for_python
-bleHostStack/.vscode
-bleHostStack/build
