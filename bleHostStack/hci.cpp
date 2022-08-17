@@ -434,11 +434,9 @@ static void __hci_recv_evt_command_complete(uint8_t *data, uint32_t length) {
             break;
         case HCI_OCF_LE_SET_ADV_DATA:
             LOG_INFO("le_set_adv_data status:0x%02x", data[3]);
-            hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE);
             break;
         case HCI_OCF_LE_SET_ADV_ENABLE:
             LOG_INFO("le_set_adv_enable status:0x%02x", data[3]);
-            LOG_INFO("/***** wait peer devices to connect *****/");
             break;
         case HCI_OCF_LE_LTK_REQ_REPLY:
             LOG_INFO("le_ltk_req_reply status:0x%02x, connect_handle:0x%02x%02x", data[3], data[4], (data[5] & 0x0f));

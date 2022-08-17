@@ -24,7 +24,6 @@ MainWindow::MainWindow(QWidget *parent)
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
         ui->comboBoxNum->addItem(info.portName());
     }
-    ui->pushButtonTest->setEnabled(false);
     connect(serial_get_instance(), &QSerialPort::readyRead, this, &MainWindow::serialPort_readyRead);
     srand(QTime::currentTime().msecsSinceStartOfDay());
 }
@@ -43,25 +42,38 @@ void MainWindow::on_pushButtonOpen_clicked()
             LOG_ERROR("serial open failed");
             return;
         }
+
+        ui->pushButtonOpen->setText("Close");
         btsnoop_open();
         ringbuffer_reset();
-        ui->pushButtonOpen->setText("Close");
-        ui->pushButtonTest->setEnabled(true);
-
         gatt_init();
         hci_init();
         LOG_INFO("serial open success");
     } else {
         serial_close();
-        btsnoop_close();
+
         ui->pushButtonOpen->setText("Open");
-        ui->pushButtonTest->setEnabled(false);
+        btsnoop_close();
         LOG_INFO("serial closed");
     }
 }
 
 
-void MainWindow::on_pushButtonTest_clicked()
+void MainWindow::on_pushButtonAdv_clicked()
+{
+    if (ui->pushButtonAdv->text() == "Start Adv") {
+        hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_ENABLE);
+        ui->pushButtonAdv->setText("Stop Adv");
+        LOG_INFO("/***** adv started *****/");
+    } else {
+        hci_send_cmd_le_set_adv_enable(HCI_LE_ADV_DISABLE);
+        ui->pushButtonAdv->setText("Start Adv");
+        LOG_INFO("/***** adv stoped *****/");
+    }
+}
+
+
+void MainWindow::on_pushButtonTestPeripheral_clicked()
 {
     const uint32_t data_length = 1024;
     uint32_t i = 0;

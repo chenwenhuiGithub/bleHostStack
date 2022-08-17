@@ -47,7 +47,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab_peripheral">
      <attribute name="title">
@@ -248,7 +248,20 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;0x11(read|write)&lt;/p&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButtonTest">
+     <widget class="QPushButton" name="pushButtonTestPeripheral">
+      <property name="geometry">
+       <rect>
+        <x>120</x>
+        <y>10</y>
+        <width>93</width>
+        <height>29</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Test</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButtonAdv">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -258,7 +271,7 @@ p, li { white-space: pre-wrap; }
        </rect>
       </property>
       <property name="text">
-       <string>Test</string>
+       <string>Start Adv</string>
       </property>
      </widget>
     </widget>
@@ -316,7 +329,7 @@ p, li { white-space: pre-wrap; }
        </rect>
       </property>
       <property name="text">
-       <string>Scan</string>
+       <string>Start Scan</string>
       </property>
      </widget>
      <widget class="QPushButton" name="pushButtonConnect">
@@ -329,7 +342,7 @@ p, li { white-space: pre-wrap; }
        </rect>
       </property>
       <property name="text">
-       <string>Connect</string>
+       <string>Start Connect</string>
       </property>
      </widget>
      <widget class="QListWidget" name="listWidgetService">
@@ -375,10 +388,10 @@ UUID: 0x18ff
        </property>
       </item>
      </widget>
-     <widget class="QPushButton" name="pushButtonTest_2">
+     <widget class="QPushButton" name="pushButtonTestCentral">
       <property name="geometry">
        <rect>
-        <x>230</x>
+        <x>220</x>
         <y>20</y>
         <width>93</width>
         <height>29</height>

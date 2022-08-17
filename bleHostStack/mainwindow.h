@@ -27,7 +27,8 @@ public:
 
 private slots:
     void on_pushButtonOpen_clicked();
-    void on_pushButtonTest_clicked();
+    void on_pushButtonAdv_clicked();
+    void on_pushButtonTestPeripheral_clicked();
     void serialPort_readyRead();
 
 private:
