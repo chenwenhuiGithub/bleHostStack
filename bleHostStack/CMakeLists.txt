@@ -38,6 +38,7 @@ set(PROJECT_SOURCES
         ringbuffer.h
         serial.h
         sm.h
+        config.h
     )
 set(TINYCRYPT_SOURCES
         tinycrypt/source/aes_decrypt.c

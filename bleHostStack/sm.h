@@ -3,43 +3,6 @@
 
 #include <stdint.h>
 
-#define SM_IOCAP_DISPLAY_ONLY                               0x00
-#define SM_IOCAP_DISPLAY_YESNO                              0x01
-#define SM_IOCAP_KEYBORAD_ONLY                              0x02
-#define SM_IOCAP_NO_INPUT_NO_OUTPUT                         0x03
-#define SM_IOCAP_KEYBOARD_DISPLAY                           0x04
-// #define SM_IOCAP                                            SM_IOCAP_DISPLAY_ONLY       // PASSKEY_I_INPUT_R_DISPLAY
-// #define SM_IOCAP                                            SM_IOCAP_DISPLAY_YESNO      // legacy:PASSKEY_I_INPUT_R_DISPLAY, secure:NUMERIC_COMPARISON
-// #define SM_IOCAP                                            SM_IOCAP_KEYBORAD_ONLY      // PASSKEY_I_DISPLAY_R_INPUT
-// #define SM_IOCAP                                            SM_IOCAP_NO_INPUT_NO_OUTPUT // JUST_WORKS
-#define SM_IOCAP                                            SM_IOCAP_KEYBOARD_DISPLAY   // legacy:PASSKEY_I_DISPLAY_R_INPUT, secure:NUMERIC_COMPARISON
-
-#define SM_OOB_DATA_FLAG_NOT_PRESENT                        0x00
-#define SM_OOB_DATA_FLAG_PRESENT                            0x01
-#define SM_OOB_DATA_FLAG                                    SM_OOB_DATA_FLAG_NOT_PRESENT
-
-#define SM_AUTH_BONDING                                     0x01
-#define SM_AUTH_MITM                                        0x04
-#define SM_AUTH_SECURE_CONNECTION                           0x08
-#define SM_AUTH_KEYPRESS                                    0x10
-#define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM | SM_AUTH_SECURE_CONNECTION // secure connection pairing
-// #define SM_AUTH                                             SM_AUTH_BONDING | SM_AUTH_MITM // legacy pairing
-
-#define SM_MIN_ENCRYPT_KEY_SIZE                             7
-#define SM_MAX_ENCRYPT_KEY_SIZE                             16
-#define SM_ENCRYPT_KEY_SIZE                                 16
-
-// Initiator Key Distribution in Pairing Request:  defines the keys shall be distributed by the initiator to the responder
-// Responder Key Distribution in Pairing Request:  defines the keys shall be distributed by the responder to the initiator
-// Initiator Key Distribution in Pairing Response: defines the keys shall be distributed by the initiator to the responder
-// Responder Key Distribution in Pairing Response: defines the keys shall be distributed by the responder to the initiator
-#define SM_KEY_DISTRIBUTION_ENC                             0x01 // LTK, EDIV, RAND
-#define SM_KEY_DISTRIBUTION_ID                              0x02 // IRK, ADDR_TPE, ADDR
-#define SM_KEY_DISTRIBUTION_SIGN                            0x04 // CSRK
-#define SM_KEY_DISTRIBUTION_LINK                            0x08
-#define SM_INITIATOR_KEY_DISTRIBUTION                       SM_KEY_DISTRIBUTION_ID | SM_KEY_DISTRIBUTION_SIGN
-#define SM_RESPONDER_KEY_DISTRIBUTION                       SM_KEY_DISTRIBUTION_ID | SM_KEY_DISTRIBUTION_SIGN
-
 #define SM_LENGTH_HEADER                                    1
 #define SM_LENGTH_PAIRING_REQ                               6
 #define SM_LENGTH_PAIRING_RESP                              6
@@ -60,7 +23,6 @@
 #define SM_LENGTH_ADDR                                      6
 #define SM_LENGTH_KEYPRESS_NOTIFICATION                     1
 
-#define SM_DEVICE_DB_FILE_NAME                              "device_db.dat"
 
 typedef enum {
     KEYPRESS_ENTRY_STARTED,

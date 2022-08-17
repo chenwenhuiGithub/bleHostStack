@@ -5,6 +5,7 @@
 #include "serial.h"
 #include "btsnoop.h"
 #include "log.h"
+#include "config.h"
 
 
 // Opcode Group Field (OGF) values
@@ -350,7 +351,7 @@ static hci_stack_t hci_stack = {
     },
 
     .local_addr_type = HCI_ADDR_TYPE_RANDOM,
-    .local_addr_random_irk = {0xcd, 0x79, 0x4e, 0x24, 0x8b, 0x47, 0x87, 0x75, 0xac, 0x64, 0x60, 0x2b, 0x86, 0x5c, 0x3f, 0x34} // random generate
+    .local_addr_random_irk = HCI_ADDR_RANDOM_IRK
 };
 
 

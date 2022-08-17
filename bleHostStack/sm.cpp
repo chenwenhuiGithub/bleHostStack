@@ -6,6 +6,7 @@
 #include "log.h"
 #include "hci.h"
 #include "l2cap.h"
+#include "config.h"
 #include "tinycrypt/include/cmac_mode.h"
 
 

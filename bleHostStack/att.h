@@ -62,8 +62,6 @@
 #define ATT_UUID_TYPE_BITS_16                           0x01
 #define ATT_UUID_TYPE_BITS_128                          0x02
 
-#define ATT_MTU_DEFAULT                                 23
-
 void att_recv(uint16_t connect_handle, uint8_t *data, uint32_t length);
 void att_send(uint16_t connect_handle, uint8_t *data, uint32_t length);
 uint16_t att_get_mtu(uint16_t connect_handle);

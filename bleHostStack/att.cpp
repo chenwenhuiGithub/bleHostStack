@@ -3,6 +3,7 @@
 #include "l2cap.h"
 #include "gatt.h"
 #include "log.h"
+#include "config.h"
 
 #define ATT_LENGTH_PACKET_HEADER           (HCI_LENGTH_PACKET_TYPE + HCI_LENGTH_HEADER_ACL + L2CAP_LENGTH_HEADER)
 

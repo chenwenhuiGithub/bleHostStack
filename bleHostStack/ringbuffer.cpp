@@ -1,5 +1,6 @@
 #include <memory>
 #include "ringbuffer.h"
+#include "config.h"
 
 static uint32_t __ringbuffer_used();
 static uint32_t __ringbuffer_left();

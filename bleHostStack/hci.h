@@ -13,60 +13,6 @@
 #define HCI_RANDOM_ADDR_SUBTYPE_RESOLVABLE                              0x01
 #define HCI_RANDOM_ADDR_SUBTYPE_STATIC                                  0x03
 
-#define HCI_ADV_CHANNEL_MAP_37                                          0x01
-#define HCI_ADV_CHANNEL_MAP_38                                          0x02
-#define HCI_ADV_CHANNEL_MAP_39                                          0x04
-#define HCI_ADV_CHANNEL_MAP                                             HCI_ADV_CHANNEL_MAP_37 | HCI_ADV_CHANNEL_MAP_38 | HCI_ADV_CHANNEL_MAP_39
-
-#define HCI_ADV_TYPE_ADV_IND                                            0x00
-#define HCI_ADV_TYPE_ADV_DIRECT_IND_HIGH_DUTY                           0x01
-#define HCI_ADV_TYPE_ADV_SCAN_IND                                       0x02
-#define HCI_ADV_TYPE_ADV_NONCONN_IND                                    0x03
-#define HCI_ADV_TYPE_ADV_DIRECT_IND_LOW_DUTY                            0x04
-#define HCI_ADV_TYPE                                                    HCI_ADV_TYPE_ADV_IND
-
-#define HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_ALL                         0x00
-#define HCI_ADV_FILTER_POLICY_SCAN_FILTER_CONN_ALL                      0x01
-#define HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_FILETER                     0x02
-#define HCI_ADV_FILTER_POLICY_SCAN_FILTER_CONN_FILETER                  0x03
-#define HCI_ADV_FILTER_POLICY                                           HCI_ADV_FILTER_POLICY_SCAN_ALL_CONN_ALL
-
-// flags:BR/EDR not supported, le general discoverable mode
-// device name:ble_demo
-#define HCI_ADV_DATA_LENGTH                                             13
-#define HCI_ADV_DATA                                                    {0x02, 0x01, 0x06, \
-                                                                         0x09, 0x09, 0x62, 0x6c, 0x65, 0x5f, 0x64, 0x65, 0x6d, 0x6f, \
-                                                                         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-
-#define HCI_ADV_INTERVAL_MIN                                            0x0800 // 1.28s(N*0.625ms)
-#define HCI_ADV_INTERVAL_MAX                                            0x0800 // 1.28s(N*0.625ms)
-
-
-#define HCI_SCAN_TYPE_PASSIVE                                           0x00
-#define HCI_SCAN_TYPE_ACTIVE                                            0x01
-#define HCI_SCAN_TYPE                                                   HCI_SCAN_TYPE_ACTIVE
-
-#define HCI_SCAN_INTERVAL                                               0x0010 // 10ms(N*0.625ms)
-#define HCI_SCAN_WINDOW                                                 0x0010 // 10ms(N*0.625ms)
-
-#define HCI_SCAN_FILTER_POLICY_BASIC_UNFILTERED                         0x00
-#define HCI_SCAN_FILTER_POLICY_BASIC_FILTERED                           0x01
-#define HCI_SCAN_FILTER_POLICY_EXTENDED_UNFILTERED                      0x02
-#define HCI_SCAN_FILTER_POLICY_EXTENDED_FILTERED                        0x03
-#define HCI_SCAN_FILTER_POLICY                                          HCI_SCAN_FILTER_POLICY_BASIC_UNFILTERED
-
-
-#define HCI_CONN_INTERVAL_MIN                                           0x0018 // 30ms(N*1.25ms)
-#define HCI_CONN_INTERVAL_MAX                                           0x0018 // 30ms(N*1.25ms)
-#define HCI_CONN_MAX_LATENCY                                            10
-#define HCI_CONN_TIMEOUT                                                0x0080 // 1.28s(N*10ms)
-#define HCI_CONN_MIN_CE_LENGTH                                          0x0028 // 25ms(N*0.625ms)
-#define HCI_CONN_MAX_CE_LENGTH                                          0x0028 // 25ms(N*0.625ms)
-
-#define HCI_CLASS_OF_DEVICE                                             {0x0c, 0x02, 0x20} // Smartphone: Audio
-#define HCI_EVENT_MASK                                                  {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f}
-#define HCI_LE_EVENT_MASK                                               {0xff, 0xff, 0xff, 0xff, 0x07, 0x00, 0x00, 0x00}
-
 #define HCI_LENGTH_PACKET_TYPE                                          1
 #define HCI_LENGTH_HEADER_EVT                                           2
 #define HCI_LENGTH_HEADER_SCO                                           3
